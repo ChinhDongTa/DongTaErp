@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="src/DongTaErp.AppHost/DongTaErp.AppHost.AppHost/DongTaErp.AppHost.AppHost.csproj" />
+  <Project Path="src/DongTaErp.AppHost/DongTaErp.AppHost.ServiceDefaults/DongTaErp.AppHost.ServiceDefaults.csproj" />
+  <Project Path="src/DongTaErp.Application/DongTaErp.Application.csproj" />
+  <Project Path="src/DongTaErp.Domain/DongTaErp.Domain.csproj" />
+  <Project Path="src/DongTaErp.Infrastructure/DongTaErp.Infrastructure.csproj" />
+  <Project Path="src/DongTaErp.Web/DongTaErp.Web.csproj" />
+</Solution>
