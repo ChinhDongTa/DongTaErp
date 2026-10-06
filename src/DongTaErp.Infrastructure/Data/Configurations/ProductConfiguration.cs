@@ -18,9 +18,6 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.SalePrice)
         .HasPrecision(18, 2);
 
-        builder.Property(x => x.StockQty)
-        .HasPrecision(18, 3);
-
         builder.Property(x => x.MinStock)
         .HasPrecision(18, 3);
     }

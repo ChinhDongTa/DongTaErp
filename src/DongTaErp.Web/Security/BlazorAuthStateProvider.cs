@@ -45,12 +45,12 @@ public class BlazorAuthStateProvider : AuthenticationStateProvider
 
     private static ClaimsPrincipal CreatePrincipal(AuthSession session)
     {
-        var identity = new ClaimsIdentity(new[]
-        {
+        var identity = new ClaimsIdentity(
+        [
             new Claim(ClaimTypes.Name, session.UserName),
             new Claim(ClaimTypes.GivenName, session.DisplayName),
             new Claim(ClaimTypes.Role, session.Role)
-        }, "ErpSession");
+        ], "ErpSession");
         return new ClaimsPrincipal(identity);
     }
 }

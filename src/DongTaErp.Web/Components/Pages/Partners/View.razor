@@ -1,0 +1,58 @@
+﻿@page "/partners/view/{Id}"
+
+@inject Application.Services.Partners.IPartnerService PartnerService
+
+<Alert @ref="alertComponent" />
+
+@if (dto != null)
+{
+    <FluentStack Style="margin:10px auto; max-width:50%" HorizontalAlignment="HorizontalAlignment.Right">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
+            <DetailItem Label="Mã khách hàng" Value="@dto.Code" />
+            <DetailItem Label="Tên khách hàng" Value="@dto.Name" />
+            <DetailItem Label="Loại khách hàng" Value="@dto.TypeName" />
+            <DetailItem Label="Điện thoại" Value="@dto.Phone" />
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
+
+            <DetailItem Label="Email" Value="@dto.Email" />
+            <DetailItem Label="Mã số thuế" Value="@dto.TaxCode" />
+            <EntityActions EntityId="@Id" Folder="Partners" OnDeleteClick="DeleteHandler" />
+        </FluentStack>
+    </FluentStack>
+}
+else
+{
+    <FluentSpinner />
+}
+@code {
+    [Parameter] public required string Id { get; set; }
+    PartnerDto? dto;
+    Alert? alertComponent;
+    bool isLoading = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if(string.IsNullOrEmpty(Id))
+        {
+            // Handle invalid ID
+            return;
+        }
+
+        // Fetch partner details based on ID
+        var result = await PartnerService.GetByIdAsync(new Guid(Id));
+        if(result == null || result.Value == null)
+        {
+            // Handle partner not found
+            return;
+        }
+        dto = result.Value;
+        // Use the fetched partner data
+
+    }
+
+    private void DeleteHandler()
+    {
+        throw new NotImplementedException();
+    }
+}

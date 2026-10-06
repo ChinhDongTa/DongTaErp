@@ -26,5 +26,7 @@ public class SalesOrderConfiguration : IEntityTypeConfiguration<SalesOrder>
         builder.HasOne(x => x.Partner)
         .WithMany(p => p.SalesOrders)
         .HasForeignKey(x => x.PartnerId);
+        builder.HasOne(x => x.Warehouse).WithMany(w => w.SalesOrders)
+            .HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -14,4 +14,8 @@
     <ProjectReference Include="..\DongTaErp.Domain\DongTaErp.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Services\SalesOrders\" />
+  </ItemGroup>
+
 </Project>

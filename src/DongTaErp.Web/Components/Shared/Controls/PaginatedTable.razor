@@ -1,0 +1,61 @@
+﻿@attribute [StreamRendering]
+@using DongTaErp.Application.Common.Models
+@typeparam TItem
+<FluentDataGrid TGridItem="TItem" Loading="IsLoading"
+                Items="@(Data?.Items?.AsQueryable())"
+                GridTemplateColumns="@GridTemplateColumns"
+                Style="width: 100%;">
+    @ChildContent
+</FluentDataGrid>
+
+@if (ShouldShowPaginator)
+{
+    <div class="pager-host">
+        <FluentPaginator State="@PState" Class="my-paginator"
+                         CurrentPageIndexChanged="HandlePageChanged" />
+    </div>
+}
+@code {
+    private PaginationState PState { get; set; } = new();
+
+    [Parameter] public PaginatedList<TItem>? Data { get; set; }
+    [Parameter] public int PageSize { get; set; } = Models.Constants.PageSize;
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? GridTemplateColumns { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+
+    /// <summary>
+    /// Chỉ hiển thị Paginator khi có nhiều hơn 1 trang
+    /// </summary>
+    private bool ShouldShowPaginator => Data is not null && Data.TotalCount > PageSize;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        PState.ItemsPerPage = PageSize;
+
+        
+        if (Data is not null)
+        {
+            // Ưu tiên lấy từ Data (server)
+            await PState.SetCurrentPageIndexAsync(Data.PageNumber - 1);
+            await PState.SetTotalItemCountAsync(Data.TotalCount);
+        }
+        else
+        {
+            await PState.SetCurrentPageIndexAsync(CurrentPage - 1);
+            await PState.SetTotalItemCountAsync(0);
+        }
+    }
+
+    private async Task HandlePageChanged(int newPageIndex)
+    {
+        var newPageNumber = newPageIndex + 1; // Fluent dùng 0-based → chuyển sang 1-based
+
+        if (OnPageChanged.HasDelegate)
+        {
+            await OnPageChanged.InvokeAsync(newPageNumber);
+        }
+    }
+}

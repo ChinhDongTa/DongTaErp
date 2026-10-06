@@ -11,7 +11,7 @@
         <FluentNavItem Href="auth" IconRest="@(new Icons.Regular.Size20.LockClosedKey())" IconActive="@(new Icons.Filled.Size20.LockClosedKey())">Auth Required</FluentNavItem>
         <AuthorizeView>
             <Authorized>
-                <FluentNavItem Href="Account/Manage">@context.User.Identity?.Name</FluentNavItem>
+                <FluentNavItem Href="Account/Manage">@context.User.FindFirst("DisplayName")?.Value</FluentNavItem>
                 <form action="Account/Logout" method="post">
                     <AntiforgeryToken />
                     <input type="hidden" name="ReturnUrl" value="@currentUrl" />

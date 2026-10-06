@@ -95,7 +95,8 @@
             {
                 return;
             }
-
+            var user = await UserManager.FindByEmailAsync(Input.Email);
+            Logger.LogInformation("Found user {Email}: {User}, displayName: {DisplayName}", Input.Email, user?.UserName ?? "null", user?.DisplayName ?? "No Name");
             // This doesn't count login failures towards account lockout
             // To enable password failures to trigger account lockout, set lockoutOnFailure: true
             result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);

@@ -1,11 +1,12 @@
+using DongTaErp.Application;
 using DongTaErp.Infrastructure;
-using DongTaErp.Infrastructure.Data;
 using DongTaErp.Web;
 using DongTaErp.Web.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddInfrastructureServices();
+builder.AddApplicationServices();
 builder.AddWebServices();
 
 builder.Services.AddRazorComponents()
@@ -22,8 +23,8 @@ app.MapDefaultEndpoints();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    using var scope = app.Services.CreateScope();
-    await DbSeeder.SeedAsync(scope.ServiceProvider);
+    //using var scope = app.Services.CreateScope();
+    //await DbSeeder.SeedAsync(scope.ServiceProvider);
     app.UseMigrationsEndPoint();
 }
 else

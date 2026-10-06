@@ -29,6 +29,8 @@
             <FluentStack Orientation="Orientation.Vertical">
                 <FluentTextInput Name="Input.Email" @bind-Value="Input.Email" AutoComplete="email" Required="true" Placeholder="name@example.com" Label="Email" Style="width: 100%" />
                 @* <FluentValidationMessage For="() => Input.Email" class="text-danger" /> *@
+                <FluentTextInput Name="Input.DisplayName" @bind-Value="Input.DisplayName" AutoComplete="name" Required="false" Placeholder="Display Name" Label="Display Name" Style="width: 100%" />
+                @* <FluentValidationMessage For="() => Input.DisplayName" class="text-danger" /> *@
                 <FluentTextInput type="password" Name="Input.Password" @bind-Value="Input.Password" AutoComplete="new-password" Required="true" Placeholder="password" Label="Password" Style="width: 100%" />
                 @* <FluentValidationMessage For="() => Input.Password" class="text-danger" /> *@
                 <FluentTextInput type="password" Name="Input.ConfirmPassword" @bind-Value="Input.ConfirmPassword" AutoComplete="new-password" Required="true" Placeholder="password" Label="Confirm Password" Style="width: 100%" />
@@ -62,7 +64,7 @@
     public async Task RegisterUser(EditContext editContext)
     {
         var user = CreateUser();
-
+        user.DisplayName = Input.DisplayName ?? Input.Email.Split('@')[0];
         await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
         var emailStore = GetEmailStore();
         await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
@@ -126,6 +128,9 @@
         [EmailAddress]
         [Display(Name = "Email")]
         public string Email { get; set; } = "";
+        [StringLength(160, ErrorMessage = "Max length is 160 characters.")]
+        [Display(Name = "DisplayName")]
+        public string? DisplayName { get; set; }
 
         [Required]
         [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]

@@ -1,2 +1,9 @@
 ﻿global using Microsoft.EntityFrameworkCore;
 global using DongTaErp.Domain.Entities;
+global using DongTaErp.Application.Common.DTOs;
+global using DongTaErp.Application.Common.Models;
+global using DongTaErp.Application.Extensions;
+global using DongTaErp.Domain.Common;
+global using DongTaErp.Application.Common.Interfaces;
+global using Microsoft.Extensions.Logging;
+global using System.Linq.Expressions;

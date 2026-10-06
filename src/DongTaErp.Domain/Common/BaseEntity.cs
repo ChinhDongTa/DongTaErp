@@ -3,6 +3,6 @@
 public abstract class BaseEntity
 {
     [Key]
-    public int Id { get; set; }
+    public Guid Id { get; set; }=new Guid();
     public bool IsDeleted { get; set; } = false;
 }

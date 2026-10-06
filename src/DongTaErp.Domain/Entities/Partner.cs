@@ -8,27 +8,26 @@ public class Partner:BaseAuditableEntity
 {
 
     [MaxLength(40)]
-    public string Code { get; set; } = string.Empty;
+    public required string Code { get; set; }
 
     [MaxLength(200)]
-    public string Name { get; set; } = string.Empty;
+    public required string Name { get; set; }
 
     public PartnerType Type { get; set; } = PartnerType.Customer;
 
     [MaxLength(40)]
-    public string Phone { get; set; } = string.Empty;
+    public string? Phone { get; set; }
 
     [MaxLength(160)]
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
 
     [MaxLength(40)]
-    public string TaxCode { get; set; } = string.Empty;
+    public string? TaxCode { get; set; }
 
     [MaxLength(300)]
-    public string Address { get; set; } = string.Empty;
+    public string? Address { get; set; }
 
     public bool IsActive { get; set; } = true;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public ICollection<SalesOrder> SalesOrders { get; set; } = new List<SalesOrder>();
+    public ICollection<SalesOrder> SalesOrders { get; set; } = [];
 }

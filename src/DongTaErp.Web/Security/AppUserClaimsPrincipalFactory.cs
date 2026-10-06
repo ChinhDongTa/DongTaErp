@@ -18,7 +18,8 @@ public class AppUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<AppUser,
     protected override async Task<ClaimsIdentity> GenerateClaimsAsync(AppUser user)
     {
         var identity = await base.GenerateClaimsAsync(user);
-        identity.AddClaim(new Claim(ClaimTypes.GivenName, string.IsNullOrWhiteSpace(user.DisplayName) ? user.UserName ?? "" : user.DisplayName));
+        identity.AddClaim(new Claim(ClaimTypes.Name,user.UserName ?? user.Email!));
+        identity.AddClaim(new Claim("DisplayName", user.DisplayName ?? "No Name"));
         return identity;
     }
 }

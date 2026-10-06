@@ -4,13 +4,8 @@ using DongTaErp.Infrastructure.Data;
 using DongTaErp.Web.Components.Account;
 using DongTaErp.Web.Security;
 using DongTaErp.Web.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
-using System.Text;
 using IdentityRevalidatingAuthenticationStateProvider = DongTaErp.Web.Components.Account.IdentityRevalidatingAuthenticationStateProvider;
 
 
@@ -41,10 +36,11 @@ public static class DependencyInjection
             options.SignIn.RequireConfirmedAccount = true;
             options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
         })
+            .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<AppDbContext>()
             .AddSignInManager()
             .AddDefaultTokenProviders();
-
+        builder.Services.AddScoped<IUserClaimsPrincipalFactory<AppUser>, AppUserClaimsPrincipalFactory>();
         builder.Services.AddSingleton<IEmailSender<AppUser>, IdentityNoOpEmailSender>();
 
 

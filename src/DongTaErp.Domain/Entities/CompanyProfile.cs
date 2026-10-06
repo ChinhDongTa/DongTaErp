@@ -7,20 +7,20 @@ public class CompanyProfile:BaseAuditableEntity
 {
 
     [MaxLength(200)]
-    public string Name { get; set; } = "Công ty ERP Lite";
+    public required string Name { get; set; } = "Công ty ERP Lite";
 
     [MaxLength(40)]
-    public string TaxCode { get; set; } = string.Empty;
+    public string? TaxCode { get; set; }
 
     [MaxLength(40)]
-    public string Phone { get; set; } = string.Empty;
+    public required string Phone { get; set; }
 
     [MaxLength(160)]
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
 
     [MaxLength(300)]
-    public string Address { get; set; } = string.Empty;
+    public required string Address { get; set; }
 
     [MaxLength(20)]
-    public string Currency { get; set; } = "VND";
+    public required string Currency { get; set; } = "VND";
 }

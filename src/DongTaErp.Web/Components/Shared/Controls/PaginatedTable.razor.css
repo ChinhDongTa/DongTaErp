@@ -1,0 +1,15 @@
+/* CSS for PaginatedTable component */
+
+.pager-host ::deep .paginator {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.pager-host ::deep .paginator-nav {
+    margin-inline-start: 0;
+}
+
+::deep .my-paginator .paginator-nav {
+    margin-inline-start: 0;
+}

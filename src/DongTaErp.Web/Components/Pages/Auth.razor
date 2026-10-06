@@ -9,5 +9,9 @@
 <h1>You are authenticated</h1>
 
 <AuthorizeView>
-    Hello @context.User.Identity?.Name!
+    Hello @context.User.FindFirst("DisplayName")?.Value
+    @foreach (var claim in context.User.Claims)
+    {
+        <div>@claim.Type : @claim.Value</div>
+    }
 </AuthorizeView>

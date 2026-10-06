@@ -1,0 +1,16 @@
+/* CSS for DetailItem component */
+.detail-item {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+}
+
+.detail-item__label {
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.detail-item__value {
+    font-weight: 400;
+    word-break: break-word;
+}
