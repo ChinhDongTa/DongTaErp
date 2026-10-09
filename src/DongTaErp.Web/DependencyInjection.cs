@@ -28,18 +28,17 @@ public static class DependencyInjection
         {
             options.DefaultScheme = IdentityConstants.ApplicationScheme;
             options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-        })
-            .AddIdentityCookies();
+        }).AddIdentityCookies();
 
         builder.Services.AddIdentityCore<AppUser>(options =>
         {
             options.SignIn.RequireConfirmedAccount = true;
             options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
-        })
-            .AddRoles<IdentityRole>()
+        }).AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<AppDbContext>()
             .AddSignInManager()
             .AddDefaultTokenProviders();
+
         builder.Services.AddScoped<IUserClaimsPrincipalFactory<AppUser>, AppUserClaimsPrincipalFactory>();
         builder.Services.AddSingleton<IEmailSender<AppUser>, IdentityNoOpEmailSender>();
 

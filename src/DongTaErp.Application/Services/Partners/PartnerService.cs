@@ -5,7 +5,8 @@ public class PartnerService : Base.GenericCrudService<Partner, PartnerDto, Creat
     private readonly IUnitOfWork unitOfWork;
     private readonly ILogger<PartnerService> logger;
 
-    public PartnerService(IUnitOfWork unitOfWork, ILogger<PartnerService> logger) : base(unitOfWork.Partners, unitOfWork, logger)
+    public PartnerService(IUnitOfWork unitOfWork, ILogger<PartnerService> logger, IValidator<CreatePartnerDto> createValidator, IValidator<UpdatePartnerDto> updateValidator) 
+        : base(unitOfWork.Partners, unitOfWork, logger, createValidator, updateValidator  )
     {
         this.unitOfWork = unitOfWork;
         this.logger = logger;

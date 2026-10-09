@@ -1,6 +1,4 @@
-﻿using Microsoft.FluentUI.AspNetCore.Components;
-
-namespace DongTaErp.Web.Models;
+﻿namespace DongTaErp.Web.Models;
 
 public static class Constants
 {

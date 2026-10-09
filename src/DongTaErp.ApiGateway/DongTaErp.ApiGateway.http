@@ -1,0 +1,52 @@
+@DongTaErp.ApiGateway_HostAddress = https://localhost:7145
+
+GET {{DongTaErp.ApiGateway_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+
+@pageNumber=1
+@pageSize=20
+GET {{DongTaErp.ApiGateway_HostAddress}}/api/Products?pageNumber={{pageNumber}}&pageSize={{pageSize}}
+
+###
+
+POST {{DongTaErp.ApiGateway_HostAddress}}/api/Products
+Content-Type: application/json
+
+{
+  "sku": "SP-015",
+      "name": "Màn hình LG 32\"",
+      "categoryName": "Màn hình",
+      "unit": "Cái",
+      "costPrice": 2900000.00,
+      "salePrice": 3490000.00,
+      "minStock": 4.000,
+      "isActive": true,
+      
+}
+
+###
+
+@id=dbd02802-f3a5-4140-8319-08df242f3add
+PUT {{DongTaErp.ApiGateway_HostAddress}}/api/Products/{{id}}
+Content-Type: application/json
+
+{
+  "id": "dbd02802-f3a5-4140-8319-08df242f3add",
+"sku": "SP-015",
+      "name": "Màn hình LG 32\"",
+      "categoryName": "Màn hình",
+      "unit": "Cái",
+      "costPrice": 2900000.00,
+      "salePrice": 3450000.00,
+      "minStock": 4.000,
+      "isActive": true,
+  "categoryId": "C92280C6-C693-4AC4-A872-08DF20439ED9"
+}
+
+###
+
+GET {{DongTaErp.ApiGateway_HostAddress}}/api/Products/dbd02802-f3a5-4140-8319-08df242f3add
+
+###

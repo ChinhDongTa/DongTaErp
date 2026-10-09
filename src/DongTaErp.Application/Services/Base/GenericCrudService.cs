@@ -1,20 +1,30 @@
 ﻿namespace DongTaErp.Application.Services.Base;
 
+using FluentValidation.Results;
 using System.Linq.Expressions;
 
-public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto> : ICrudService<TDto, TCreateDto, TUpdateDto>
+public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto>    : ICrudService<TDto, TCreateDto, TUpdateDto>
     where TEntity : BaseAuditableEntity
     where TDto : BaseDto
 {
     protected readonly IRepository<TEntity> Repository;
     protected readonly IUnitOfWork UnitOfWork;
     protected readonly ILogger Logger;
+    protected readonly IValidator<TCreateDto> CreateValidator;
+    protected readonly IValidator<TUpdateDto> UpdateValidator;
 
-    protected GenericCrudService(IRepository<TEntity> repository, IUnitOfWork unitOfWork, ILogger logger)
+    protected GenericCrudService(
+        IRepository<TEntity> repository,
+        IUnitOfWork unitOfWork,
+        ILogger logger,
+        IValidator<TCreateDto> createValidator,
+        IValidator<TUpdateDto> updateValidator)
     {
         Repository = repository;
         UnitOfWork = unitOfWork;
         Logger = logger;
+        CreateValidator = createValidator;
+        UpdateValidator = updateValidator;
     }
 
     public virtual async Task<Result<TDto?>> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -26,12 +36,13 @@ public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto> 
                 .Select(ToDto())
                 .FirstOrDefaultAsync(ct);
 
-            return dto == null ? Result<TDto?>.NotFound(ErrorHelpers.NotFoundWithId(typeof(TEntity).Name, id)) : Result<TDto?>.Success(dto);
+            return dto == null
+                ? Result<TDto?>.NotFound(ErrorHelpers.NotFoundWithId(typeof(TEntity).Name, id))
+                : Result<TDto?>.Success(dto);
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error getting {Entity}", typeof(TEntity).Name);
-
             return Result<TDto?>.CriticalError($"Error getting {typeof(TEntity).Name}");
         }
     }
@@ -45,13 +56,11 @@ public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto> 
                 .Select(ToDto())
                 .PaginatedListAsync(pageNumber, pageSize, ct);
 
-            return Result<PaginatedList<TDto>>
-                .Success(result);
+            return Result<PaginatedList<TDto>>.Success(result);
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error getting {Entity}", typeof(TEntity).Name);
-
             return Result<PaginatedList<TDto>>.CriticalError("System error");
         }
     }
@@ -60,10 +69,13 @@ public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto> 
     {
         try
         {
+            var errors = await ValidateCreateDto(dto, ct);
+            if (errors.Count > 0)
+                return Result<string>.Error([.. errors]);
+
             var entity = CreateEntity(dto);
 
             await Repository.AddAsync(entity, ct);
-
             await UnitOfWork.SaveChangesAsync(ct);
 
             return Result<string>.Created(entity.Id.ToString());
@@ -71,7 +83,6 @@ public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto> 
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error creating {Entity}", typeof(TEntity).Name);
-
             return Result<string>.CriticalError("System error");
         }
     }
@@ -80,12 +91,13 @@ public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto> 
     {
         try
         {
-            var entity = await Repository.GetByIdAsync(id, ct);
+            var errors = await ValidateUpdateDto(dto, ct);
+            if (errors.Count > 0)
+                return Result.Error([.. errors]);
 
+            var entity = await Repository.GetByIdAsync(id, ct);
             if (entity is null)
-            {
                 return Result.NotFound(ErrorHelpers.NotFoundWithId(typeof(TEntity).Name, id));
-            }
 
             UpdateEntity(entity, dto);
 
@@ -96,26 +108,19 @@ public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto> 
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error updating {Entity}", typeof(TEntity).Name);
-
             return Result.Error("System error");
         }
     }
 
-    public virtual async Task<Result> DeleteAsync(
-        Guid id,
-        CancellationToken ct = default)
+    public virtual async Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         try
         {
             var entity = await Repository.GetByIdAsync(id, ct);
-
             if (entity == null)
-            {
                 return Result.NotFound(ErrorHelpers.NotFoundWithId(typeof(TEntity).Name, id));
-            }
 
             Repository.Delete(entity);
-
             await UnitOfWork.SaveChangesAsync(ct);
 
             return Result.Success(ResultStatus.NoContent);
@@ -123,16 +128,9 @@ public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto> 
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error deleting {Entity}", typeof(TEntity).Name);
-
             return Result.Error("System error");
         }
     }
-
-    protected abstract Expression<Func<TEntity, TDto>> ToDto();
-
-    protected abstract TEntity CreateEntity(TCreateDto dto);
-    protected abstract Expression<Func<TEntity, TUpdateDto>> ToUpdateDto();
-    protected abstract void UpdateEntity(TEntity entity, TUpdateDto dto);
 
     public virtual async Task<Result<TUpdateDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -150,8 +148,30 @@ public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto> 
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error getting update dto");
-
             return Result<TUpdateDto?>.CriticalError("System error");
         }
     }
+
+    protected virtual async Task<IReadOnlyList<string>> ValidateCreateDto(TCreateDto dto, CancellationToken ct)
+    {
+        var result = await CreateValidator.ValidateAsync(dto, ct);
+        return ToErrors(result);
+    }
+
+    protected virtual async Task<IReadOnlyList<string>> ValidateUpdateDto(TUpdateDto dto, CancellationToken ct)
+    {
+        var result = await UpdateValidator.ValidateAsync(dto, ct);
+        return ToErrors(result);
+    }
+
+    protected static IReadOnlyList<string> ToErrors(ValidationResult result) => result.IsValid ?
+            [] :
+            [.. result.Errors.Select(e => string.IsNullOrWhiteSpace(e.PropertyName)
+                                                    ? e.ErrorMessage
+                                                    : $"{e.PropertyName}: {e.ErrorMessage}")];
+
+    protected abstract Expression<Func<TEntity, TDto>> ToDto();
+    protected abstract Expression<Func<TEntity, TUpdateDto>> ToUpdateDto();
+    protected abstract TEntity CreateEntity(TCreateDto dto);
+    protected abstract void UpdateEntity(TEntity entity, TUpdateDto dto);
 }

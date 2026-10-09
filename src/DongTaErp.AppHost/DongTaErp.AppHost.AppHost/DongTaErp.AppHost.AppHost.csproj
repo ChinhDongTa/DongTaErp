@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\DongTaErp.ApiGateway\DongTaErp.ApiGateway.csproj" />
     <ProjectReference Include="..\..\DongTaErp.Web\DongTaErp.Web.csproj" />
   </ItemGroup>
 

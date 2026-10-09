@@ -18,7 +18,6 @@
     <PropertyColumn TGridItem="PartnerDto" TProp="string" Title="Address" Property="@(c => c!.Address)" Align="DataGridCellAlignment.Start" />
     <PropertyColumn TGridItem="PartnerDto" TProp="string" Title="Type" Property="@(c => c!.TypeName)" Align="DataGridCellAlignment.Start" />
     <TemplateColumn TGridItem="PartnerDto" Context="item" Title="Actions" Class="col-actions">
-        <label>@item.Id</label>
         <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem" @onclick="@(() => ViewHandler(item.Id))" />
         <FluentButton IconStart="@(new Icons.Regular.Size20.Edit())" Appearance="ButtonAppearance.Primary" Title="Sửa" @onclick="@(() => EditHandler(item.Id))" />
     </TemplateColumn>

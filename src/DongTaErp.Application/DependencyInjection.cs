@@ -17,11 +17,14 @@ public static class DependencyInjection
 
         builder.Services.AddScoped<IPartnerService, PartnerService>();
         builder.Services.AddScoped<ICategoryService, CategoryService>();
+        
         builder.Services.AddScoped<ICompanyProfileService, CompanyProfileService>();
         builder.Services.AddScoped<IProductService, ProductService>();
         builder.Services.AddScoped<IWarehouseService, WarehouseService>();
         builder.Services.AddScoped<IDepartmentService, DepartmentService>();
         builder.Services.AddScoped<IInventoryTxnService, InventoryTxnService>();
+
+        builder.Services.AddValidatorsFromAssemblies([typeof(DependencyInjection).Assembly],includeInternalTypes: true);
     }
     
 }

@@ -5,7 +5,8 @@ public class ProductService : Base.GenericCrudService<Product, ProductDto, Creat
     private readonly IUnitOfWork unitOfWork;
     private readonly ILogger<ProductService> logger;
 
-    public ProductService(IUnitOfWork unitOfWork, ILogger<ProductService> logger) : base(unitOfWork.Products, unitOfWork, logger)
+    public ProductService(IUnitOfWork unitOfWork, ILogger<ProductService> logger, IValidator<CreateProductDto> createValidator, IValidator<UpdateProductDto> updateValidator) 
+        : base(unitOfWork.Products, unitOfWork, logger, createValidator, updateValidator)
     {
         this.unitOfWork = unitOfWork;
         this.logger = logger;

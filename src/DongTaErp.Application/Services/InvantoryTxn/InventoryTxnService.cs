@@ -7,7 +7,8 @@ public class InventoryTxnService : GenericCrudService<InventoryTxn, InventoryTxn
     private readonly IUnitOfWork unitOfWork;
     private readonly ILogger<InventoryTxnService> logger;
 
-    public InventoryTxnService(IUnitOfWork unitOfWork, ILogger<InventoryTxnService> logger) : base(unitOfWork.InventoryTxns, unitOfWork, logger)
+    public InventoryTxnService(IUnitOfWork unitOfWork, ILogger<InventoryTxnService> logger, IValidator<CreateInventoryTxnDto> createValidator, IValidator<UpdateInventoryTxnDto> updateValidator) 
+        : base(unitOfWork.InventoryTxns, unitOfWork, logger, createValidator, updateValidator )
     {
         this.unitOfWork = unitOfWork;
         this.logger = logger;

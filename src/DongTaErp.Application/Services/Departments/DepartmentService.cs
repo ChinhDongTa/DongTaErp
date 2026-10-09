@@ -2,7 +2,8 @@
 
 public class DepartmentService : Base.GenericCrudService<Department, DepartmentDto, CreateDepartmentDto, UpdateDepartmentDto>, IDepartmentService
 {
-    public DepartmentService(IUnitOfWork unitOfWork, ILogger<DepartmentService> logger) : base(unitOfWork.Departments, unitOfWork, logger)
+    public DepartmentService(IUnitOfWork unitOfWork, ILogger<DepartmentService> logger, IValidator<CreateDepartmentDto> createValidator, IValidator<UpdateDepartmentDto> updateValidator) 
+        : base(unitOfWork.Departments, unitOfWork, logger, createValidator, updateValidator   )
     {
     }
 

@@ -5,7 +5,7 @@ public class WarehouseService : Base.GenericCrudService<Warehouse, WarehouseDto,
     private readonly IUnitOfWork unitOfWork;
     private readonly ILogger<WarehouseService> logger;
 
-    public WarehouseService(IUnitOfWork unitOfWork, ILogger<WarehouseService> logger) : base(unitOfWork.Warehouses, unitOfWork, logger)
+    public WarehouseService(IUnitOfWork unitOfWork, ILogger<WarehouseService> logger, IValidator<CreateWarehouseDto> createValidator, IValidator<UpdateWarehouseDto> updateValidator) : base(unitOfWork.Warehouses, unitOfWork, logger, createValidator, updateValidator)
     {
         this.unitOfWork = unitOfWork;
         this.logger = logger;

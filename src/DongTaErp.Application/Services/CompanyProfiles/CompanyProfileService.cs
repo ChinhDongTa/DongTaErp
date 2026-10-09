@@ -5,7 +5,8 @@ public class CompanyProfileService : Base.GenericCrudService<CompanyProfile, Com
     private readonly IUnitOfWork unitOfWork;
     private readonly ILogger<CompanyProfileService> logger;
 
-    public CompanyProfileService(IUnitOfWork unitOfWork, ILogger<CompanyProfileService> logger) : base(unitOfWork.CompanyProfiles, unitOfWork, logger)
+    public CompanyProfileService(IUnitOfWork unitOfWork, ILogger<CompanyProfileService> logger, IValidator<CreateCompanyProfileDto> createValidator, IValidator<UpdateCompanyProfileDto> updateValidator) 
+        : base(unitOfWork.CompanyProfiles, unitOfWork, logger, createValidator, updateValidator   )
     {
         this.unitOfWork = unitOfWork;
         this.logger = logger;

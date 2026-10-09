@@ -4,6 +4,16 @@ using System.Text.RegularExpressions;
 namespace DongTaErp.Application.Extensions;
 public static class StringHelpers
 {
+    public static Guid ToGuid(this string value)
+    {
+        if (Guid.TryParse(value, out var guid))
+        {
+            return guid;
+        }
+
+        throw new ArgumentException("Invalid GUID format", nameof(value));
+    }
+
     /// <summary>
     /// Chuyển danh sách chuỗi thành một dòng các item sẽ được phân biệt bằng separator.
     /// </summary>

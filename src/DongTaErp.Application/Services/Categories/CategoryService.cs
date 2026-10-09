@@ -5,7 +5,8 @@ public class CategoryService : Base.GenericCrudService<Category, CategoryDto, Cr
     private readonly IUnitOfWork unitOfWork;
     private readonly ILogger<CategoryService> logger;
 
-    public CategoryService(IUnitOfWork unitOfWork, ILogger<CategoryService> logger):base(unitOfWork.Categories, unitOfWork, logger)
+    public CategoryService(IUnitOfWork unitOfWork, ILogger<CategoryService> logger, IValidator<CreateCategoryDto> createValidator, IValidator<UpdateCategoryDto> updateValidator)
+        : base(unitOfWork.Categories, unitOfWork, logger, createValidator, updateValidator)
     {
         this.unitOfWork = unitOfWork;
         this.logger = logger;

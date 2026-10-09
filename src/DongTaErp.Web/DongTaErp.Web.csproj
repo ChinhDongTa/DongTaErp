@@ -21,4 +21,8 @@
     <ProjectReference Include="..\DongTaErp.Application\DongTaErp.Application.csproj" />
     <ProjectReference Include="..\DongTaErp.Infrastructure\DongTaErp.Infrastructure.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Components\Pages\HR\Employees\" />
+  </ItemGroup>
 </Project>
