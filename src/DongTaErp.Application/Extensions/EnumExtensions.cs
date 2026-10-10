@@ -33,4 +33,25 @@ public static class EnumExtensions
         // 3. Cuối cùng trả về tên enum (PascalCase)
         return value.ToString();
     }
+
+    public static IEnumerable<EnumItemDto> GetEnumItemDtos(string enumName)
+    {
+        // Dùng reflection để lấy enum theo tên
+        var enumType = AppDomain.CurrentDomain.GetAssemblies()
+            .SelectMany(a => a.GetTypes())
+            .FirstOrDefault(t => t.IsEnum && t.Name.Equals(enumName, StringComparison.OrdinalIgnoreCase));
+        if (enumType == null)
+            return [];
+        // Lấy tất cả giá trị của enum
+        var values = System.Enum.GetValues(enumType);
+
+        // Map: Id = giá trị int của enum (dạng string), Name = DisplayName (ưu tiên [Display] → [Description] → tên enum)
+        var result = values.Cast<System.Enum>()
+            .Select(v => new EnumItemDto(
+                v.ToInt(),                 // Value = giá trị int
+                v.ToDisplayName()          // Name = tên hiển thị đẹp
+            ));
+
+        return result;
+    }
 }

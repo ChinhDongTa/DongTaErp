@@ -1,0 +1,50 @@
+﻿@page "/partners/create"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Partners
+@using DongTaErp.Domain.Enums
+@inject NavigationManager Navigation
+@inject IPartnerService PartnerService
+
+<Alert @ref="alertComponent" />
+ <EditForm Model="dto" OnValidSubmit="SaveAsync" style="@(isSaving ? "opacity:.6; pointer-events:none;" : null)">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="16" HorizontalAlignment="HorizontalAlignment.Left" Style="width:100%; margin: 20px auto;">
+        <FluentTextInput @bind-Value="dto.Code" Label="Mã khách hàng" Placeholder="Nhập mã khách hàng" Required="true" MaxLength="40" />
+        <FluentTextInput @bind-Value="dto.Name" Label="Tên khách hàng" Placeholder="Nhập tên khách hàng" Required="true" MaxLength="200" class="text200" />
+        <FluentSelect TOption="PartnerType" TValue="PartnerType" @bind-Value="dto.Type" Label="Loại khách hàng" Placeholder="Chọn loại khách hàng" Items="@(Enum.GetValues<PartnerType>().Cast<PartnerType>())" />
+        <FluentTextInput @bind-Value="dto.Phone" Label="Điện thoại" Placeholder="Nhập số điện thoại" MaxLength="40" />
+        <FluentTextInput @bind-Value="dto.Email" Label="Email" Placeholder="Nhập địa chỉ email" MaxLength="160" TextInputType="TextInputType.Email" />
+        <FluentTextInput @bind-Value="dto.TaxCode" Label="Mã số thuế" Placeholder="Nhập mã số thuế" MaxLength="40" />
+        <FluentTextInput @bind-Value="dto.Address" Label="Địa chỉ" Placeholder="Nhập địa chỉ" MaxLength="200" class="text200"/>
+        <FluentCheckbox @bind-Value="dto.IsActive" Label="Kích hoạt" />
+        <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/partners/List" />
+    </FluentStack>
+</EditForm>
+
+
+@code {
+    Alert? alertComponent;
+    CreatePartnerDto dto = new CreatePartnerDto();
+    bool isSaving=false;
+    private async Task SaveAsync()
+    {
+        isSaving = true;
+        //StateHasChanged();
+
+        try
+        {
+            var result = await PartnerService.CreateAsync(dto);
+            if (result.Succeeded)
+            {
+                alertComponent?.AddAlert("Tạo khách hàng thành công.");
+            }
+        }
+        finally
+        {
+            //alertComponent?.AddAlertError("Có lỗi xảy ra khi tạo khách hàng.");
+            isSaving = false;
+            //StateHasChanged();
+        }
+    }
+}

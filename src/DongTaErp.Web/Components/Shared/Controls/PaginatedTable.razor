@@ -1,8 +1,9 @@
-﻿@attribute [StreamRendering]
-@using DongTaErp.Application.Common.Models
+﻿@using DongTaErp.Application.Common.Models
 @typeparam TItem
-<FluentDataGrid TGridItem="TItem" Loading="IsLoading"
-                Items="@(Data?.Items?.AsQueryable())"
+
+<FluentDataGrid TGridItem="TItem"
+                Loading="IsLoading"
+                Items="@itemsQuery"
                 GridTemplateColumns="@GridTemplateColumns"
                 Style="width: 100%;">
     @ChildContent
@@ -15,8 +16,14 @@
                          CurrentPageIndexChanged="HandlePageChanged" />
     </div>
 }
+
 @code {
-    private PaginationState PState { get; set; } = new();
+    private readonly PaginationState PState = new();
+    private IQueryable<TItem>? itemsQuery;
+    private bool syncingPager;
+    private int appliedPageSize;
+    private int appliedPageNumber = -1;
+    private int appliedTotal = -1;
 
     [Parameter] public PaginatedList<TItem>? Data { get; set; }
     [Parameter] public int PageSize { get; set; } = Models.Constants.PageSize;
@@ -26,36 +33,46 @@
     [Parameter] public string? GridTemplateColumns { get; set; }
     [Parameter] public bool IsLoading { get; set; }
 
-    /// <summary>
-    /// Chỉ hiển thị Paginator khi có nhiều hơn 1 trang
-    /// </summary>
     private bool ShouldShowPaginator => Data is not null && Data.TotalCount > PageSize;
 
     protected override async Task OnParametersSetAsync()
     {
-        PState.ItemsPerPage = PageSize;
+        itemsQuery = Data?.Items?.AsQueryable();
 
-        
-        if (Data is not null)
+        if (PageSize > 0 && PState.ItemsPerPage != PageSize)
+            PState.ItemsPerPage = PageSize;
+
+        var pageNumber = Data?.PageNumber ?? CurrentPage;
+        var total = Data?.TotalCount ?? 0;
+        if (pageNumber == appliedPageNumber && total == appliedTotal && PageSize == appliedPageSize)
+            return;
+
+        appliedPageNumber = pageNumber;
+        appliedTotal = total;
+        appliedPageSize = PageSize;
+
+        syncingPager = true;
+        try
         {
-            // Ưu tiên lấy từ Data (server)
-            await PState.SetCurrentPageIndexAsync(Data.PageNumber - 1);
-            await PState.SetTotalItemCountAsync(Data.TotalCount);
+            await PState.SetTotalItemCountAsync(total);
+            await PState.SetCurrentPageIndexAsync(Math.Max(0, pageNumber - 1));
         }
-        else
+        finally
         {
-            await PState.SetCurrentPageIndexAsync(CurrentPage - 1);
-            await PState.SetTotalItemCountAsync(0);
+            syncingPager = false;
         }
     }
 
     private async Task HandlePageChanged(int newPageIndex)
     {
-        var newPageNumber = newPageIndex + 1; // Fluent dùng 0-based → chuyển sang 1-based
+        if (syncingPager)
+            return;
+
+        var newPageNumber = newPageIndex + 1;
+        if (newPageNumber == (Data?.PageNumber ?? CurrentPage))
+            return;
 
         if (OnPageChanged.HasDelegate)
-        {
             await OnPageChanged.InvokeAsync(newPageNumber);
-        }
     }
 }

@@ -12,4 +12,6 @@ public interface ICrudService< TDto, TCreateDto, TUpdateDto>
     Task<Result> UpdateAsync(Guid id, TUpdateDto dto, CancellationToken ct = default);
 
     Task<Result> DeleteAsync(Guid id, CancellationToken ct = default);
+
+    Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default);
 }

@@ -14,3 +14,6 @@ public abstract class AuditableDto : BaseDto
     public DateTimeOffset? LastModifiedAt { get; set; }
     public string? LastModifiedBy { get; set; }
 }
+public record SelectListItemDto(string Id, string Name);
+
+public record EnumItemDto(int Value, string Name);

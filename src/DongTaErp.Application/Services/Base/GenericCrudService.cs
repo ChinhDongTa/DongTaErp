@@ -3,7 +3,7 @@
 using FluentValidation.Results;
 using System.Linq.Expressions;
 
-public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto>    : ICrudService<TDto, TCreateDto, TUpdateDto>
+public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto> : ICrudService<TDto, TCreateDto, TUpdateDto>
     where TEntity : BaseAuditableEntity
     where TDto : BaseDto
 {
@@ -132,6 +132,26 @@ public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto> 
         }
     }
 
+    public virtual async Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        try
+        {
+            var entity = await Repository.GetByIdAsync(id, ct);
+            if (entity == null)
+                return Result.NotFound(ErrorHelpers.NotFoundWithId(typeof(TEntity).Name, id));
+
+            Repository.SoftDelete(entity);
+            await UnitOfWork.SaveChangesAsync(ct);
+
+            return Result.Success(ResultStatus.NoContent);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error soft deleting {Entity}", typeof(TEntity).Name);
+            return Result.Error("System error");
+        }
+    }
+
     public virtual async Task<Result<TUpdateDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
     {
         try
@@ -174,4 +194,6 @@ public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto> 
     protected abstract Expression<Func<TEntity, TUpdateDto>> ToUpdateDto();
     protected abstract TEntity CreateEntity(TCreateDto dto);
     protected abstract void UpdateEntity(TEntity entity, TUpdateDto dto);
+
+   
 }

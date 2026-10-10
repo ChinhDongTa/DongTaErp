@@ -1,16 +1,9 @@
 ﻿@page "/partners/list"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Services.Partners
 @inject NavigationManager Navigation
 @inject IPartnerService Service
 
-@* <FluentDataGrid Id="weathergrid" Items="@items" GridTemplateColumns="2fr 1fr 1fr 3fr 1fr" Loading="@(items == null)" Style="height:204px;" TGridItem="PartnerDto">
-    <PropertyColumn Title="Name" Property="@(c => c!.Name)" Align="DataGridCellAlignment.Start" />
-    <PropertyColumn Title="Code" Property="@(c => c!.Code)" Align="DataGridCellAlignment.Center" />
-    <PropertyColumn Title="Email" Property="@(c => c!.Email)" Align="DataGridCellAlignment.Start" />
-    <PropertyColumn Title="Address" Property="@(c => c!.Address)" Align="DataGridCellAlignment.Start" />
-    <PropertyColumn Title="Type" Property="@(c => c!.TypeName)" Align="DataGridCellAlignment.Start" />
-</FluentDataGrid> *@
 <PaginatedTable TItem="PartnerDto" Data="paginatedList" PageSize="pageSize" GridTemplateColumns="2fr 1fr 1fr 3fr 1fr" OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
     <PropertyColumn TGridItem="PartnerDto" TProp="string" Title="Name" Property="@(c => c!.Name)" Align="DataGridCellAlignment.Start" />
     <PropertyColumn TGridItem="PartnerDto" TProp="string" Title="Code" Property="@(c => c!.Code)" Align="DataGridCellAlignment.Center" />
@@ -22,45 +15,44 @@
         <FluentButton IconStart="@(new Icons.Regular.Size20.Edit())" Appearance="ButtonAppearance.Primary" Title="Sửa" @onclick="@(() => EditHandler(item.Id))" />
     </TemplateColumn>
 </PaginatedTable>
-<label>Click:  @clicked</label>
 @code {
-    PaginatedList<PartnerDto>? paginatedList;
-    int pageSize = Models.Constants.PageSize;
-
-    bool isLoading = false;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadData();
-    }
+    private PaginatedList<PartnerDto>? paginatedList;
+    private readonly int pageSize = Models.Constants.PageSize;
     private int currentPage = 1;
+    private bool isLoading;
+    private int requestVersion;
 
-    private async Task LoadPageAsync(int page)
+    protected override Task OnInitializedAsync() => LoadData(currentPage);
+
+    private Task LoadPageAsync(int page)
     {
         currentPage = page;
-        await LoadData(page);
+        return LoadData(page);
     }
 
-    private async Task LoadData(int page = 1)
+    private async Task LoadData(int page)
     {
+        var version = ++requestVersion;
         isLoading = true;
-        var result = await Service.GetAllAsync(page, pageSize);
-        if (result.Succeeded && result.Value != null)
+        StateHasChanged();
+        await Task.Yield();
+
+        try
         {
-            paginatedList = result.Value;
+            var result = await Service.GetAllAsync(page, pageSize);
+            if (version != requestVersion)
+                return;
+
+            if (result.Succeeded && result.Value is not null)
+                paginatedList = result.Value;
         }
-        isLoading = false;
-    }
-    string clicked = string.Empty;
-    private void ViewHandler(Guid id)
-    {
-        clicked = $"View clicked for ID: {id}";
-        Navigation.NavigateTo($"/partners/view/{id}");
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+        }
     }
 
-    private void EditHandler(Guid id)
-    {
-        clicked = $"Edit clicked for ID: {id}";
-        Navigation.NavigateTo($"/partners/edit/{id}");
-    }
+    private void ViewHandler(Guid id) => Navigation.NavigateTo($"/partners/view/{id}");
+    private void EditHandler(Guid id) => Navigation.NavigateTo($"/partners/edit/{id}");
 }

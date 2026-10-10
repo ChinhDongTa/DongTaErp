@@ -1,8 +1,283 @@
-﻿@page "/partners/update/{Id}"
-@page "/partners/create"
+﻿
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Extensions
+@using DongTaErp.Application.Services.Partners
+@using DongTaErp.Domain.Enums
+@inject IPartnerService PartnerService
+@inject NavigationManager Navigation
 
+<PageTitle>@(IsCreate ? "Tạo đối tác" : "Cập nhật đối tác")</PageTitle>
 
+<Alert @ref="alertComponent" />
+
+<div style="position:relative; margin:10px auto; max-width:640px; min-height:220px;">
+  @if (isLoading && !formReady)
+    {
+        <FluentSpinner />
+    }
+    else if (formReady)
+    {
+        <EditForm Model="form" OnValidSubmit="SaveAsync" style="@(isSaving ? "opacity:.6; pointer-events:none;" : null)">
+            <DataAnnotationsValidator />
+
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+                <FluentLabel Size="LabelSize.Large">@(IsCreate ? "Tạo đối tác" : "Cập nhật đối tác")</FluentLabel>
+
+                <FluentTextInput Label="Mã đối tác"
+                                 Required="true"
+                                 Maxlength="40"
+                                 @bind-Value="form.Code" />
+                <ValidationMessage For="() => form.Code" />
+
+                <FluentTextInput Label="Tên đối tác"
+                                 Required="true"
+                                 Maxlength="200"
+                                 @bind-Value="form.Name" />
+                <ValidationMessage For="() => form.Name" />
+
+                <EnumSelectList EnumName="PartnerType" @bind-Value="@typeId" Label="Loại đối tác" Required="true" />
+
+                <FluentTextInput Label="Điện thoại" Maxlength="40" @bind-Value="form.Phone" />
+                <ValidationMessage For="() => form.Phone" />
+
+                <FluentTextInput Label="Email" Maxlength="160" @bind-Value="form.Email" />
+                <ValidationMessage For="() => form.Email" />
+
+                <FluentTextInput Label="Mã số thuế" Maxlength="40" @bind-Value="form.TaxCode" />
+                <ValidationMessage For="() => form.TaxCode" />
+
+                <FluentTextArea Label="Địa chỉ" Maxlength="300" Rows="3" @bind-Value="form.Address" />
+                <ValidationMessage For="() => form.Address" />
+
+                <FluentCheckbox Label="Đang hoạt động" @bind-Value="form.IsActive" />
+
+                <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+                    <FluentButton Type="ButtonType.Submit"
+                                  Appearance="ButtonAppearance.Primary"
+                                  Loading="isSaving"
+                                  Disabled="isLoading">
+                        @(IsCreate ? "Tạo" : "Lưu")
+                    </FluentButton>
+                    <FluentButton Type="ButtonType.Button"
+                                  Appearance="ButtonAppearance.Outline"
+                                  Disabled="isSaving"
+                                  OnClick="Cancel">
+                        Hủy
+                    </FluentButton>
+                </FluentStack>
+            </FluentStack>
+        </EditForm>
+
+        @if (isSaving)
+        {
+            <FluentSpinner Style="position:absolute; inset:40% 0 auto; margin:auto;" />
+        }
+    }
+</div>
 
 @code {
     [Parameter] public string? Id { get; set; }
+    private int? typeId;
+    private Alert? alertComponent;
+    private PartnerFormModel form = new();
+    private bool formReady;
+    private bool isLoading;
+    private bool isSaving;
+    private bool dtoMissing;
+    private string? loadedId;
+    private string? pendingError;
+    private int requestVersion;
+
+    private bool IsCreate => string.IsNullOrEmpty(Id);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!IsCreate && Id == loadedId && formReady)
+            return;
+
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (pendingError is null || alertComponent is null)
+            return;
+
+        var message = pendingError;
+        pendingError = null;
+        alertComponent.AddAlertError(message);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadAsync()
+    {
+        dtoMissing = false;
+
+        if (IsCreate)
+        {
+            form = new PartnerFormModel();
+            formReady = true;
+            loadedId = null;
+            return;
+        }
+
+        if (!Guid.TryParse(Id, out var id))
+        {
+            formReady = false;
+            dtoMissing = true;
+            pendingError = "Mã đối tác không hợp lệ.";
+            return;
+        }
+
+        var version = ++requestVersion;
+        isLoading = true;
+        StateHasChanged();
+        await Task.Yield();
+
+        try
+        {
+            var result = await PartnerService.GetUpdateByIdAsync(id);
+            if (version != requestVersion)
+                return;
+
+            if (!result.Succeeded || result.Value is null)
+            {
+                formReady = false;
+                dtoMissing = true;
+                pendingError = result.Errors?.FirstOrDefault() ?? "Không tìm thấy đối tác.";
+                return;
+            }
+
+            form = PartnerFormModel.From(result.Value);
+            typeId = result.Value?.Type?.ToInt();
+            formReady = true;
+            loadedId = Id;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+        }
+    }
+
+    private void OnTypeChanged(string? value)
+    {
+        if (Enum.TryParse<PartnerType>(value, out var type))
+            form.Type = type;
+    }
+
+    private async Task SaveAsync()
+    {
+        isSaving = true;
+        try
+        {
+            if (IsCreate)
+            {
+                form.Type = typeId.HasValue ? (PartnerType)typeId.Value : PartnerType.Customer;
+                var result = await PartnerService.CreateAsync(form.ToCreate());
+                if (!result.Succeeded || string.IsNullOrEmpty(result.Value))
+                {
+                    alertComponent?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Tạo đối tác thất bại.");
+                    return;
+                }
+
+                Navigation.NavigateTo($"/partners/view/{result.Value}");
+                return;
+            }
+
+            if (!Guid.TryParse(Id, out var id))
+                return;
+            form.Type =  (PartnerType)typeId.Value;
+            var update = await PartnerService.UpdateAsync(id, form.ToUpdate(id));
+            if (!update.Succeeded)
+            {
+                alertComponent?.AddAlertError(update.Errors?.FirstOrDefault() ?? "Cập nhật thất bại.");
+                return;
+            }
+
+            Navigation.NavigateTo($"/partners/view/{id}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo(IsCreate || !Guid.TryParse(Id, out _)
+            ? "/partners/list"
+            : $"/partners/view/{Id}");
+    }
+
+    private sealed class PartnerFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Nhập mã đối tác.")]
+        [System.ComponentModel.DataAnnotations.MaxLength(40, ErrorMessage = "Mã tối đa 40 ký tự.")]
+        public string Code { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Nhập tên đối tác.")]
+        [System.ComponentModel.DataAnnotations.MaxLength(200, ErrorMessage = "Tên tối đa 200 ký tự.")]
+        public string Name { get; set; } = string.Empty;
+
+        public PartnerType Type { get; set; } = PartnerType.Customer;
+
+        [System.ComponentModel.DataAnnotations.MaxLength(40, ErrorMessage = "Điện thoại tối đa 40 ký tự.")]
+        public string? Phone { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(160, ErrorMessage = "Email tối đa 160 ký tự.")]
+        [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "Email không đúng định dạng.")]
+        public string? Email { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(40, ErrorMessage = "Mã số thuế tối đa 40 ký tự.")]
+        public string? TaxCode { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(300, ErrorMessage = "Địa chỉ tối đa 300 ký tự.")]
+        public string? Address { get; set; }
+
+        public bool IsActive { get; set; } = true;
+
+        public static PartnerFormModel From(UpdatePartnerDto dto) => new()
+        {
+            Code = dto.Code ?? string.Empty,
+            Name = dto.Name ?? string.Empty,
+            Type = dto.Type ?? PartnerType.Customer,
+            Phone = dto.Phone,
+            Email = dto.Email,
+            TaxCode = dto.TaxCode,
+            Address = dto.Address,
+            IsActive = dto.IsActive ?? true
+        };
+
+        public CreatePartnerDto ToCreate() => new()
+        {
+            Code = Code.Trim(),
+            Name = Name.Trim(),
+            Type = Type,
+            Phone = NullIfEmpty(Phone),
+            Email = NullIfEmpty(Email),
+            TaxCode = NullIfEmpty(TaxCode),
+            Address = NullIfEmpty(Address),
+            IsActive = IsActive
+        };
+
+        public UpdatePartnerDto ToUpdate(Guid id) => new()
+        {
+            Id = id,
+            Code = Code.Trim(),
+            Name = Name.Trim(),
+            Type = Type,
+            Phone = NullIfEmpty(Phone),
+            Email = NullIfEmpty(Email),
+            TaxCode = NullIfEmpty(TaxCode),
+            Address = NullIfEmpty(Address),
+            IsActive = IsActive
+        };
+
+        private static string? NullIfEmpty(string? value)
+        {
+            var trimmed = value?.Trim();
+            return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+        }
+    }
 }

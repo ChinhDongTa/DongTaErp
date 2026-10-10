@@ -81,6 +81,10 @@ public class GenericRepository<TEntity> : IRepository<TEntity> where TEntity : B
     {
         _dbSet.RemoveRange(entities);
     }
+    public void SoftDelete(TEntity entity)
+    {
+        entity.IsDeleted = true;
+    }
 
     // Count
     public async Task<int> CountAsync(Expression<Func<TEntity, bool>>? predicate = null, CancellationToken cancellationToken = default)
@@ -100,4 +104,6 @@ public class GenericRepository<TEntity> : IRepository<TEntity> where TEntity : B
     {
         return await _dbSet.AnyAsync(predicate, cancellationToken);
     }
+
+   
 }

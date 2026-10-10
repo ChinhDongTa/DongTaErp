@@ -23,6 +23,7 @@ public interface IRepository<TEntity> where TEntity : BaseEntity
     // Delete
     void Delete(TEntity entity);
     void DeleteRange(IEnumerable<TEntity> entities);
+    void SoftDelete(TEntity entity);
 
     // Count
     Task<int> CountAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>>? predicate = null, CancellationToken ct = default);

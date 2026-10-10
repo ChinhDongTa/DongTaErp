@@ -61,6 +61,13 @@ nav {
   padding: 5px;
 }
 
+/*Bổ sung */
+fluent-text-input {
+    min-width: 250px;
+}
+.text200{
+    min-width:500px;
+}
 
 #blazor-error-ui {
   background: lightyellow;

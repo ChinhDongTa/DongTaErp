@@ -29,14 +29,14 @@ public class CreatePartnerDto
     /// Tối đa 40 ký tự.
     /// Không được trùng lặp trong hệ thống.
     /// </summary>
-    public required string Code { get; set; }
+    public string Code { get; set; } = null!;
 
     /// <summary>
     /// Tên đối tác.
     /// Bắt buộc nhập.
     /// Tối đa 200 ký tự.
     /// </summary>
-    public required string Name { get; set; }
+    public string Name { get; set; } = null!;
 
     /// <summary>
     /// Loại đối tác.
