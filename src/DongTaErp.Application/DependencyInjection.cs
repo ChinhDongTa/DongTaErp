@@ -1,13 +1,20 @@
 ﻿using DongTaErp.Application.Services.Categories;
 using DongTaErp.Application.Services.CompanyProfiles;
 using DongTaErp.Application.Services.Departments;
+using DongTaErp.Application.Services.Disbursements;
 using DongTaErp.Application.Services.Employees;
+using DongTaErp.Application.Services.GoodsIssues;
+using DongTaErp.Application.Services.GoodsReceipts;
 using DongTaErp.Application.Services.InventoryTxns;
+using DongTaErp.Application.Services.Invoices;
 using DongTaErp.Application.Services.JobPositions;
 using DongTaErp.Application.Services.LeaveRequests;
 using DongTaErp.Application.Services.Partners;
+using DongTaErp.Application.Services.Payments;
 using DongTaErp.Application.Services.Payrolls;
 using DongTaErp.Application.Services.Products;
+using DongTaErp.Application.Services.PurchaseOrders;
+using DongTaErp.Application.Services.VendorBills;
 using DongTaErp.Application.Services.Warehouses;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -32,6 +39,13 @@ public static class DependencyInjection
         builder.Services.AddScoped<IPayrollService, PayrollService>();
         builder.Services.AddScoped<ILeaveRequestService, LeaveRequestService>();
         builder.Services.AddScoped<IInventoryTxnService, InventoryTxnService>();
+        builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+        builder.Services.AddScoped<IGoodsReceiptService, GoodsReceiptService>();
+        builder.Services.AddScoped<IVendorBillService, VendorBillService>();
+        builder.Services.AddScoped<IDisbursementService, DisbursementService>();
+        builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+        builder.Services.AddScoped<IPaymentService, PaymentService>();
+        builder.Services.AddScoped<IGoodsIssueService, GoodsIssueService>();
 
         builder.Services.AddValidatorsFromAssemblies([typeof(DependencyInjection).Assembly],includeInternalTypes: true);
     }
