@@ -10,7 +10,7 @@ public class SalesOrder:BaseAuditableEntity
 
     public Guid PartnerId { get; set; }
     public Partner Partner { get; set; } = null!;
-    /// <summary>Kho mặc định khi thêm dòng. Nguồn xuất thật nằm trên từng SalesOrderLine.</summary>
+    /// <summary>Kho đề xuất khi tạo phiếu xuất. Kho xuất thật nằm trên GoodsIssue.</summary>
     public Guid WarehouseId { get; set; }
     public Warehouse Warehouse { get; set; } = null!;
     public DateTime OrderDate { get; set; } = DateTime.Today;
@@ -27,4 +27,6 @@ public class SalesOrder:BaseAuditableEntity
     public DateTime? ConfirmedAt { get; set; }
 
     public ICollection<SalesOrderLine> Lines { get; set; } = [];
+    public ICollection<GoodsIssue> GoodsIssues { get; set; } = [];
+    public ICollection<Invoice> Invoices { get; set; } = [];
 }

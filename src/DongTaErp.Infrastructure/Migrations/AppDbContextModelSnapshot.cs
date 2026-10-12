@@ -281,6 +281,115 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.ToTable("Departments", (string)null);
                 });
 
+            modelBuilder.Entity("DongTaErp.Domain.Entities.Disbursement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("PartnerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("PostedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReferenceNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("PartnerId", "PaidAt");
+
+                    b.ToTable("Disbursements", (string)null);
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.DisbursementAllocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("DisbursementId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("VendorBillId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VendorBillId");
+
+                    b.HasIndex("DisbursementId", "VendorBillId")
+                        .IsUnique();
+
+                    b.ToTable("DisbursementAllocations", (string)null);
+                });
+
             modelBuilder.Entity("DongTaErp.Domain.Entities.Employee", b =>
                 {
                     b.Property<Guid>("Id")
@@ -375,9 +484,13 @@ namespace DongTaErp.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<DateTimeOffset>("Created")
                         .HasColumnType("datetimeoffset");
@@ -397,6 +510,19 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Notes")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<DateTime?>("PostedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("SalesOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
                     b.Property<Guid>("WarehouseId")
                         .HasColumnType("uniqueidentifier");
 
@@ -404,6 +530,8 @@ namespace DongTaErp.Infrastructure.Migrations
 
                     b.HasIndex("Code")
                         .IsUnique();
+
+                    b.HasIndex("SalesOrderId");
 
                     b.HasIndex("WarehouseId");
 
@@ -434,6 +562,10 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uniqueidentifier");
 
@@ -452,6 +584,121 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.HasIndex("SalesOrderLineId");
 
                     b.ToTable("GoodsIssueLines", (string)null);
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.GoodsReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<DateTime?>("PostedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("PurchaseOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ReceiptDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SupplierRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("PurchaseOrderId", "WarehouseId");
+
+                    b.ToTable("GoodsReceipts", (string)null);
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.GoodsReceiptLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("GoodsReceiptId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PurchaseOrderLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GoodsReceiptId");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("PurchaseOrderLineId");
+
+                    b.ToTable("GoodsReceiptLines", (string)null);
                 });
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.InventoryTxn", b =>
@@ -509,6 +756,152 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.HasIndex("WarehouseId");
 
                     b.ToTable("InventoryTxns", (string)null);
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.Invoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("IssueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("IssuedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<decimal>("PaidAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("PartnerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SalesOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("SubTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TaxRate")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("decimal(5,4)");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("SalesOrderId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("PartnerId", "IssueDate");
+
+                    b.ToTable("Invoices", (string)null);
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.InvoiceLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Qty")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<Guid>("SalesOrderLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("SalesOrderLineId");
+
+                    b.ToTable("InvoiceLines", (string)null);
                 });
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.JobPosition", b =>
@@ -673,6 +1066,115 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.ToTable("Partners", (string)null);
                 });
 
+            modelBuilder.Entity("DongTaErp.Domain.Entities.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("PartnerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("PostedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReferenceNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("PartnerId", "PaidAt");
+
+                    b.ToTable("Payments", (string)null);
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.PaymentAllocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("PaymentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.HasIndex("PaymentId", "InvoiceId")
+                        .IsUnique();
+
+                    b.ToTable("PaymentAllocations", (string)null);
+                });
+
             modelBuilder.Entity("DongTaErp.Domain.Entities.Payroll", b =>
                 {
                     b.Property<Guid>("Id")
@@ -823,6 +1325,134 @@ namespace DongTaErp.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Products", (string)null);
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.PurchaseOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime>("OrderDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("PartnerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("SubTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TaxRate")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("decimal(5,4)");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("PartnerId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.ToTable("PurchaseOrders", (string)null);
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.PurchaseOrderLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PurchaseOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Qty")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("PurchaseOrderId");
+
+                    b.ToTable("PurchaseOrderLines", (string)null);
                 });
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.SalesOrder", b =>
@@ -989,6 +1619,156 @@ namespace DongTaErp.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("StockBalances", (string)null);
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.VendorBill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("BillDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<decimal>("PaidAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("PartnerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("PostedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("PurchaseOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("SubTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("SupplierNumber")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TaxRate")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("decimal(5,4)");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("PurchaseOrderId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("PartnerId", "BillDate");
+
+                    b.ToTable("VendorBills", (string)null);
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.VendorBillLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PurchaseOrderLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Qty")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("VendorBillId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("PurchaseOrderLineId");
+
+                    b.HasIndex("VendorBillId");
+
+                    b.ToTable("VendorBillLines", (string)null);
                 });
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.Warehouse", b =>
@@ -1209,6 +1989,36 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.Navigation("Parent");
                 });
 
+            modelBuilder.Entity("DongTaErp.Domain.Entities.Disbursement", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.Partner", "Partner")
+                        .WithMany("Disbursements")
+                        .HasForeignKey("PartnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Partner");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.DisbursementAllocation", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.Disbursement", "Disbursement")
+                        .WithMany("Allocations")
+                        .HasForeignKey("DisbursementId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DongTaErp.Domain.Entities.VendorBill", "VendorBill")
+                        .WithMany("Allocations")
+                        .HasForeignKey("VendorBillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Disbursement");
+
+                    b.Navigation("VendorBill");
+                });
+
             modelBuilder.Entity("DongTaErp.Domain.Entities.Employee", b =>
                 {
                     b.HasOne("DongTaErp.Domain.Entities.Department", "Department")
@@ -1237,11 +2047,19 @@ namespace DongTaErp.Infrastructure.Migrations
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.GoodsIssue", b =>
                 {
+                    b.HasOne("DongTaErp.Domain.Entities.SalesOrder", "SalesOrder")
+                        .WithMany("GoodsIssues")
+                        .HasForeignKey("SalesOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("DongTaErp.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany("GoodsIssues")
                         .HasForeignKey("WarehouseId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.Navigation("SalesOrder");
 
                     b.Navigation("Warehouse");
                 });
@@ -1273,6 +2091,52 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.Navigation("SalesOrderLine");
                 });
 
+            modelBuilder.Entity("DongTaErp.Domain.Entities.GoodsReceipt", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.PurchaseOrder", "PurchaseOrder")
+                        .WithMany("GoodsReceipts")
+                        .HasForeignKey("PurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DongTaErp.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany("GoodsReceipts")
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PurchaseOrder");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.GoodsReceiptLine", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.GoodsReceipt", "GoodsReceipt")
+                        .WithMany("Lines")
+                        .HasForeignKey("GoodsReceiptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DongTaErp.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DongTaErp.Domain.Entities.PurchaseOrderLine", "PurchaseOrderLine")
+                        .WithMany("GoodsReceiptLines")
+                        .HasForeignKey("PurchaseOrderLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("GoodsReceipt");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("PurchaseOrderLine");
+                });
+
             modelBuilder.Entity("DongTaErp.Domain.Entities.InventoryTxn", b =>
                 {
                     b.HasOne("DongTaErp.Domain.Entities.Warehouse", "ContraWarehouse")
@@ -1299,6 +2163,52 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.Navigation("Warehouse");
                 });
 
+            modelBuilder.Entity("DongTaErp.Domain.Entities.Invoice", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.Partner", "Partner")
+                        .WithMany("Invoices")
+                        .HasForeignKey("PartnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DongTaErp.Domain.Entities.SalesOrder", "SalesOrder")
+                        .WithMany("Invoices")
+                        .HasForeignKey("SalesOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Partner");
+
+                    b.Navigation("SalesOrder");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.InvoiceLine", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.Invoice", "Invoice")
+                        .WithMany("Lines")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DongTaErp.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DongTaErp.Domain.Entities.SalesOrderLine", "SalesOrderLine")
+                        .WithMany("InvoiceLines")
+                        .HasForeignKey("SalesOrderLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("SalesOrderLine");
+                });
+
             modelBuilder.Entity("DongTaErp.Domain.Entities.LeaveRequest", b =>
                 {
                     b.HasOne("DongTaErp.Domain.Entities.Employee", "Employee")
@@ -1308,6 +2218,36 @@ namespace DongTaErp.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.Payment", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.Partner", "Partner")
+                        .WithMany("Payments")
+                        .HasForeignKey("PartnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Partner");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.PaymentAllocation", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.Invoice", "Invoice")
+                        .WithMany("Allocations")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DongTaErp.Domain.Entities.Payment", "Payment")
+                        .WithMany("Allocations")
+                        .HasForeignKey("PaymentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
+
+                    b.Navigation("Payment");
                 });
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.Payroll", b =>
@@ -1328,6 +2268,44 @@ namespace DongTaErp.Infrastructure.Migrations
                         .HasForeignKey("CategoryId");
 
                     b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.PurchaseOrder", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.Partner", "Partner")
+                        .WithMany("PurchaseOrders")
+                        .HasForeignKey("PartnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DongTaErp.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany("PurchaseOrders")
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Partner");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.PurchaseOrderLine", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DongTaErp.Domain.Entities.PurchaseOrder", "PurchaseOrder")
+                        .WithMany("Lines")
+                        .HasForeignKey("PurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("PurchaseOrder");
                 });
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.SalesOrder", b =>
@@ -1385,6 +2363,52 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.Navigation("Product");
 
                     b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.VendorBill", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.Partner", "Partner")
+                        .WithMany("VendorBills")
+                        .HasForeignKey("PartnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DongTaErp.Domain.Entities.PurchaseOrder", "PurchaseOrder")
+                        .WithMany("VendorBills")
+                        .HasForeignKey("PurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Partner");
+
+                    b.Navigation("PurchaseOrder");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.VendorBillLine", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DongTaErp.Domain.Entities.PurchaseOrderLine", "PurchaseOrderLine")
+                        .WithMany("VendorBillLines")
+                        .HasForeignKey("PurchaseOrderLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DongTaErp.Domain.Entities.VendorBill", "VendorBill")
+                        .WithMany("Lines")
+                        .HasForeignKey("VendorBillId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("PurchaseOrderLine");
+
+                    b.Navigation("VendorBill");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -1458,6 +2482,11 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.Navigation("Employees");
                 });
 
+            modelBuilder.Entity("DongTaErp.Domain.Entities.Disbursement", b =>
+                {
+                    b.Navigation("Allocations");
+                });
+
             modelBuilder.Entity("DongTaErp.Domain.Entities.Employee", b =>
                 {
                     b.Navigation("LeaveRequests");
@@ -1470,6 +2499,18 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.Navigation("Lines");
                 });
 
+            modelBuilder.Entity("DongTaErp.Domain.Entities.GoodsReceipt", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.Invoice", b =>
+                {
+                    b.Navigation("Allocations");
+
+                    b.Navigation("Lines");
+                });
+
             modelBuilder.Entity("DongTaErp.Domain.Entities.JobPosition", b =>
                 {
                     b.Navigation("Employees");
@@ -1477,7 +2518,22 @@ namespace DongTaErp.Infrastructure.Migrations
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.Partner", b =>
                 {
+                    b.Navigation("Disbursements");
+
+                    b.Navigation("Invoices");
+
+                    b.Navigation("Payments");
+
+                    b.Navigation("PurchaseOrders");
+
                     b.Navigation("SalesOrders");
+
+                    b.Navigation("VendorBills");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.Payment", b =>
+                {
+                    b.Navigation("Allocations");
                 });
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.Product", b =>
@@ -1489,21 +2545,54 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.Navigation("StockBalances");
                 });
 
+            modelBuilder.Entity("DongTaErp.Domain.Entities.PurchaseOrder", b =>
+                {
+                    b.Navigation("GoodsReceipts");
+
+                    b.Navigation("Lines");
+
+                    b.Navigation("VendorBills");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.PurchaseOrderLine", b =>
+                {
+                    b.Navigation("GoodsReceiptLines");
+
+                    b.Navigation("VendorBillLines");
+                });
+
             modelBuilder.Entity("DongTaErp.Domain.Entities.SalesOrder", b =>
                 {
+                    b.Navigation("GoodsIssues");
+
+                    b.Navigation("Invoices");
+
                     b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.SalesOrderLine", b =>
                 {
                     b.Navigation("GoodsIssueLines");
+
+                    b.Navigation("InvoiceLines");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.VendorBill", b =>
+                {
+                    b.Navigation("Allocations");
+
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.Warehouse", b =>
                 {
                     b.Navigation("GoodsIssues");
 
+                    b.Navigation("GoodsReceipts");
+
                     b.Navigation("InventoryTxns");
+
+                    b.Navigation("PurchaseOrders");
 
                     b.Navigation("SalesOrders");
 

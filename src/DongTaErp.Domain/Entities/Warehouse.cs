@@ -33,4 +33,6 @@ public class Warehouse : BaseAuditableEntity
     public ICollection<InventoryTxn> InventoryTxns { get; set; } = [];
     public ICollection<SalesOrder> SalesOrders { get; set; } = [];
     public ICollection<GoodsIssue> GoodsIssues { get; set; } = [];
+    public ICollection<PurchaseOrder> PurchaseOrders { get; set; } = [];
+    public ICollection<GoodsReceipt> GoodsReceipts { get; set; } = [];
 }

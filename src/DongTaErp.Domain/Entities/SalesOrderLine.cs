@@ -12,5 +12,6 @@ public class SalesOrderLine:BaseAuditableEntity
     public decimal Qty { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal LineTotal { get; set; }
-    public ICollection<GoodsIssueLine> GoodsIssueLines { get; set; }= [];
+    public ICollection<GoodsIssueLine> GoodsIssueLines { get; set; } = [];
+    public ICollection<InvoiceLine> InvoiceLines { get; set; } = [];
 }

@@ -30,4 +30,9 @@ public class Partner:BaseAuditableEntity
     public bool IsActive { get; set; } = true;
 
     public ICollection<SalesOrder> SalesOrders { get; set; } = [];
+    public ICollection<Invoice> Invoices { get; set; } = [];
+    public ICollection<Payment> Payments { get; set; } = [];
+    public ICollection<PurchaseOrder> PurchaseOrders { get; set; } = [];
+    public ICollection<VendorBill> VendorBills { get; set; } = [];
+    public ICollection<Disbursement> Disbursements { get; set; } = [];
 }

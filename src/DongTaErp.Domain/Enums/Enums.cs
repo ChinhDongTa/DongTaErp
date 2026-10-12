@@ -43,6 +43,117 @@ public enum SalesOrderStatus
     Cancelled = 2
 }
 
+public enum GoodsIssueStatus
+{
+    [Display(Name = "Nháp")]
+    Draft = 0,
+
+    [Display(Name = "Đã xuất")]
+    Posted = 1,
+
+    [Display(Name = "Đã hủy")]
+    Cancelled = 2
+}
+
+public enum InvoiceStatus
+{
+    [Display(Name = "Nháp")]
+    Draft = 0,
+
+    [Display(Name = "Đã phát hành")]
+    Issued = 1,
+
+    [Display(Name = "Thanh toán một phần")]
+    PartiallyPaid = 2,
+
+    [Display(Name = "Đã thanh toán")]
+    Paid = 3,
+
+    [Display(Name = "Đã hủy")]
+    Cancelled = 4
+}
+
+public enum CustomerPaymentStatus
+{
+    [Display(Name = "Nháp")]
+    Draft = 0,
+
+    [Display(Name = "Đã ghi sổ")]
+    Posted = 1,
+
+    [Display(Name = "Đã hủy")]
+    Cancelled = 2
+}
+
+public enum PaymentMethod
+{
+    [Display(Name = "Tiền mặt")]
+    Cash = 1,
+
+    [Display(Name = "Chuyển khoản")]
+    BankTransfer = 2,
+
+    [Display(Name = "Thẻ")]
+    Card = 3,
+
+    [Display(Name = "Khác")]
+    Other = 9
+}
+
+public enum PurchaseOrderStatus
+{
+    [Display(Name = "Nháp")]
+    Draft = 0,
+
+    [Display(Name = "Đã xác nhận")]
+    Confirmed = 1,
+
+    [Display(Name = "Đã hủy")]
+    Cancelled = 2
+}
+
+public enum GoodsReceiptStatus
+{
+    [Display(Name = "Nháp")]
+    Draft = 0,
+
+    [Display(Name = "Đã nhập")]
+    Posted = 1,
+
+    [Display(Name = "Đã hủy")]
+    Cancelled = 2
+}
+
+public enum VendorBillStatus
+{
+    [Display(Name = "Nháp")]
+    Draft = 0,
+
+    [Display(Name = "Đã ghi sổ")]
+    Posted = 1,
+
+    [Display(Name = "Thanh toán một phần")]
+    PartiallyPaid = 2,
+
+    [Display(Name = "Đã thanh toán")]
+    Paid = 3,
+
+    [Display(Name = "Đã hủy")]
+    Cancelled = 4
+}
+
+public enum DisbursementStatus
+{
+    [Display(Name = "Nháp")]
+    Draft = 0,
+
+    [Display(Name = "Đã ghi sổ")]
+    Posted = 1,
+
+    [Display(Name = "Đã hủy")]
+    Cancelled = 2
+}
+
 public enum InventoryTxnType
 {
     [Display(Name = "Nhập kho")]

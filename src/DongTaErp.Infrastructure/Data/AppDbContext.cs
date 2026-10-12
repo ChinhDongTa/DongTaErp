@@ -21,6 +21,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
     public DbSet<GoodsIssue> GoodsIssues => Set<GoodsIssue>();
     public DbSet<GoodsIssueLine> GoodsIssueLines => Set<GoodsIssueLine>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<PaymentAllocation> PaymentAllocations => Set<PaymentAllocation>();
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+    public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();
+    public DbSet<GoodsReceipt> GoodsReceipts => Set<GoodsReceipt>();
+    public DbSet<GoodsReceiptLine> GoodsReceiptLines => Set<GoodsReceiptLine>();
+    public DbSet<VendorBill> VendorBills => Set<VendorBill>();
+    public DbSet<VendorBillLine> VendorBillLines => Set<VendorBillLine>();
+    public DbSet<Disbursement> Disbursements => Set<Disbursement>();
+    public DbSet<DisbursementAllocation> DisbursementAllocations => Set<DisbursementAllocation>();
     public DbSet<Payroll> Payrolls => Set<Payroll>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

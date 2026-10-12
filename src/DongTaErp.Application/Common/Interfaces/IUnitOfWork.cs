@@ -19,8 +19,21 @@ public interface IUnitOfWork : IAsyncDisposable
     IRepository<JobPosition> JobPositions { get; }
     IRepository<Employee> Employees { get; }
     IRepository<LeaveRequest> LeaveRequests { get; }
+    IRepository<Payroll> Payrolls { get; }
     IRepository<GoodsIssue> GoodsIssues { get; }
     IRepository<GoodsIssueLine> GoodsIssueLines { get; }
+    IRepository<Invoice> Invoices { get; }
+    IRepository<InvoiceLine> InvoiceLines { get; }
+    IRepository<Payment> Payments { get; }
+    IRepository<PaymentAllocation> PaymentAllocations { get; }
+    IRepository<PurchaseOrder> PurchaseOrders { get; }
+    IRepository<PurchaseOrderLine> PurchaseOrderLines { get; }
+    IRepository<GoodsReceipt> GoodsReceipts { get; }
+    IRepository<GoodsReceiptLine> GoodsReceiptLines { get; }
+    IRepository<VendorBill> VendorBills { get; }
+    IRepository<VendorBillLine> VendorBillLines { get; }
+    IRepository<Disbursement> Disbursements { get; }
+    IRepository<DisbursementAllocation> DisbursementAllocations { get; }
 
     /// <summary>
     /// Lưu tất cả thay đổi vào database
