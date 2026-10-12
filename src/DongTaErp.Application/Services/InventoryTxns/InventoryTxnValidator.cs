@@ -1,4 +1,4 @@
-﻿namespace DongTaErp.Application.Services.InvantoryTxn;
+﻿namespace DongTaErp.Application.Services.InventoryTxns;
 
 public class CreateInventoryTxnValidator : AbstractValidator<CreateInventoryTxnDto>
 {

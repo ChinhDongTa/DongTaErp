@@ -144,5 +144,5 @@ public class UpdatePartnerDto
     /// Trạng thái hoạt động.
     /// Không bắt buộc khi cập nhật.
     /// </summary>
-    public bool? IsActive { get; set; }
+    public bool IsActive { get; set; }
 }

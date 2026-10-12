@@ -3,7 +3,7 @@ namespace DongTaErp.Application.Services.Partners;
 
 public interface IPartnerService:ICrudService< PartnerDto, CreatePartnerDto, UpdatePartnerDto>
 {
-    Task<Result<PaginatedList<PartnerDto>>> SearchPartnersAsync(string? searchTerm,
+    Task<Result<PaginatedList<PartnerDto>>> SearchAsync(string? searchTerm,
                                                                 int pageNumber = 1,
                                                                 int pageSize = 20,
                                                                 string? sortBy = null,

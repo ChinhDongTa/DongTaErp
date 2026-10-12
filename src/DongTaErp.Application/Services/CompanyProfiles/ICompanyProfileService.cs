@@ -2,7 +2,7 @@ namespace DongTaErp.Application.Services.CompanyProfiles;
 
 public interface ICompanyProfileService : ICrudService<CompanyProfileDto, CreateCompanyProfileDto, UpdateCompanyProfileDto>
 {
-    Task<Result<PaginatedList<CompanyProfileDto>>> SearchCompanyProfilesAsync(string? searchTerm,
+    Task<Result<PaginatedList<CompanyProfileDto>>> SearchAsync(string? searchTerm,
                                                                               int pageNumber = 1,
                                                                               int pageSize = 20,
                                                                               string? sortBy = null,

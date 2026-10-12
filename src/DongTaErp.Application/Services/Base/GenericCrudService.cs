@@ -91,6 +91,7 @@ public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto> 
     {
         try
         {
+            
             var errors = await ValidateUpdateDto(dto, ct);
             if (errors.Count > 0)
                 return Result.Error([.. errors]);
@@ -102,7 +103,6 @@ public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto> 
             UpdateEntity(entity, dto);
 
             await UnitOfWork.SaveChangesAsync(ct);
-
             return Result.Success(ResultStatus.NoContent);
         }
         catch (Exception ex)

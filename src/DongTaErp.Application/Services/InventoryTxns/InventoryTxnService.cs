@@ -1,6 +1,6 @@
 ﻿using DongTaErp.Application.Services.Base;
 
-namespace DongTaErp.Application.Services.InvantoryTxn;
+namespace DongTaErp.Application.Services.InventoryTxns;
 
 public class InventoryTxnService : GenericCrudService<InventoryTxn, InventoryTxnDto, CreateInventoryTxnDto, UpdateInventoryTxnDto>, IInventoryTxnService
 {

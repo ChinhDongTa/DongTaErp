@@ -17,3 +17,5 @@ public abstract class AuditableDto : BaseDto
 public record SelectListItemDto(string Id, string Name);
 
 public record EnumItemDto(int Value, string Name);
+
+public record SimpleSearch(string? SearchTerm, int PageNumber, int PageSize, string? SortBy = null, bool IsDescending = false);

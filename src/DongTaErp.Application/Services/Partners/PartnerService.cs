@@ -12,7 +12,7 @@ public class PartnerService : Base.GenericCrudService<Partner, PartnerDto, Creat
         this.logger = logger;
     }
 
-    public async Task<Result<PaginatedList<PartnerDto>>> SearchPartnersAsync(string? searchTerm,
+    public async Task<Result<PaginatedList<PartnerDto>>> SearchAsync(string? searchTerm,
                                                                              int pageNumber = 1,
                                                                              int pageSize = 20,
                                                                              string? sortBy = null,
@@ -102,9 +102,9 @@ public class PartnerService : Base.GenericCrudService<Partner, PartnerDto, Creat
         {
             partner.Type = dto.Type!.Value;
         }
-        if (dto.IsActive.HasValueAndIsDifferentFrom(partner.IsActive))
+        if (dto.IsActive.IsDifferentFrom(partner.IsActive))
         {
-            partner.IsActive = dto.IsActive!.Value;
+            partner.IsActive = dto.IsActive;
         }
     }
 }

@@ -1,7 +1,7 @@
 ﻿using DongTaErp.Application.Services.Categories;
 using DongTaErp.Application.Services.CompanyProfiles;
 using DongTaErp.Application.Services.Departments;
-using DongTaErp.Application.Services.InvantoryTxn;
+using DongTaErp.Application.Services.InventoryTxns;
 using DongTaErp.Application.Services.Partners;
 using DongTaErp.Application.Services.Products;
 using DongTaErp.Application.Services.Warehouses;

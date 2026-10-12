@@ -3,7 +3,7 @@
 @using DongTaErp.Application.Services.Partners
 @inject IPartnerService PartnerService
 @inject NavigationManager Navigation
-
+<PageTitle>Thông tin chi tiết đối tác</PageTitle>
 <Alert @ref="alertComponent" />
 
 <div style="position:relative; margin:10px auto; max-width:50%; min-height:180px;">
@@ -13,7 +13,8 @@
     }
     else if (dto is not null)
     {
-        <FluentStack Style="@($"margin:0; {(isLoading ? "opacity:.5; pointer-events:none;" : null)}")" HorizontalAlignment="HorizontalAlignment.Right">
+        <ActionTitle Text="Thông tin chi tiết đối tác" />
+        <FluentStack Style="@($"margin:0; {(isLoading ? "opacity:.5; pointer-events:none;" : null)}")" HorizontalAlignment="HorizontalAlignment.Left">
             <FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
                 <DetailItem Label="Mã khách hàng" Value="@dto.Code" />
                 <DetailItem Label="Tên khách hàng" Value="@dto.Name" />

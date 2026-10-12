@@ -12,7 +12,7 @@ public class CompanyProfileService : Base.GenericCrudService<CompanyProfile, Com
         this.logger = logger;
     }
 
-    public async Task<Result<PaginatedList<CompanyProfileDto>>> SearchCompanyProfilesAsync(string? searchTerm,
+    public async Task<Result<PaginatedList<CompanyProfileDto>>> SearchAsync(string? searchTerm,
                                                                                             int pageNumber = 1,
                                                                                             int pageSize = 20,
                                                                                             string? sortBy = null,

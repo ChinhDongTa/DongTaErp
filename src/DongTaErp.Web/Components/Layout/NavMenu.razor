@@ -6,8 +6,8 @@
 
 <FluentNav Id="main-menu" Width="260px">
     <FluentNavItem Href="/" Match="NavLinkMatch.All" IconRest="@(new Icons.Regular.Size20.Home())" IconActive="@(new Icons.Filled.Size20.Home())">Home</FluentNavItem>
-        <FluentNavItem Href="counter" IconRest="@(new Icons.Regular.Size20.NumberSymbolSquare())" IconActive="@(new Icons.Filled.Size20.NumberSymbolSquare())">Counter</FluentNavItem>
-        <FluentNavItem Href="weather" IconRest="@(new Icons.Regular.Size20.WeatherPartlyCloudyDay())" IconActive="@(new Icons.Filled.Size20.WeatherPartlyCloudyDay())">Weather</FluentNavItem>
+    <FluentNavItem Href="/partners/list" IconRest="@(new Icons.Filled.Size20.PeopleCommunity())" IconActive="@(new Icons.Filled.Size20.PeopleCommunity())">Đối tác</FluentNavItem>
+    <FluentNavItem Href="/products/list" IconRest="@(new Icons.Filled.Size20.Production())" IconActive="@(new Icons.Filled.Size20.Production())">Sản phẩm</FluentNavItem>
         <FluentNavItem Href="auth" IconRest="@(new Icons.Regular.Size20.LockClosedKey())" IconActive="@(new Icons.Filled.Size20.LockClosedKey())">Auth Required</FluentNavItem>
         <AuthorizeView>
             <Authorized>

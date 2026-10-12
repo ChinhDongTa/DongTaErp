@@ -1,6 +1,6 @@
-﻿namespace DongTaErp.Application.Services.InvantoryTxn;
+﻿namespace DongTaErp.Application.Services.InventoryTxns;
 
-public interface IInventoryTxnService    : ICrudService<InventoryTxnDto, CreateInventoryTxnDto, UpdateInventoryTxnDto>
+public interface IInventoryTxnService : ICrudService<InventoryTxnDto, CreateInventoryTxnDto, UpdateInventoryTxnDto>
 {
     Task<Result<PaginatedList<InventoryTxnDto>>> SearchAsync(
         string? searchTerm,

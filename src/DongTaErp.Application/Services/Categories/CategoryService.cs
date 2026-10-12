@@ -12,7 +12,7 @@ public class CategoryService : Base.GenericCrudService<Category, CategoryDto, Cr
         this.logger = logger;
     }
 
-    public async Task<Result<PaginatedList<CategoryDto>>> SearchCategoriesAsync(string? searchTerm,
+    public async Task<Result<PaginatedList<CategoryDto>>> SearchAsync(string? searchTerm,
                                                                                  int pageNumber = 1,
                                                                                  int pageSize = 20,
                                                                                  string? sortBy = null,
