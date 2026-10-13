@@ -23,8 +23,8 @@ app.MapDefaultEndpoints();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    //using var scope = app.Services.CreateScope();
-    //await DbSeeder.SeedAsync(scope.ServiceProvider);
+    using var scope = app.Services.CreateScope();
+    await DongTaErp.Infrastructure.Data.DbSeeder.SeedAsync(scope.ServiceProvider);
     app.UseMigrationsEndPoint();
 }
 else

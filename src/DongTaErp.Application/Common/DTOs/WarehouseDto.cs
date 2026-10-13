@@ -178,11 +178,11 @@ public class UpdateWarehouseDto
     /// Đánh dấu là kho mặc định.
     /// Không bắt buộc khi cập nhật.
     /// </summary>
-    public bool? IsDefault { get; set; }
+    public bool IsDefault { get; set; }
 
     /// <summary>
     /// Trạng thái hoạt động.
     /// Không bắt buộc khi cập nhật.
     /// </summary>
-    public bool? IsActive { get; set; }
+    public bool IsActive { get; set; }
 }

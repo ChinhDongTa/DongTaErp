@@ -1,0 +1,90 @@
+@page "/warehouses/list"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Warehouses
+@inject NavigationManager Navigation
+@inject IWarehouseService Service
+
+<PageTitle>Quản lý kho</PageTitle>
+<ActionTitle Text="Quản lý kho" />
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
+    <FluentSearch @bind-Value="searchTerm" Placeholder="Mã, tên, thành phố" Style="width: 280px;"
+                  @onkeypress="OnSearchKey" />
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="SearchAsync">Tìm</FluentButton>
+    <FluentButton IconStart="@(new Icons.Regular.Size20.Add())" Appearance="ButtonAppearance.Primary"
+                  OnClick="@(() => Navigation.NavigateTo("/warehouses/create"))">Tạo kho</FluentButton>
+    <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/warehouses/stock"))">Xem tồn</FluentButton>
+</FluentStack>
+
+<PaginatedTable TItem="WarehouseDto" Data="paginatedList" PageSize="pageSize"
+                GridTemplateColumns="1fr 2fr 1fr 1.4fr .7fr .7fr .8fr 1fr"
+                OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
+    <PropertyColumn TGridItem="WarehouseDto" TProp="string" Title="Mã" Property="@(c => c!.Code)" />
+    <PropertyColumn TGridItem="WarehouseDto" TProp="string" Title="Tên kho" Property="@(c => c!.Name)" />
+    <PropertyColumn TGridItem="WarehouseDto" TProp="string" Title="Loại" Property="@(c => c!.TypeName)" />
+    <PropertyColumn TGridItem="WarehouseDto" TProp="string" Title="Thành phố" Property="@(c => c!.City)" />
+    <PropertyColumn TGridItem="WarehouseDto" TProp="string" Title="Quốc gia" Property="@(c => c!.CountryCode)" Align="DataGridCellAlignment.Center" />
+    <TemplateColumn TGridItem="WarehouseDto" Title="Mặc định" Align="DataGridCellAlignment.Center">
+        @if (context.IsDefault)
+        {
+            <FluentBadge Appearance="Appearance.Accent">Mặc định</FluentBadge>
+        }
+    </TemplateColumn>
+    <TemplateColumn TGridItem="WarehouseDto" Title="Trạng thái" Align="DataGridCellAlignment.Center">
+        <FluentBadge Appearance="@(context.IsActive ? Appearance.Lightweight : Appearance.Neutral)">
+            @(context.IsActive ? "Hoạt động" : "Ngưng")
+        </FluentBadge>
+    </TemplateColumn>
+    <TemplateColumn TGridItem="WarehouseDto" Title="Thao tác" Context="item">
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem" @onclick="@(() => Navigation.NavigateTo($"/warehouses/view/{item.Id}"))" />
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Edit())" Appearance="ButtonAppearance.Primary" Title="Sửa" @onclick="@(() => Navigation.NavigateTo($"/warehouses/update/{item.Id}"))" />
+    </TemplateColumn>
+</PaginatedTable>
+
+@code {
+    private PaginatedList<WarehouseDto>? paginatedList;
+    private readonly int pageSize = Models.Constants.PageSize;
+    private int currentPage = 1;
+    private bool isLoading;
+    private int requestVersion;
+    private string? searchTerm;
+
+    protected override Task OnInitializedAsync() => LoadData(1);
+
+    private Task LoadPageAsync(int page)
+    {
+        currentPage = page;
+        return LoadData(page);
+    }
+
+    private Task SearchAsync()
+    {
+        currentPage = 1;
+        return LoadData(1);
+    }
+
+    private Task OnSearchKey(KeyboardEventArgs e) =>
+        e.Key == "Enter" ? SearchAsync() : Task.CompletedTask;
+
+    private async Task LoadData(int page)
+    {
+        var version = ++requestVersion;
+        isLoading = true;
+        StateHasChanged();
+        await Task.Yield();
+
+        try
+        {
+            var result = await Service.SearchAsync(searchTerm, page, pageSize);
+            if (version != requestVersion)
+                return;
+            if (result.Succeeded && result.Value is not null)
+                paginatedList = result.Value;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+        }
+    }
+}

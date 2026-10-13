@@ -122,12 +122,12 @@ public class WarehouseService : Base.GenericCrudService<Warehouse, WarehouseDto,
 
         if (dto.IsDefault.IsDifferentFrom(warehouse.IsDefault))
         {
-            warehouse.IsDefault = dto.IsDefault!.Value;
+            warehouse.IsDefault = dto.IsDefault;
         }
 
         if (dto.IsActive.IsDifferentFrom(warehouse.IsActive))
         {
-            warehouse.IsActive = dto.IsActive!.Value;
+            warehouse.IsActive = dto.IsActive;
         }
     }
 }

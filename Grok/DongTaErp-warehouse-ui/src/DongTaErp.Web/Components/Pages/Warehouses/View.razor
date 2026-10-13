@@ -1,0 +1,123 @@
+@page "/warehouses/view/{Id}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Warehouses
+@using DongTaErp.Application.Common.Interfaces
+@inject IWarehouseService Service
+@inject IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+<PageTitle>Chi tiết kho</PageTitle>
+<Alert @ref="alertComponent" />
+
+@if (dto is null && isLoading)
+{
+    <FluentSpinner />
+}
+else if (dto is not null)
+{
+    <ActionTitle Text="@dto.Name" />
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="32" Style="margin: 8px 0 16px;">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <DetailItem Label="Mã kho" Value="@dto.Code" />
+            <DetailItem Label="Loại" Value="@dto.TypeName" />
+            <DetailItem Label="Quốc gia" Value="@dto.CountryCode" />
+            <DetailItem Label="Múi giờ" Value="@dto.TimeZone" />
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <DetailItem Label="Thành phố" Value="@dto.City" />
+            <DetailItem Label="Địa chỉ" Value="@dto.Address" />
+            <DetailItem Label="Mặc định" Value="@(dto.IsDefault ? "Có — dùng khi tạo đơn" : "Không")" />
+            <DetailItem Label="Trạng thái" Value="@(dto.IsActive ? "Hoạt động" : "Ngưng")" />
+        </FluentStack>
+    </FluentStack>
+
+    <FluentMessageBar Intent="MessageIntent.Info" Style="margin-bottom: 12px;">
+        Đây là kho đề xuất khi tạo đơn. Tồn chỉ đổi khi phiếu nhập hoặc phiếu xuất của kho này được ghi sổ.
+    </FluentMessageBar>
+
+    <h4>Tồn tại kho</h4>
+    <FluentDataGrid Items="@stocks" Style="width: 100%;">
+        <PropertyColumn Title="Mã SP" Property="@(c => c.ProductSku)" />
+        <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductName)" />
+        <PropertyColumn Title="Tồn" Property="@(c => c.Qty)" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Tối thiểu" Property="@(c => c.MinQty)" Align="DataGridCellAlignment.End" />
+        <TemplateColumn Title="Cảnh báo" Align="DataGridCellAlignment.Center">
+            @if (context.Qty <= context.MinQty)
+            {
+                <FluentBadge Appearance="Appearance.Accent">Thấp</FluentBadge>
+            }
+        </TemplateColumn>
+    </FluentDataGrid>
+
+    <EntityActions EntityId="@Id" Folder="/warehouses" OnDeleteClick="OpenDeleteAsync" />
+}
+
+<FluentDialog @bind-Hidden="hideDeleteDialog" Modal="true" Title="Xóa kho">
+    <p>Xóa @dto?.Name? Không xóa được nếu kho đã có chứng từ.</p>
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+        <FluentButton Appearance="ButtonAppearance.Primary" Loading="isDeleting" OnClick="ConfirmDeleteAsync">Xóa</FluentButton>
+        <FluentButton Appearance="ButtonAppearance.Subtle" Disabled="isDeleting" OnClick="@(() => hideDeleteDialog = true)">Hủy</FluentButton>
+    </FluentStack>
+</FluentDialog>
+
+@code {
+    [Parameter] public required string Id { get; set; }
+
+    private WarehouseDto? dto;
+    private IQueryable<StockBalanceDto> stocks = Array.Empty<StockBalanceDto>().AsQueryable();
+    private Alert? alertComponent;
+    private bool isLoading;
+    private bool isDeleting;
+    private bool hideDeleteDialog = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Guid.TryParse(Id, out var id))
+        {
+            alertComponent?.AddAlertError("Id không hợp lệ.");
+            return;
+        }
+
+        isLoading = true;
+        var result = await Service.GetByIdAsync(id);
+        if (result.Succeeded && result.Value is not null)
+        {
+            dto = result.Value;
+            stocks = UnitOfWork.StockBalances.Query()
+                .Where(x => x.WarehouseId == id)
+                .OrderBy(x => x.Product.Sku)
+                .Select(x => new StockBalanceDto
+                {
+                    Id = x.Id,
+                    ProductSku = x.Product.Sku,
+                    ProductName = x.Product.Name,
+                    WarehouseName = x.Warehouse.Name,
+                    Qty = x.Qty,
+                    MinQty = x.MinQty,
+                    CreatedAt = x.Created
+                });
+        }
+        else
+        {
+            alertComponent?.AddAlertError("Không tìm thấy kho.");
+        }
+
+        isLoading = false;
+    }
+
+    private void OpenDeleteAsync() => hideDeleteDialog = false;
+
+    private async Task ConfirmDeleteAsync()
+    {
+        isDeleting = true;
+        var result = await Service.SoftDeleteAsync(Id.ToGuid());
+        isDeleting = false;
+        if (!result.Succeeded)
+        {
+            alertComponent?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không xóa được kho.");
+            return;
+        }
+
+        Navigation.NavigateTo("/warehouses/list");
+    }
+}

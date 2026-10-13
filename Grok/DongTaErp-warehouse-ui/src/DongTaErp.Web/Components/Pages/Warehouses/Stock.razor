@@ -1,0 +1,74 @@
+@page "/warehouses/stock"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Common.Interfaces
+@using Microsoft.EntityFrameworkCore
+@inject IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+<PageTitle>Tồn kho</PageTitle>
+<ActionTitle Text="Tồn kho theo kho" />
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
+    <FluentSelect TOption="WarehouseOption" Items="warehouseOptions" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                  @bind-Value="warehouseId" Label="Kho" Style="min-width: 240px;" />
+    <FluentCheckbox @bind-Value="lowOnly" Label="Chỉ tồn thấp" Style="align-self: end;" />
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="LoadAsync">Lọc</FluentButton>
+</FluentStack>
+
+<FluentDataGrid Items="@rows" Style="width: 100%;">
+    <PropertyColumn Title="Kho" Property="@(c => c.WarehouseName)" />
+    <PropertyColumn Title="Mã SP" Property="@(c => c.ProductSku)" />
+    <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductName)" />
+    <PropertyColumn Title="Tồn" Property="@(c => c.Qty)" Align="DataGridCellAlignment.End" />
+    <PropertyColumn Title="Tối thiểu" Property="@(c => c.MinQty)" Align="DataGridCellAlignment.End" />
+    <TemplateColumn Title="Cảnh báo" Align="DataGridCellAlignment.Center">
+        @if (context.Qty <= context.MinQty)
+        {
+            <FluentBadge Appearance="Appearance.Accent">Thấp</FluentBadge>
+        }
+    </TemplateColumn>
+</FluentDataGrid>
+
+@code {
+    private string warehouseId = "";
+    private bool lowOnly;
+    private List<WarehouseOption> warehouseOptions = [new("", "Tất cả kho")];
+    private IQueryable<StockBalanceDto> rows = Array.Empty<StockBalanceDto>().AsQueryable();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var warehouses = await UnitOfWork.Warehouses.Query()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.Code)
+            .Select(x => new WarehouseOption(x.Id.ToString(), $"{x.Code} - {x.Name}"))
+            .ToListAsync();
+        warehouseOptions.AddRange(warehouses);
+        await LoadAsync();
+    }
+
+    private Task LoadAsync()
+    {
+        var query = UnitOfWork.StockBalances.Query();
+        if (Guid.TryParse(warehouseId, out var id))
+            query = query.Where(x => x.WarehouseId == id);
+        if (lowOnly)
+            query = query.Where(x => x.Qty <= x.MinQty);
+
+        rows = query
+            .OrderBy(x => x.Warehouse.Code)
+            .ThenBy(x => x.Product.Sku)
+            .Select(x => new StockBalanceDto
+            {
+                Id = x.Id,
+                ProductSku = x.Product.Sku,
+                ProductName = x.Product.Name,
+                WarehouseName = x.Warehouse.Name,
+                Qty = x.Qty,
+                MinQty = x.MinQty,
+                CreatedAt = x.Created
+            });
+        return Task.CompletedTask;
+    }
+
+    private sealed record WarehouseOption(string Id, string Name);
+}

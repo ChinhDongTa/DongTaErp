@@ -357,7 +357,12 @@ public class GoodsIssueService
 
         return null;
     }
-
+    /// <summary>
+    /// Trừ tồn kho
+    /// </summary>
+    /// <param name="issue"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
     private async Task DeductStockAsync(GoodsIssue issue, CancellationToken ct)
     {
         var requested = issue.Lines

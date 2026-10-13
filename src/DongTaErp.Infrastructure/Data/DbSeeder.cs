@@ -128,6 +128,7 @@ public static class DbSeeder
 
         await EnsureWarehouse(db, "WH-HCM", "Kho Hồ Chí Minh", WarehouseType.Main, "VN", "TP. Hồ Chí Minh", "Quận 12", "Asia/Ho_Chi_Minh", isDefault: true);
         await EnsureWarehouse(db, "WH-HN", "Kho Hà Nội", WarehouseType.Branch, "VN", "Hà Nội", "Long Biên", "Asia/Ho_Chi_Minh", isDefault: false);
+        await EnsureWarehouse(db, "WH-DN", "Kho Đà Nẵng", WarehouseType.Transit, "VN", "Đà Nẵng", "Liên Chiểu", "Asia/Ho_Chi_Minh", isDefault: false);
         await EnsureWarehouse(db, "WH-BKK", "Kho Bangkok", WarehouseType.Branch, "TH", "Bangkok", "Lat Krabang", "Asia/Bangkok", isDefault: false);
         await db.SaveChangesAsync();
 
@@ -214,6 +215,236 @@ public static class DbSeeder
             });
             await db.SaveChangesAsync();
         }
+
+        await SeedOpeningStockAsync(db);
+        await SeedCommercialAsync(db);
+    }
+
+    private static async Task SeedOpeningStockAsync(AppDbContext db)
+    {
+        if (await db.InventoryTxns.AnyAsync() || !await db.StockBalances.AnyAsync())
+            return;
+
+        var balances = await db.StockBalances.Include(x => x.Warehouse).ToListAsync();
+        foreach (var balance in balances)
+        {
+            db.InventoryTxns.Add(new InventoryTxn
+            {
+                ProductId = balance.ProductId,
+                WarehouseId = balance.WarehouseId,
+                Type = InventoryTxnType.Adjust,
+                QtyChange = balance.Qty,
+                Reference = "OPENING",
+                Note = $"Tồn đầu kỳ {balance.Warehouse.Code}"
+            });
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task SeedCommercialAsync(AppDbContext db)
+    {
+        if (await db.SalesOrders.AnyAsync() || !await db.Partners.AnyAsync() || !await db.Products.AnyAsync())
+            return;
+
+        var customer = await db.Partners.FirstAsync(x => x.Code == "KH-001");
+        var supplier = await db.Partners.FirstAsync(x => x.Code == "NCC-01");
+        var hcm = await db.Warehouses.FirstAsync(x => x.Code == "WH-HCM");
+        var hn = await db.Warehouses.FirstAsync(x => x.Code == "WH-HN");
+        var laptop = await db.Products.FirstAsync(x => x.Sku == "SP-001");
+        var mouse = await db.Products.FirstAsync(x => x.Sku == "SP-002");
+
+        var salesLine = new SalesOrderLine
+        {
+            ProductId = laptop.Id,
+            Qty = 2,
+            UnitPrice = laptop.SalePrice,
+            LineTotal = 2 * laptop.SalePrice
+        };
+        var salesOrder = new SalesOrder
+        {
+            Number = "SO-001",
+            PartnerId = customer.Id,
+            WarehouseId = hcm.Id,
+            OrderDate = DateTime.Today.AddDays(-2),
+            Status = SalesOrderStatus.Confirmed,
+            ConfirmedAt = DateTime.UtcNow.AddDays(-2),
+            TaxRate = 0.08m,
+            Notes = "Đơn mẫu. Kho đề xuất HCM, xuất một phần từ HN.",
+            Lines = [salesLine]
+        };
+        salesOrder.SubTotal = salesLine.LineTotal;
+        salesOrder.TaxAmount = Math.Round(salesOrder.SubTotal * salesOrder.TaxRate, 2);
+        salesOrder.Total = salesOrder.SubTotal + salesOrder.TaxAmount;
+        db.SalesOrders.Add(salesOrder);
+        await db.SaveChangesAsync();
+
+        var issueLine = new GoodsIssueLine
+        {
+            SalesOrderLineId = salesLine.Id,
+            ProductId = laptop.Id,
+            Quantity = 1,
+            Note = "Xuất từ kho Hà Nội vì HCM giữ hàng trưng bày"
+        };
+        var issue = new GoodsIssue
+        {
+            Code = "PX-001",
+            SalesOrderId = salesOrder.Id,
+            WarehouseId = hn.Id,
+            IssueDate = DateTime.Today.AddDays(-1),
+            Status = GoodsIssueStatus.Posted,
+            PostedAt = DateTime.UtcNow.AddDays(-1),
+            Notes = "Phiếu mẫu. Kho xuất khác kho đề xuất.",
+            Lines = [issueLine]
+        };
+        db.GoodsIssues.Add(issue);
+
+        var hnBalance = await db.StockBalances.FirstAsync(x => x.ProductId == laptop.Id && x.WarehouseId == hn.Id);
+        hnBalance.Qty -= 1;
+        db.InventoryTxns.Add(new InventoryTxn
+        {
+            ProductId = laptop.Id,
+            WarehouseId = hn.Id,
+            Type = InventoryTxnType.Out,
+            QtyChange = -1,
+            Reference = "PX-001",
+            Note = "Xuất kho bán hàng"
+        });
+
+        var invoiceLine = new InvoiceLine
+        {
+            SalesOrderLineId = salesLine.Id,
+            ProductId = laptop.Id,
+            Qty = 1,
+            UnitPrice = laptop.SalePrice,
+            LineTotal = laptop.SalePrice
+        };
+        var invoice = new Invoice
+        {
+            Number = "HD-001",
+            PartnerId = customer.Id,
+            SalesOrderId = salesOrder.Id,
+            IssueDate = DateTime.Today.AddDays(-1),
+            DueDate = DateTime.Today.AddDays(29),
+            Status = InvoiceStatus.PartiallyPaid,
+            TaxRate = 0.08m,
+            Notes = "Hóa đơn phần đã xuất.",
+            Lines = [invoiceLine]
+        };
+        invoice.SubTotal = invoiceLine.LineTotal;
+        invoice.TaxAmount = Math.Round(invoice.SubTotal * invoice.TaxRate, 2);
+        invoice.Total = invoice.SubTotal + invoice.TaxAmount;
+        invoice.PaidAmount = Math.Round(invoice.Total / 2, 0);
+        invoice.IssuedAt = DateTime.UtcNow.AddDays(-1);
+        db.Invoices.Add(invoice);
+
+        var payment = new Payment
+        {
+            Number = "PT-001",
+            PartnerId = customer.Id,
+            PaidAt = DateTime.Today,
+            Amount = invoice.PaidAmount,
+            Method = PaymentMethod.BankTransfer,
+            Status = CustomerPaymentStatus.Posted,
+            PostedAt = DateTime.UtcNow,
+            ReferenceNumber = "VCB-88991",
+            Notes = "Thu một phần hóa đơn HD-001"
+        };
+        db.Payments.Add(payment);
+        await db.SaveChangesAsync();
+        db.PaymentAllocations.Add(new PaymentAllocation
+        {
+            PaymentId = payment.Id,
+            InvoiceId = invoice.Id,
+            Amount = invoice.PaidAmount
+        });
+
+        var purchaseLine = new PurchaseOrderLine
+        {
+            ProductId = mouse.Id,
+            Qty = 30,
+            UnitPrice = mouse.CostPrice,
+            LineTotal = 30 * mouse.CostPrice
+        };
+        var purchase = new PurchaseOrder
+        {
+            Number = "PO-001",
+            PartnerId = supplier.Id,
+            WarehouseId = hcm.Id,
+            OrderDate = DateTime.Today.AddDays(-5),
+            Status = PurchaseOrderStatus.Confirmed,
+            ConfirmedAt = DateTime.UtcNow.AddDays(-5),
+            TaxRate = 0.08m,
+            Notes = "Đơn mua mẫu. Kho đề xuất HCM.",
+            Lines = [purchaseLine]
+        };
+        purchase.SubTotal = purchaseLine.LineTotal;
+        purchase.TaxAmount = Math.Round(purchase.SubTotal * purchase.TaxRate, 2);
+        purchase.Total = purchase.SubTotal + purchase.TaxAmount;
+        db.PurchaseOrders.Add(purchase);
+        await db.SaveChangesAsync();
+
+        var receipt = new GoodsReceipt
+        {
+            Code = "PN-001",
+            PurchaseOrderId = purchase.Id,
+            WarehouseId = hcm.Id,
+            ReceiptDate = DateTime.Today.AddDays(-3),
+            Status = GoodsReceiptStatus.Posted,
+            PostedAt = DateTime.UtcNow.AddDays(-3),
+            SupplierRef = "DELTA-7788",
+            Notes = "Nhập một phần đơn mua.",
+            Lines =
+            [
+                new GoodsReceiptLine
+                {
+                    PurchaseOrderLineId = purchaseLine.Id,
+                    ProductId = mouse.Id,
+                    Quantity = 10
+                }
+            ]
+        };
+        db.GoodsReceipts.Add(receipt);
+        var hcmMouse = await db.StockBalances.FirstAsync(x => x.ProductId == mouse.Id && x.WarehouseId == hcm.Id);
+        hcmMouse.Qty += 10;
+        db.InventoryTxns.Add(new InventoryTxn
+        {
+            ProductId = mouse.Id,
+            WarehouseId = hcm.Id,
+            Type = InventoryTxnType.In,
+            QtyChange = 10,
+            Reference = "PN-001",
+            Note = "Nhập kho mua hàng"
+        });
+
+        var billLine = new VendorBillLine
+        {
+            PurchaseOrderLineId = purchaseLine.Id,
+            ProductId = mouse.Id,
+            Qty = 10,
+            UnitPrice = mouse.CostPrice,
+            LineTotal = 10 * mouse.CostPrice
+        };
+        var bill = new VendorBill
+        {
+            Number = "HDM-001",
+            SupplierNumber = "DELTA-INV-100",
+            PartnerId = supplier.Id,
+            PurchaseOrderId = purchase.Id,
+            BillDate = DateTime.Today.AddDays(-3),
+            DueDate = DateTime.Today.AddDays(27),
+            Status = VendorBillStatus.Posted,
+            TaxRate = 0.08m,
+            PostedAt = DateTime.UtcNow.AddDays(-3),
+            Notes = "Hóa đơn phần đã nhập.",
+            Lines = [billLine]
+        };
+        bill.SubTotal = billLine.LineTotal;
+        bill.TaxAmount = Math.Round(bill.SubTotal * bill.TaxRate, 2);
+        bill.Total = bill.SubTotal + bill.TaxAmount;
+        db.VendorBills.Add(bill);
+
+        await db.SaveChangesAsync();
     }
 
     private static async Task EnsureUser(UserManager<AppUser> users, string name, string display, string email, string password, string role)
