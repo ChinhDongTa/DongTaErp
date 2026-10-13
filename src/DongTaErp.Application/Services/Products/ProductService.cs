@@ -118,7 +118,7 @@ public class ProductService : Base.GenericCrudService<Product, ProductDto, Creat
 
         if (dto.IsActive.IsDifferentFrom(product.IsActive))
         {
-            product.IsActive = dto.IsActive!.Value;
+            product.IsActive = dto.IsActive;
         }
     }
 }

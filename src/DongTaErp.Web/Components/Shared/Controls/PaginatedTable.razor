@@ -1,21 +1,19 @@
 ﻿@using DongTaErp.Application.Common.Models
 @typeparam TItem
 
-<FluentDataGrid TGridItem="TItem"
-                Loading="IsLoading"
-                Items="@itemsQuery"
-                GridTemplateColumns="@GridTemplateColumns"
-                Style="width: 100%;">
-    @ChildContent
-</FluentDataGrid>
+    <FluentDataGrid TGridItem="TItem"
+                    Loading="IsLoading"
+                    Items="@itemsQuery"
+                    GridTemplateColumns="@GridTemplateColumns">
+        @ChildContent
+    </FluentDataGrid>
 
-@if (ShouldShowPaginator)
-{
+    @if (ShouldShowPaginator)
+    {
     <div class="pager-host">
-        <FluentPaginator State="@PState" Class="my-paginator"
-                         CurrentPageIndexChanged="HandlePageChanged" />
+            <FluentPaginator State="@PState" CurrentPageIndexChanged="HandlePageChanged" />
     </div>
-}
+    }
 
 @code {
     private readonly PaginationState PState = new();

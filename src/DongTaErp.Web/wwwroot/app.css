@@ -61,13 +61,19 @@ nav {
   padding: 5px;
 }
 
-/*Bổ sung */
+/*Css của tôi */
 fluent-text-input {
     min-width: 250px;
 }
 .text200{
     min-width:500px;
 }
+/*Thêm đoạn này để không ảnh hưởng bởi css của  nav phí trên*/
+.fluent-paginator .paginator-nav {
+    height: auto !important;
+}
+
+/*Hết css */
 
 #blazor-error-ui {
   background: lightyellow;

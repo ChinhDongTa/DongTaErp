@@ -126,6 +126,9 @@ public static class DbSeeder
             );
         }
 
+        await SeedExtraProductsAsync(db);
+        await db.SaveChangesAsync();
+
         await EnsureWarehouse(db, "WH-HCM", "Kho Hồ Chí Minh", WarehouseType.Main, "VN", "TP. Hồ Chí Minh", "Quận 12", "Asia/Ho_Chi_Minh", isDefault: true);
         await EnsureWarehouse(db, "WH-HN", "Kho Hà Nội", WarehouseType.Branch, "VN", "Hà Nội", "Long Biên", "Asia/Ho_Chi_Minh", isDefault: false);
         await EnsureWarehouse(db, "WH-DN", "Kho Đà Nẵng", WarehouseType.Transit, "VN", "Đà Nẵng", "Liên Chiểu", "Asia/Ho_Chi_Minh", isDefault: false);
@@ -218,6 +221,204 @@ public static class DbSeeder
 
         await SeedOpeningStockAsync(db);
         await SeedCommercialAsync(db);
+        await SeedInboundAsync(db);
+    }
+
+    private static async Task SeedExtraProductsAsync(AppDbContext db)
+    {
+        var categories = await db.Categories.ToDictionaryAsync(x => x.Code);
+        var existing = await db.Products.Select(x => x.Sku).ToListAsync();
+        var known = existing.ToHashSet();
+
+        (string Sku, string Name, string Unit, decimal Cost, decimal Sale, decimal Min, string Category)[] items =
+        [
+            ("SP-006", "Laptop gaming 15\"", "Cái", 18_500_000, 22_900_000, 3, "LapTop"),
+            ("SP-007", "Laptop mỏng 13\"", "Cái", 16_200_000, 19_500_000, 3, "LapTop"),
+            ("SP-008", "Laptop HP 14\"", "Cái", 11_800_000, 14_200_000, 4, "LapTopHp"),
+            ("SP-009", "Laptop HP 15\"", "Cái", 13_400_000, 16_100_000, 4, "LapTopHp"),
+            ("SP-010", "PC văn phòng i5", "Bộ", 9_800_000, 12_400_000, 2, "PC"),
+            ("SP-011", "PC gaming RTX", "Bộ", 24_000_000, 28_900_000, 2, "PC"),
+            ("SP-012", "Mini PC", "Cái", 7_200_000, 8_900_000, 3, "PC"),
+            ("SP-013", "Chuột gaming", "Cái", 280_000, 420_000, 15, "Chuot"),
+            ("SP-014", "Chuột văn phòng", "Cái", 90_000, 149_000, 25, "Chuot"),
+            ("SP-015", "Chuột dọc", "Cái", 350_000, 520_000, 8, "Chuot"),
+            ("SP-016", "Bàn phím không dây", "Cái", 420_000, 650_000, 10, "BanPhim"),
+            ("SP-017", "Bàn phím số", "Cái", 180_000, 290_000, 8, "BanPhim"),
+            ("SP-018", "Bàn phím low-profile", "Cái", 890_000, 1_250_000, 6, "BanPhim"),
+            ("SP-019", "Màn hình 27\"", "Cái", 3_600_000, 4_790_000, 3, "ManHinh"),
+            ("SP-020", "Màn hình 32\"", "Cái", 5_200_000, 6_890_000, 2, "ManHinh"),
+            ("SP-021", "Màn hình di động 15\"", "Cái", 2_100_000, 2_790_000, 4, "ManHinh"),
+            ("SP-022", "Tai nghe Bluetooth", "Cái", 450_000, 690_000, 10, "TaiNghe"),
+            ("SP-023", "Tai nghe chụp tai", "Cái", 620_000, 890_000, 6, "TaiNghe"),
+            ("SP-024", "Tai nghe gaming", "Cái", 780_000, 1_090_000, 6, "TaiNghe"),
+            ("SP-025", "Webcam Full HD", "Cái", 390_000, 590_000, 8, "PC"),
+            ("SP-026", "USB-C hub 6 cổng", "Cái", 250_000, 390_000, 12, "PC"),
+            ("SP-027", "Ổ cứng SSD 512GB", "Cái", 890_000, 1_190_000, 10, "PC"),
+            ("SP-028", "Ổ cứng SSD 1TB", "Cái", 1_450_000, 1_890_000, 8, "PC"),
+            ("SP-029", "RAM 16GB", "Thanh", 720_000, 980_000, 10, "PC"),
+            ("SP-030", "RAM 32GB", "Thanh", 1_350_000, 1_790_000, 6, "PC"),
+            ("SP-031", "Áo thun nam", "Cái", 85_000, 159_000, 30, "Ao"),
+            ("SP-032", "Áo sơ mi nữ", "Cái", 140_000, 259_000, 20, "Ao"),
+            ("SP-033", "Áo khoác gió", "Cái", 220_000, 399_000, 12, "Ao"),
+            ("SP-034", "Áo polo", "Cái", 110_000, 199_000, 20, "Ao"),
+            ("SP-035", "Váy công sở", "Cái", 180_000, 329_000, 10, "Vay"),
+            ("SP-036", "Váy dạ hội", "Cái", 450_000, 790_000, 4, "Vay"),
+            ("SP-037", "Váy jean", "Cái", 190_000, 349_000, 8, "Vay"),
+            ("SP-038", "Quần jeans nam", "Cái", 210_000, 389_000, 15, "QuanJeans"),
+            ("SP-039", "Quần jeans nữ", "Cái", 200_000, 369_000, 15, "QuanJeans"),
+            ("SP-040", "Quần jeans ống rộng", "Cái", 230_000, 419_000, 10, "QuanJeans"),
+            ("SP-041", "Mì tôm chua cay", "Thùng", 95_000, 129_000, 20, "MiAnLien"),
+            ("SP-042", "Mì ly bò", "Thùng", 110_000, 149_000, 20, "MiAnLien"),
+            ("SP-043", "Mì chay", "Thùng", 88_000, 119_000, 15, "MiAnLien"),
+            ("SP-044", "Sữa tươi 1L", "Lốc", 72_000, 98_000, 25, "Sua"),
+            ("SP-045", "Sữa chua uống", "Lốc", 36_000, 52_000, 30, "Sua"),
+            ("SP-046", "Sữa hạt", "Lốc", 48_000, 69_000, 20, "Sua"),
+            ("SP-047", "Balo laptop", "Cái", 180_000, 299_000, 10, "LapTop"),
+            ("SP-048", "Túi chống sốc 14\"", "Cái", 65_000, 119_000, 15, "LapTop"),
+            ("SP-049", "Giá đỡ laptop", "Cái", 95_000, 169_000, 10, "LapTop"),
+            ("SP-050", "Bàn di chuột lớn", "Cái", 70_000, 129_000, 12, "Chuot"),
+            ("SP-051", "Dây nguồn PC", "Cái", 35_000, 59_000, 20, "PC"),
+            ("SP-052", "Adapter 65W", "Cái", 210_000, 329_000, 8, "LapTop"),
+            ("SP-053", "Cáp HDMI 2m", "Cái", 45_000, 79_000, 20, "ManHinh"),
+            ("SP-054", "Loa máy tính", "Đôi", 160_000, 259_000, 8, "TaiNghe"),
+            ("SP-055", "Microphone USB", "Cái", 320_000, 490_000, 6, "TaiNghe")
+        ];
+
+        foreach (var item in items)
+        {
+            if (known.Contains(item.Sku) || !categories.TryGetValue(item.Category, out var category))
+                continue;
+
+            db.Products.Add(new Product
+            {
+                Sku = item.Sku,
+                Name = item.Name,
+                Unit = item.Unit,
+                CostPrice = item.Cost,
+                SalePrice = item.Sale,
+                MinStock = item.Min,
+                CategoryId = category.Id,
+                IsActive = true
+            });
+        }
+    }
+
+    private static async Task SeedInboundAsync(AppDbContext db)
+    {
+        if (await db.GoodsReceipts.AnyAsync(x => x.Code == "PN-002"))
+            return;
+        if (!await db.Partners.AnyAsync(x => x.Code == "NCC-01"))
+            return;
+
+        var supplier = await db.Partners.FirstAsync(x => x.Code == "NCC-01");
+        var hcm = await db.Warehouses.FirstAsync(x => x.Code == "WH-HCM");
+        var hn = await db.Warehouses.FirstAsync(x => x.Code == "WH-HN");
+        var products = await db.Products
+            .Where(x => x.Sku == "SP-013" || x.Sku == "SP-019" || x.Sku == "SP-027" || x.Sku == "SP-031" || x.Sku == "SP-044")
+            .ToDictionaryAsync(x => x.Sku);
+        if (products.Count < 5)
+            return;
+
+        PurchaseOrderLine Line(string sku, decimal qty)
+        {
+            var product = products[sku];
+            return new PurchaseOrderLine
+            {
+                ProductId = product.Id,
+                Qty = qty,
+                UnitPrice = product.CostPrice,
+                LineTotal = qty * product.CostPrice
+            };
+        }
+
+        var lines = new List<PurchaseOrderLine>
+        {
+            Line("SP-013", 40),
+            Line("SP-019", 8),
+            Line("SP-027", 20),
+            Line("SP-031", 60),
+            Line("SP-044", 50)
+        };
+        var order = new PurchaseOrder
+        {
+            Number = "PO-002",
+            PartnerId = supplier.Id,
+            WarehouseId = hcm.Id,
+            OrderDate = DateTime.Today.AddDays(-4),
+            Status = PurchaseOrderStatus.Confirmed,
+            ConfirmedAt = DateTime.UtcNow.AddDays(-4),
+            TaxRate = 0.08m,
+            Notes = "Đơn mua mẫu cho phiếu nhập nhiều kho.",
+            Lines = lines
+        };
+        order.SubTotal = lines.Sum(x => x.LineTotal);
+        order.TaxAmount = Math.Round(order.SubTotal * order.TaxRate, 2);
+        order.Total = order.SubTotal + order.TaxAmount;
+        db.PurchaseOrders.Add(order);
+        await db.SaveChangesAsync();
+
+        async Task Receive(string code, Warehouse warehouse, DateTime date, GoodsReceiptStatus status, params (string Sku, decimal Qty)[] qty)
+        {
+            var receiptLines = qty.Select(x => new GoodsReceiptLine
+            {
+                PurchaseOrderLineId = lines.First(l => l.ProductId == products[x.Sku].Id).Id,
+                ProductId = products[x.Sku].Id,
+                Quantity = x.Qty
+            }).ToList();
+
+            db.GoodsReceipts.Add(new GoodsReceipt
+            {
+                Code = code,
+                PurchaseOrderId = order.Id,
+                WarehouseId = warehouse.Id,
+                ReceiptDate = date,
+                Status = status,
+                PostedAt = status == GoodsReceiptStatus.Posted ? DateTime.UtcNow : null,
+                SupplierRef = $"DELTA-{code}",
+                Notes = status == GoodsReceiptStatus.Posted ? "Phiếu nhập mẫu đã ghi sổ." : "Phiếu nhập mẫu đang nháp.",
+                Lines = receiptLines
+            });
+
+            if (status != GoodsReceiptStatus.Posted)
+                return;
+
+            foreach (var line in receiptLines)
+            {
+                var balance = await db.StockBalances.FirstOrDefaultAsync(x => x.ProductId == line.ProductId && x.WarehouseId == warehouse.Id);
+                if (balance is null)
+                {
+                    db.StockBalances.Add(new StockBalance
+                    {
+                        ProductId = line.ProductId,
+                        WarehouseId = warehouse.Id,
+                        Qty = line.Quantity,
+                        MinQty = 2
+                    });
+                }
+                else
+                {
+                    balance.Qty += line.Quantity;
+                }
+
+                db.InventoryTxns.Add(new InventoryTxn
+                {
+                    ProductId = line.ProductId,
+                    WarehouseId = warehouse.Id,
+                    Type = InventoryTxnType.In,
+                    QtyChange = line.Quantity,
+                    Reference = code,
+                    Note = "Nhập kho mua hàng"
+                });
+            }
+        }
+
+        await Receive("PN-002", hcm, DateTime.Today.AddDays(-2), GoodsReceiptStatus.Posted,
+            ("SP-013", 20), ("SP-019", 4), ("SP-027", 10));
+        await Receive("PN-003", hn, DateTime.Today.AddDays(-1), GoodsReceiptStatus.Posted,
+            ("SP-013", 10), ("SP-031", 30), ("SP-044", 20));
+        await Receive("PN-004", hcm, DateTime.Today, GoodsReceiptStatus.Draft,
+            ("SP-027", 5), ("SP-044", 10));
+        await db.SaveChangesAsync();
     }
 
     private static async Task SeedOpeningStockAsync(AppDbContext db)

@@ -1,8 +1,77 @@
-﻿@page "/products/list"
+@page "/products/list"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Services.Products
-@inject IProductService ProductService
+@inject NavigationManager Navigation
+@inject IProductService Service
 
+<PageTitle>Sản phẩm</PageTitle>
+<ActionTitle Text="Sản phẩm" />
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
+    <FluentTextInput @bind-Value="searchTerm" Placeholder="Mã, tên sản phẩm" Style="width: 280px;" @onkeypress="OnSearchKey" />
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="SearchAsync">Tìm</FluentButton>
+    <FluentButton IconStart="@(new Icons.Regular.Size20.Add())" Appearance="ButtonAppearance.Primary"
+                  OnClick="@(() => Navigation.NavigateTo("/products/create"))">Tạo sản phẩm</FluentButton>
+</FluentStack>
+<PaginatedTable TItem="ProductDto" Data="page" PageSize="pageSize"
+                GridTemplateColumns="1fr 3fr 1fr .5fr 1fr 1fr .7fr 1fr"
+                OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
+    <PropertyColumn TGridItem="ProductDto" TProp="string" Title="Mã" Property="@(c => c!.Sku)" />
+    <PropertyColumn TGridItem="ProductDto" TProp="string" Title="Tên" Property="@(c => c!.Name)" />
+    <PropertyColumn TGridItem="ProductDto" TProp="string" Title="Danh mục" Property="@(c => c!.CategoryName)" />
+    <PropertyColumn TGridItem="ProductDto" TProp="string" Title="ĐVT" Property="@(c => c!.Unit)" Align="DataGridCellAlignment.Center" />
+    <PropertyColumn TGridItem="ProductDto" TProp="decimal" Title="Giá vốn" Property="@(c => c!.CostPrice)" Format="N0" Align="DataGridCellAlignment.End" />
+    <PropertyColumn TGridItem="ProductDto" TProp="decimal" Title="Giá bán" Property="@(c => c!.SalePrice)" Format="N0" Align="DataGridCellAlignment.End" />
+    <TemplateColumn TGridItem="ProductDto" Title="Trạng thái" Align="DataGridCellAlignment.Center">
+        <FluentBadge Appearance="@(context.IsActive ? BadgeAppearance.Outline : BadgeAppearance.Ghost)">
+            @(context.IsActive ? "Đang bán" : "Ngưng")
+        </FluentBadge>
+    </TemplateColumn>
+    <TemplateColumn TGridItem="ProductDto" Title="Thao tác" Context="item">
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem" @onclick="@(() => Navigation.NavigateTo($"/products/view/{item.Id}"))" />
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Edit())" Appearance="ButtonAppearance.Primary" Title="Sửa" @onclick="@(() => Navigation.NavigateTo($"/products/update/{item.Id}"))" />
+    </TemplateColumn>
+</PaginatedTable>
 
 @code {
+    private PaginatedList<ProductDto>? page;
+    private readonly int pageSize = Models.Constants.PageSize;
+    private int currentPage = 1;
+    private bool isLoading;
+    private int requestVersion;
+    private string? searchTerm; 
 
+    protected override Task OnInitializedAsync() => LoadData(1);
+
+    private Task LoadPageAsync(int pageNumber)
+    {
+        currentPage = pageNumber;
+        return LoadData(pageNumber);
+    }
+
+    private Task SearchAsync()
+    {
+        currentPage = 1;
+        return LoadData(1);
+    }
+
+    private Task OnSearchKey(KeyboardEventArgs e) => e.Key == "Enter" ? SearchAsync() : Task.CompletedTask;
+
+    private async Task LoadData(int pageNumber)
+    {
+        var version = ++requestVersion;
+        isLoading = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var result = await Service.SearchAsync(searchTerm, pageNumber, pageSize);
+            if (version == requestVersion && result.Succeeded)
+                page = result.Value;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+        }
+    }
 }

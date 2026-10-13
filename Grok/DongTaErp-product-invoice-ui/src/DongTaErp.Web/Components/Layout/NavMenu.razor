@@ -1,0 +1,51 @@
+﻿@rendermode InteractiveServer
+
+@implements IDisposable
+
+@inject NavigationManager NavigationManager
+
+<FluentNav Id="main-menu" Width="260px">
+    <FluentNavItem Href="/" Match="NavLinkMatch.All" IconRest="@(new Icons.Regular.Size20.Home())" IconActive="@(new Icons.Filled.Size20.Home())">Home</FluentNavItem>
+    <FluentNavItem Href="/partners/list" IconRest="@(new Icons.Filled.Size20.PeopleCommunity())" IconActive="@(new Icons.Filled.Size20.PeopleCommunity())">Đối tác</FluentNavItem>
+    <FluentNavItem Href="/products/list" IconRest="@(new Icons.Filled.Size20.Production())" IconActive="@(new Icons.Filled.Size20.Production())">Sản phẩm</FluentNavItem>
+    <FluentNavItem Href="/warehouses/list" IconRest="@(new Icons.Regular.Size20.Box())" IconActive="@(new Icons.Filled.Size20.Box())">Kho hàng</FluentNavItem>
+    <FluentNavItem Href="/warehouses/stock" IconRest="@(new Icons.Regular.Size20.ClipboardTaskList())" IconActive="@(new Icons.Filled.Size20.ClipboardTaskList())">Tồn kho</FluentNavItem>
+    <FluentNavItem Href="/goods-receipts/list" IconRest="@(new Icons.Regular.Size20.ArrowDownload())" IconActive="@(new Icons.Filled.Size20.ArrowDownload())">Nhập kho</FluentNavItem>
+    <FluentNavItem Href="/invoices/list" IconRest="@(new Icons.Regular.Size20.Receipt())" IconActive="@(new Icons.Filled.Size20.Receipt())">Hóa đơn</FluentNavItem>
+        <FluentNavItem Href="auth" IconRest="@(new Icons.Regular.Size20.LockClosedKey())" IconActive="@(new Icons.Filled.Size20.LockClosedKey())">Auth Required</FluentNavItem>
+        <AuthorizeView>
+            <Authorized>
+                <FluentNavItem Href="Account/Manage">@context.User.FindFirst("DisplayName")?.Value</FluentNavItem>
+                <form action="Account/Logout" method="post">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                    <FluentButton Type="ButtonType.Submit" Style="width: 100%;">Logout</FluentButton>
+                </form>
+            </Authorized>
+            <NotAuthorized>
+                <FluentNavItem Href="Account/Register">Register</FluentNavItem>
+                <FluentNavItem Href="Account/Login">Login</FluentNavItem>
+            </NotAuthorized>
+        </AuthorizeView>
+</FluentNav>
+
+@code {
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}

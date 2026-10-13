@@ -89,5 +89,5 @@ public class UpdateProductDto
 
     public decimal? MinStock { get; set; }
 
-    public bool? IsActive { get; set; }
+    public bool IsActive { get; set; }
 }
