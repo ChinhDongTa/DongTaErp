@@ -1,6 +1,11 @@
 ﻿namespace DongTaErp.Application.Services.Base;
 
+using DongTaErp.Application.Common.DTOs;
+using DongTaErp.Application.Common.Models;
+using DongTaErp.Application.Extensions;
+using FluentValidation;
 using FluentValidation.Results;
+using Microsoft.Extensions.Logging;
 using System.Linq.Expressions;
 
 public abstract class GenericCrudService<TEntity, TDto, TCreateDto, TUpdateDto> : ICrudService<TDto, TCreateDto, TUpdateDto>

@@ -68,5 +68,5 @@ public class UpdateDepartmentDto
 
     public string? Note { get; set; }
 
-    public bool? IsActive { get; set; }
+    public bool IsActive { get; set; }
 }

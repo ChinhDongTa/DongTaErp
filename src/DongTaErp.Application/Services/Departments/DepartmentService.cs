@@ -55,7 +55,7 @@ public class DepartmentService : Base.GenericCrudService<Department, DepartmentD
 
         if (dto.IsActive.IsDifferentFrom(department.IsActive))
         {
-            department.IsActive = dto.IsActive!.Value;
+            department.IsActive = dto.IsActive;
         }
     }
 }

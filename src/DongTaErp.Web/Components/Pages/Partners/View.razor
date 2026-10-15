@@ -125,7 +125,7 @@
             return;
 
         isDeleting = true;
-        var result = await PartnerService.DeleteAsync(id);
+        var result = await PartnerService.SoftDeleteAsync(id);
         isDeleting = false;
 
         if (!result.Succeeded)

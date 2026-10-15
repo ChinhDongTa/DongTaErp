@@ -25,7 +25,7 @@ else
             <FluentTextInput @bind-Value="dto.Phone" Label="Điện thoại" MaxLength="40" />
             <FluentTextInput @bind-Value="dto.Email" Label="Email" MaxLength="160" TextInputType="TextInputType.Email" />
             <FluentTextInput @bind-Value="dto.TaxCode" Label="Mã số thuế" MaxLength="40" />
-            <FluentTextInput @bind-Value="dto.Address" Label="Địa chỉ" MaxLength="300" class="text200" />
+            <FluentTextInput @bind-Value="dto.Address" Label="Địa chỉ" class="text200" />
             <FluentCheckbox @bind-Value="dto.IsActive" Label="Kích hoạt" />
             <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/partners/list" />
         </FluentStack>

@@ -1,5 +1,4 @@
 using DongTaErp.Domain.Enums;
-
 namespace DongTaErp.Application.Services.GoodsIssues;
 
 /// <summary>
@@ -7,7 +6,7 @@ namespace DongTaErp.Application.Services.GoodsIssues;
 /// Hủy phiếu đã post thì hoàn tồn. Workflow post/hủy có thể tách MediatR sau.
 /// </summary>
 public class GoodsIssueService
-    : Base.GenericCrudService<GoodsIssue, GoodsIssueDto, CreateGoodsIssueDto, UpdateGoodsIssueDto>,
+    :Base.GenericCrudService<GoodsIssue, GoodsIssueDto, CreateGoodsIssueDto, UpdateGoodsIssueDto>,
       IGoodsIssueService
 {
     private readonly IUnitOfWork _unitOfWork;

@@ -15,6 +15,11 @@ builder.Services.AddFluentUIComponents();
 
 builder.AddServiceDefaults();
 
+builder.Services.AddServerSideBlazor()
+    .AddCircuitOptions(options =>
+    {
+        options.DetailedErrors = true;   // or only in Development
+    });
 
 var app = builder.Build();
 

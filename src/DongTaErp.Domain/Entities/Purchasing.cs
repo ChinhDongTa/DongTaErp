@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using DongTaErp.Domain.Enums;
 
 namespace DongTaErp.Domain.Entities;

@@ -6,7 +6,7 @@
             <FluentCard Style="@($"border-left: 4px solid {GetBorderColor(alert.Type)}; padding: 12px;")">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
                     <div style="flex: 1;">
-                        <FluentLabel Color="@GetColor(alert.Type)" Typo="Typography.H5">
+                        <FluentLabel Style="@GetStyle(alert.Type)"  Size="LabelSize.Medium">
                             <span style="margin-right: 8px;">@GetIcon(alert.Type)</span>
                             @alert.Message
                         </FluentLabel>
@@ -119,6 +119,14 @@
         AlertType.Warning => Color.Warning,
         AlertType.Info => Color.Info,
         _ => Color.Success
+    };
+
+    private string GetStyle(AlertType type) => type switch
+    {
+        AlertType.Error => "color: var(--error);",
+        AlertType.Warning => "color: var(--warning);",
+        AlertType.Info => "color: var(--info);",
+        _ => "color: var(--success);"
     };
 
     /// <summary>

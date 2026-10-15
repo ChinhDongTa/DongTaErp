@@ -24,7 +24,7 @@
     private bool isLoading;
     private int requestVersion;
 
-    protected override Task OnInitializedAsync() => LoadData(currentPage);
+    protected override async Task OnInitializedAsync() => await LoadData(currentPage);
 
     private Task LoadPageAsync(int page)
     {
