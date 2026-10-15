@@ -2,6 +2,7 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Services.Partners
 @inject IPartnerService PartnerService
+@inject IDialogService DialogService
 @inject NavigationManager Navigation
 <PageTitle>Thông tin chi tiết đối tác</PageTitle>
 <Alert @ref="alertComponent" />
@@ -25,7 +26,7 @@
                 <DetailItem Label="Email" Value="@dto.Email" />
                 <DetailItem Label="Mã số thuế" Value="@dto.TaxCode" />
             </FluentStack>
-            
+
         </FluentStack>
         <EntityActions EntityId="@Id" Folder="/partners" OnDeleteClick="OpenDeleteAsync" />
         @if (isLoading)
@@ -35,14 +36,6 @@
     }
 </div>
 
-<FluentDialog @bind-Hidden="hideDeleteDialog" Modal="true" Title="Xóa khách hàng">
-    <p>Xóa @dto?.Name?</p>
-    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
-        <FluentButton Appearance="ButtonAppearance.Primary" Loading="isDeleting" OnClick="ConfirmDeleteAsync">Xóa</FluentButton>
-        <FluentButton Appearance="ButtonAppearance.Subtle" Disabled="isDeleting" OnClick="@(() => hideDeleteDialog = true)">Hủy</FluentButton>
-    </FluentStack>
-</FluentDialog>
-
 @code {
     [Parameter] public required string Id { get; set; }
 
@@ -50,7 +43,6 @@
     private Alert? alertComponent;
     private bool isLoading;
     private bool isDeleting;
-    private bool hideDeleteDialog = true;
     private string? loadedId;
     private string? pendingError;
     private int requestVersion;
@@ -113,10 +105,19 @@
         }
     }
 
-    private Task OpenDeleteAsync()
+    private async Task OpenDeleteAsync()
     {
-        hideDeleteDialog = false;
-        return Task.CompletedTask;
+        var dialog = await DialogService.ShowConfirmationAsync(
+            $"Xóa {dto?.Name}?",
+            title: "Xóa khách hàng",
+            primaryButton: "Xóa",
+            secondaryButton: "Hủy"
+            );
+       
+        if (dialog.Cancelled)
+            return;
+
+        await ConfirmDeleteAsync();
     }
 
     private async Task ConfirmDeleteAsync()
