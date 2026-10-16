@@ -1,21 +1,26 @@
 ﻿namespace DongTaErp.Application.Extensions;
+using System.Globalization;
 
-public static class DateTimeFormats
+public static class DateFormats
 {
-    public static string ToVnDate(this DateTime dateTime, char separator='/')
+    public static string ToDateString(this DateTime value, CultureInfo? culture = null)
     {
-        return $"{dateTime.Day}{separator}{dateTime.Month}{separator}{dateTime.Year}";
+        culture ??= CultureInfo.CurrentCulture;
+        return value.ToString("d", culture);
     }
-    public static string ToVnDateTime(this DateTime dateTime, char separator = '/')
+    public static string ToDateString(this DateTime? value, CultureInfo? culture = null)
     {
-        return $"{dateTime.Day}{separator}{dateTime.Month}{separator}{dateTime.Year} {dateTime.Hour}:{dateTime.Minute}:{dateTime.Millisecond}";
+        culture ??= CultureInfo.CurrentCulture;
+        return value.HasValue ? value.Value.ToDateString(culture):"";
     }
-    public static string ToVnDate(this DateTime? dateTime, char separator = '/')
+    public static string ToDateTimeString(this DateTime value, CultureInfo? culture = null)
     {
-        return dateTime.HasValue ? dateTime.Value.ToVnDate(separator) : "";
+        culture ??= CultureInfo.CurrentCulture;
+        return value.ToString("G", culture);
     }
-    public static string ToVnDateTime(this DateTime? dateTime, char separator = '/')
+    public static string ToDateTimeString(this DateTime? value, CultureInfo? culture = null)
     {
-        return dateTime.HasValue ? dateTime.Value.ToVnDateTime(separator) : "";
+        culture ??= CultureInfo.CurrentCulture;
+        return value.HasValue ? value.Value.ToDateTimeString(culture) : "";
     }
 }

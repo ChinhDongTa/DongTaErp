@@ -41,9 +41,9 @@
 
         <FluentDataGrid Items="@lines.AsQueryable()" Style="width: 100%;">
             <PropertyColumn Title="Sản phẩm" Property="@(c => c.Label)" />
-            <PropertyColumn Title="Số lượng" Property="@(c => c.Qty.ToVND())" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Đơn giá" Property="@(c => c.UnitPrice.ToVND())" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Thành tiền" Property="@(c => c.LineTotal.ToVND())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Số lượng" Property="@(c => c.Qty.ToCurrency())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đơn giá" Property="@(c => c.UnitPrice.ToCurrency())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Thành tiền" Property="@(c => c.LineTotal.ToCurrency())" Align="DataGridCellAlignment.End" />
             <TemplateColumn Title="" Context="line">
                 <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => lines.Remove(line))">Xóa</FluentButton>
             </TemplateColumn>

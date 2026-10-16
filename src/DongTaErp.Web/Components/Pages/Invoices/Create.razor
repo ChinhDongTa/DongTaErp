@@ -42,11 +42,11 @@
                 <DecimalInput @bind-Value="price.UnitPrice" Min="0" TValue="decimal" />
             </TemplateColumn>
             <TemplateColumn Title="Thành tiền" Align="DataGridCellAlignment.End" Context="total">
-                @((total.Qty * total.UnitPrice).ToVND())
+                @((total.Qty * total.UnitPrice).ToCurrency())
             </TemplateColumn>
         </FluentDataGrid>
 
-        <div><strong>Tạm tính:</strong> @Total.ToVND()</div>
+        <div><strong>Tạm tính:</strong> @Total.ToCurrency()</div>
 
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
             <FluentButton Appearance="ButtonAppearance.Outline" Type="ButtonType.Submit" Loading="isSaving">Lưu nháp</FluentButton>

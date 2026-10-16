@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace DongTaErp.Application.Extensions;
@@ -21,18 +22,6 @@ public static class StringHelpers
     /// <param name="separator">Ký tự phân cách mặc định là ", "</param>
     public static string ToLine(this IEnumerable<string> strings, string separator = ", ")
         => string.Join(separator, strings);
-
-    public static string ToVND(this decimal amount)
-    {
-        var viCulture = new System.Globalization.CultureInfo("vi-VN");
-        return amount.ToString("N0", viCulture) + " đ";
-    }
-
-    public static string ToVND(this decimal? amount)
-    {
-        var viCulture = new System.Globalization.CultureInfo("vi-VN");
-        return amount.HasValue ? amount.Value.ToString("N0", viCulture) + " đ" : string.Empty;
-    }
 
     // <summary>
     /// Kiểm tra xem giá trị mới có khác với giá trị hiện tại không (đã trim và xử lý null).
@@ -120,8 +109,8 @@ public static class StringHelpers
 
         foreach (var c in normalized)
         {
-            var unicodeCategory = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
-            if (unicodeCategory != System.Globalization.UnicodeCategory.NonSpacingMark)
+            var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
+            if (unicodeCategory != UnicodeCategory.NonSpacingMark)
             {
                 sb.Append(c);
             }

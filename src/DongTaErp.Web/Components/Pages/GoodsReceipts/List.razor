@@ -18,7 +18,7 @@
     <PropertyColumn TGridItem="GoodsReceiptDto" TProp="string" Title="Mã phiếu" Property="@(c => c!.Code)" />
     <PropertyColumn TGridItem="GoodsReceiptDto" TProp="string" Title="Đơn mua" Property="@(c => c!.PurchaseOrderNumber)" />
     <PropertyColumn TGridItem="GoodsReceiptDto" TProp="string" Title="Kho nhập" Property="@(c => c!.WarehouseName)" />
-    <PropertyColumn TGridItem="GoodsReceiptDto" TProp="string" Title="Ngày" Property="@(c => c!.ReceiptDate.ToVnDate())" />
+    <PropertyColumn TGridItem="GoodsReceiptDto" TProp="string" Title="Ngày" Property="@(c => c!.ReceiptDate.ToDateString())" />
     <TemplateColumn TGridItem="GoodsReceiptDto" Title="Trạng thái">
         <FluentBadge Appearance="@Badge(context.Status)">@context.StatusName</FluentBadge>
     </TemplateColumn>

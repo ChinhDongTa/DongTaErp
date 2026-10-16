@@ -23,11 +23,11 @@ else
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
             <DetailItem Label="Nhà cung cấp" Value="@dto.PartnerName" />
             <DetailItem Label="Kho đề xuất" Value="@dto.WarehouseName" />
-            <DetailItem Label="Ngày" Value="@dto.OrderDate.ToVnDate()" />
+            <DetailItem Label="Ngày" Value="@dto.OrderDate.ToDateString()" />
         </FluentStack>
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
             <DetailItem Label="Trạng thái" Value="@dto.StatusName" />
-            <DetailItem Label="Tổng" Value="@dto.Total.ToVND()" />
+            <DetailItem Label="Tổng" Value="@dto.Total.ToCurrency()" />
             <DetailItem Label="Ghi chú" Value="@dto.Notes" />
         </FluentStack>
     </FluentStack>
@@ -36,8 +36,8 @@ else
         <PropertyColumn Title="Mã SP" Property="@(c => c.ProductSku)" />
         <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductName)" />
         <PropertyColumn Title="Số lượng" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
-        <PropertyColumn Title="Đơn giá" Property="@(c => c.UnitPrice.ToVND())" Format="N0" Align="DataGridCellAlignment.End" />
-        <PropertyColumn Title="Thành tiền" Property="@(c => c.LineTotal.ToVND())" Format="N0" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Đơn giá" Property="@(c => c.UnitPrice.ToCurrency())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Thành tiền" Property="@(c => c.LineTotal.ToCurrency())"  Align="DataGridCellAlignment.End" />
     </FluentDataGrid>
 
     <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 16px;">

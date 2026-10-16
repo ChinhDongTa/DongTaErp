@@ -4,16 +4,23 @@ namespace DongTaErp.Application.Extensions;
 
 public static class DecimalFormats
 {
-    public const string Trimmed = "#,##0.##";
+    public const string DefaultFormat = "#,##0.##";
 
-    public static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("vi-VN");
+    public static readonly CultureInfo DefaultCulture = CultureInfo.GetCultureInfo("vi-VN");
 
-    public static string ToDisplay(this decimal value) => value.ToString(Trimmed, Culture);
+    public static string ToDisplay(this decimal value, string format = DefaultFormat, CultureInfo? culture = null)
+        => value.ToString(format, culture ?? DefaultCulture);
 
-    public static string ToDisplay(this decimal? value) => value?.ToDisplay() ?? string.Empty;
+    public static string ToDisplay(this decimal? value, string format = DefaultFormat, CultureInfo? culture = null)
+        => value?.ToDisplay(format, culture) ?? string.Empty;
 
+    public static string ToDisplay(
+        this decimal value, string unit, string format = DefaultFormat, CultureInfo? culture = null)
+        => $"{value.ToDisplay(format, culture)} {unit}";
 
-    public static string ToDisplay(this decimal value, string unit) => $"{value.ToString(Trimmed, Culture)} {unit}";
+    public static string ToCurrency(this decimal value, CultureInfo? culture = null, int decimals = 0)
+        => value.ToString($"C{decimals}", culture ?? DefaultCulture);
 
-    public static string ToDisplay(this decimal? value, string unit) => value?.ToDisplay(unit) ?? string.Empty;
+    public static string ToCurrency(this decimal? value, CultureInfo? culture = null, int decimals = 0)
+        => value?.ToCurrency(culture, decimals) ?? string.Empty;
 }
