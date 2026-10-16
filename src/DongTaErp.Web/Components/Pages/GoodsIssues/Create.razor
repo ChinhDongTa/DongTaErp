@@ -32,12 +32,12 @@
         <h4>Dòng xuất</h4>
         <FluentDataGrid Items="@lines.AsQueryable()" Style="width: 100%;">
             <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductLabel)" />
-            <PropertyColumn Title="Đặt" Property="@(c => c.Ordered)" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Đã xuất" Property="@(c => c.Issued)" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Còn xuất" Property="@(c => c.Remaining)" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Tồn kho này" Property="@(c => c.Stock)" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đặt" Property="@(c => c.Ordered.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đã xuất" Property="@(c => c.Issued.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Còn xuất" Property="@(c => c.Remaining.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Tồn kho này" Property="@(c => c.Stock.ToDisplay())" Align="DataGridCellAlignment.End" />
             <TemplateColumn Title="Xuất lần này" Context="line">
-                <FluentNumberInput @bind-Value="line.Quantity" Min="0" TValue="decimal" Style="width: 120px;" />
+                <DecimalInput @bind-Value="line.Quantity" Min="0" TValue="decimal" Style="width: 120px;" />
             </TemplateColumn>
         </FluentDataGrid>
 

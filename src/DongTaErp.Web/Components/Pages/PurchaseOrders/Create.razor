@@ -26,7 +26,7 @@
         </FluentStack>
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
             <FluentDatePicker @bind-Value="orderDate" Label="Ngày đơn" />
-            <FluentNumberInput @bind-Value="dto.TaxRate" Label="Thuế suất" Min="0" Max="1" TValue="decimal"  />
+            <DecimalInput @bind-Value="dto.TaxRate" Label="Thuế suất" Min="0" Max="1" TValue="decimal"  />
             <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" Style="width: 360px;" />
         </FluentStack>
 
@@ -34,16 +34,16 @@
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
             <FluentSelect TOption="ProductOption" TValue="string" Items="products" OptionText="@(x => x.Label)" OptionValue="@(x => x.Id)"
                           @bind-Value="selectedProductId" Label="Sản phẩm" />
-            <FluentNumberInput @bind-Value="newQty" Label="Số lượng" Min="0" TValue="decimal" />
-            <FluentNumberInput @bind-Value="newPrice" Label="Đơn giá" Min="0" TValue="decimal"  />
+            <DecimalInput @bind-Value="newQty" Label="Số lượng" Min="0" TValue="decimal" />
+            <DecimalInput @bind-Value="newPrice" Label="Đơn giá" Min="0" TValue="decimal" Unit="đ"  />
             <FluentButton Appearance="ButtonAppearance.Primary" OnClick="AddLine">Thêm dòng</FluentButton>
         </FluentStack>
 
         <FluentDataGrid Items="@lines.AsQueryable()" Style="width: 100%;">
             <PropertyColumn Title="Sản phẩm" Property="@(c => c.Label)" />
-            <PropertyColumn Title="Số lượng" Property="@(c => c.Qty)" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Đơn giá" Property="@(c => c.UnitPrice)" Format="N0" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Thành tiền" Property="@(c => c.LineTotal)" Format="N0" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Số lượng" Property="@(c => c.Qty.ToVND())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đơn giá" Property="@(c => c.UnitPrice.ToVND())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Thành tiền" Property="@(c => c.LineTotal.ToVND())" Align="DataGridCellAlignment.End" />
             <TemplateColumn Title="" Context="line">
                 <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => lines.Remove(line))">Xóa</FluentButton>
             </TemplateColumn>

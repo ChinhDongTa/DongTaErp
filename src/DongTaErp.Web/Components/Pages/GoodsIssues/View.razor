@@ -19,7 +19,7 @@ else
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
             <DetailItem Label="Đơn bán" Value="@dto.SalesOrderNumber" />
             <DetailItem Label="Kho xuất" Value="@dto.WarehouseName" />
-            <DetailItem Label="Ngày xuất" Value="@dto.IssueDate.ToString("dd/MM/yyyy")" />
+            <DetailItem Label="Ngày xuất" Value="@dto.IssueDate.ToVnDate()" />
         </FluentStack>
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
             <DetailItem Label="Trạng thái" Value="@dto.StatusName" />

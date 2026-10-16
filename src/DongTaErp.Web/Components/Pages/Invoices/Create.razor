@@ -25,28 +25,28 @@
             <FluentDatePicker @bind-Value="dueDate" Label="Hạn thanh toán" />
         </FluentStack>
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
-            <FluentNumberInput @bind-Value="dto.TaxRate" Label="Thuế suất" Min="0" Max="1" TValue="decimal" />
+            <DecimalInput @bind-Value="dto.TaxRate" Label="Thuế suất" Min="0" Max="1" TValue="decimal" />
             <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" style="width:600px"/>
         </FluentStack>
 
         <h4>Dòng hóa đơn</h4>
         <FluentDataGrid Items="@lines.AsQueryable()" Style="width: 100%;" GridTemplateColumns="3fr 1fr 1fr 1fr 1fr 1fr 2fr">
             <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductLabel)" />
-            <PropertyColumn Title="Đặt" Property="@(c => c.Ordered)" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Đã xuất" Property="@(c => c.Shipped)" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Đã xuất HĐ" Property="@(c => c.Invoiced)" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đặt" Property="@(c => c.Ordered.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đã xuất" Property="@(c => c.Shipped.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đã xuất HĐ" Property="@(c => c.Invoiced.ToDisplay())" Align="DataGridCellAlignment.End" />
             <TemplateColumn Title="Số lượng" Context="qty">
-                <FluentNumberInput @bind-Value="qty.Qty" Min="0" TValue="decimal"  />
+                <DecimalInput @bind-Value="qty.Qty" Min="0" TValue="decimal"  />
             </TemplateColumn>
             <TemplateColumn Title="Đơn giá" Context="price">
-                <FluentNumberInput @bind-Value="price.UnitPrice" Min="0" TValue="decimal" />
+                <DecimalInput @bind-Value="price.UnitPrice" Min="0" TValue="decimal" />
             </TemplateColumn>
             <TemplateColumn Title="Thành tiền" Align="DataGridCellAlignment.End" Context="total">
-                @((total.Qty * total.UnitPrice).ToString("N0"))
+                @((total.Qty * total.UnitPrice).ToVND())
             </TemplateColumn>
         </FluentDataGrid>
 
-        <div><strong>Tạm tính:</strong> @Total.ToString("N0")</div>
+        <div><strong>Tạm tính:</strong> @Total.ToVND()</div>
 
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
             <FluentButton Appearance="ButtonAppearance.Outline" Type="ButtonType.Submit" Loading="isSaving">Lưu nháp</FluentButton>

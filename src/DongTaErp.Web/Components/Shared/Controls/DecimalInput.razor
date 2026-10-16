@@ -1,0 +1,133 @@
+﻿@using System.Globalization
+@using System.Text.RegularExpressions
+@using DongTaErp.Application.Extensions
+@typeparam TValue
+
+<FluentTextInput Label="@Label"
+                 Placeholder="@(Placeholder ?? DefaultPlaceholder)"
+                 Value="@displayValue"
+                 ValueChanged="OnTyping"
+                 Immediate="true"
+                 Style="@Style"
+                 Required="@Required"
+                 Disabled="@Disabled"
+                 @onfocus="OnFocus"
+                 @onblur="OnBlur">
+    <EndTemplate>
+        @if (!string.IsNullOrWhiteSpace(Unit))
+        {
+            <span style="padding-right: 8px; color: var(--neutral-foreground-hint);">@Unit</span>
+        }
+    </EndTemplate>
+</FluentTextInput>
+
+@code {
+    [Parameter] public TValue? Value { get; set; }
+    [Parameter] public EventCallback<TValue?> ValueChanged { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public string? Unit { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public decimal? Min { get; set; }
+    [Parameter] public decimal? Max { get; set; }
+
+    private string displayValue = "";
+    private bool focused;
+    private decimal? lastPushed;
+
+    private string DefaultPlaceholder => string.IsNullOrWhiteSpace(Unit) ? "0" : $"0 {Unit}";
+
+    protected override void OnParametersSet()
+    {
+        if (focused)
+            return;
+
+        var current = Read(Value);
+        if (current == lastPushed && !string.IsNullOrEmpty(displayValue))
+            return;
+
+        displayValue = Format(current);
+        lastPushed = current;
+    }
+
+    private void OnFocus(FocusEventArgs _)
+    {
+        focused = true;
+        displayValue = Strip(displayValue);
+    }
+
+    private async Task OnTyping(string? value)
+    {
+        focused = true;
+        displayValue = value ?? "";
+
+        if (!TryParse(displayValue, out var parsed))
+            return;
+
+        await PushAsync(Clamp(parsed));
+    }
+
+    private async Task OnBlur(FocusEventArgs _)
+    {
+        focused = false;
+
+        if (!TryParse(displayValue, out var parsed))
+        {
+            displayValue = "";
+            lastPushed = null;
+            await ValueChanged.InvokeAsync(default);
+            return;
+        }
+
+        var clamped = Clamp(parsed);
+        displayValue = Format(clamped);
+        await PushAsync(clamped);
+    }
+
+    private decimal Clamp(decimal value)
+    {
+        if (Min.HasValue && value < Min.Value)
+            return Min.Value;
+        if (Max.HasValue && value > Max.Value)
+            return Max.Value;
+        return value;
+    }
+
+    private static string Format(decimal? value)
+        => value.HasValue ? value.Value.ToDisplay() : "";
+
+    private static string Strip(string value)
+        => Regex.Replace(value ?? "", @"[^\d,\-]", "");
+
+    private static decimal? Read(TValue? value)
+        => value is decimal number ? number : null;
+
+    private async Task PushAsync(decimal value)
+    {
+        lastPushed = value;
+        if (typeof(TValue) == typeof(decimal))
+            await ValueChanged.InvokeAsync((TValue)(object)value);
+        else if (typeof(TValue) == typeof(decimal?))
+            await ValueChanged.InvokeAsync((TValue)(object)(decimal?)value);
+    }
+
+    private static bool TryParse(string? value, out decimal parsed)
+    {
+        var cleaned = Strip(value ?? "");
+        cleaned = cleaned.Replace(".", "").Replace(",", ".");
+
+        if (string.IsNullOrWhiteSpace(cleaned) || cleaned is "-" or ".")
+        {
+            parsed = 0;
+            return false;
+        }
+
+        return decimal.TryParse(
+            cleaned,
+            NumberStyles.Number | NumberStyles.AllowLeadingSign,
+            CultureInfo.InvariantCulture,
+            out parsed);
+    }
+}

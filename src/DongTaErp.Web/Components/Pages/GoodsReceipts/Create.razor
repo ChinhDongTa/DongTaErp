@@ -33,9 +33,9 @@
         <h4>Dòng nhập</h4>
         <FluentDataGrid Items="@lines.AsQueryable()" Style="width: 100%;">
             <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductLabel)" />
-            <PropertyColumn Title="Đặt" Property="@(c => c.Ordered)" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Đã nhập" Property="@(c => c.Received)" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Còn lại" Property="@(c => c.Remaining)" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đặt" Property="@(c => c.Ordered.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đã nhập" Property="@(c => c.Received.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Còn lại" Property="@(c => c.Remaining.ToDisplay())" Align="DataGridCellAlignment.End" />
             <TemplateColumn Title="Nhập lần này" Context="grid">
                 <FluentNumberInput @bind-Value="grid.Quantity" Min="0" TValue="decimal" />
             </TemplateColumn>

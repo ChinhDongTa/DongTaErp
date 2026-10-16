@@ -18,7 +18,7 @@ else
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
             <DetailItem Label="Đơn mua" Value="@dto.PurchaseOrderNumber" />
             <DetailItem Label="Kho nhập" Value="@dto.WarehouseName" />
-            <DetailItem Label="Ngày nhập" Value="@dto.ReceiptDate.ToString("dd/MM/yyyy")" />
+            <DetailItem Label="Ngày nhập" Value="@dto.ReceiptDate.ToVnDate()" />
         </FluentStack>
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
             <DetailItem Label="Trạng thái" Value="@dto.StatusName" />
@@ -30,7 +30,7 @@ else
     <FluentDataGrid Items="@dto.Lines.AsQueryable()" Style="width: 100%;">
         <PropertyColumn Title="Mã SP" Property="@(c => c.ProductSku)" />
         <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductName)" />
-        <PropertyColumn Title="Số lượng" Property="@(c => c.Quantity)" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Số lượng" Property="@(c => c.Quantity.ToDisplay())" Align="DataGridCellAlignment.End" />
         <PropertyColumn Title="Ghi chú" Property="@(c => c.Note)" />
     </FluentDataGrid>
 

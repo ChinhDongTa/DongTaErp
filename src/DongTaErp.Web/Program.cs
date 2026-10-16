@@ -3,11 +3,20 @@ using DongTaErp.Infrastructure;
 using DongTaErp.Web;
 using DongTaErp.Web.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
+using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var culture = CultureInfo.GetCultureInfo("vi-VN");
+CultureInfo.DefaultThreadCurrentCulture = culture;
+CultureInfo.DefaultThreadCurrentUICulture = culture;
+
 builder.AddInfrastructureServices();
 builder.AddApplicationServices();
 builder.AddWebServices();
+
+
+
 
 builder.Services.AddRazorComponents()
 .AddInteractiveServerComponents();

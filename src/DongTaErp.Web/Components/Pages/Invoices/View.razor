@@ -18,23 +18,23 @@ else
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
             <DetailItem Label="Khách hàng" Value="@dto.PartnerName" />
             <DetailItem Label="Đơn bán" Value="@dto.SalesOrderNumber" />
-            <DetailItem Label="Ngày" Value="@dto.IssueDate.ToString("dd/MM/yyyy")" />
-            <DetailItem Label="Hạn thanh toán" Value="@dto.DueDate?.ToString("dd/MM/yyyy")" />
+            <DetailItem Label="Ngày" Value="@dto.IssueDate.ToVnDate()" />
+            <DetailItem Label="Hạn thanh toán" Value="@dto.DueDate.ToVnDate()" />
         </FluentStack>
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
             <DetailItem Label="Trạng thái" Value="@dto.StatusName" />
-            <DetailItem Label="Tổng" Value="@dto.Total.ToString("N0")" />
-            <DetailItem Label="Đã thu" Value="@dto.PaidAmount.ToString("N0")" />
-            <DetailItem Label="Còn nợ" Value="@dto.Balance.ToString("N0")" />
+            <DetailItem Label="Tổng" Value="@dto.Total.ToVND()" />
+            <DetailItem Label="Đã thu" Value="@dto.PaidAmount.ToVND()" />
+            <DetailItem Label="Còn nợ" Value="@dto.Balance.ToVND()" />
         </FluentStack>
     </FluentStack>
 
-    <FluentDataGrid Items="@dto.Lines.AsQueryable()" Style="width: 100%;">
+    <FluentDataGrid Items="@dto.Lines.AsQueryable()">
         <PropertyColumn Title="Mã SP" Property="@(c => c.ProductSku)" />
         <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductName)" />
-        <PropertyColumn Title="Số lượng" Property="@(c => c.Qty)" Align="DataGridCellAlignment.End" />
-        <PropertyColumn Title="Đơn giá" Property="@(c => c.UnitPrice)" Format="N0" Align="DataGridCellAlignment.End" />
-        <PropertyColumn Title="Thành tiền" Property="@(c => c.LineTotal)" Format="N0" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Số lượng" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Đơn giá" Property="@(c => c.UnitPrice.ToVND())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Thành tiền" Property="@(c => c.LineTotal.ToVND())" Align="DataGridCellAlignment.End" />
     </FluentDataGrid>
 
     <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 16px;">

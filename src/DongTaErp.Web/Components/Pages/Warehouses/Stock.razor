@@ -19,8 +19,8 @@
     <PropertyColumn Title="Kho" Property="@(c => c.WarehouseName)" />
     <PropertyColumn Title="Mã SP" Property="@(c => c.ProductSku)" />
     <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductName)" />
-    <PropertyColumn Title="Tồn" Property="@(c => c.Qty)" Align="DataGridCellAlignment.End" />
-    <PropertyColumn Title="Tối thiểu" Property="@(c => c.MinQty)" Align="DataGridCellAlignment.End" />
+    <PropertyColumn Title="Tồn" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+    <PropertyColumn Title="Tối thiểu" Property="@(c => c.MinQty.ToDisplay())" Align="DataGridCellAlignment.End" />
     <TemplateColumn Title="Cảnh báo" Align="DataGridCellAlignment.Center">
         @if (context.Qty <= context.MinQty)
         {

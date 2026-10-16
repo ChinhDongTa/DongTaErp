@@ -24,8 +24,8 @@ else
         <PropertyColumn TGridItem="ProductDto" TProp="string" Title="Tên" Property="@(c => c!.Name)" />
         <PropertyColumn TGridItem="ProductDto" TProp="string" Title="Danh mục" Property="@(c => c!.CategoryName)" />
         <PropertyColumn TGridItem="ProductDto" TProp="string" Title="ĐVT" Property="@(c => c!.Unit)" Align="DataGridCellAlignment.Center" />
-        <PropertyColumn TGridItem="ProductDto" TProp="decimal" Title="Giá vốn" Property="@(c => c!.CostPrice)" Format="N0" Align="DataGridCellAlignment.End" />
-        <PropertyColumn TGridItem="ProductDto" TProp="decimal" Title="Giá bán" Property="@(c => c!.SalePrice)" Format="N0" Align="DataGridCellAlignment.End" />
+        <PropertyColumn TGridItem="ProductDto" TProp="string" Title="Giá vốn" Property="@(c => c!.CostPrice.ToVND())"  Align="DataGridCellAlignment.End" />
+        <PropertyColumn TGridItem="ProductDto" TProp="string" Title="Giá bán" Property="@(c => c!.SalePrice.ToVND())" Align="DataGridCellAlignment.End" />
         <TemplateColumn TGridItem="ProductDto" Title="Trạng thái" Align="DataGridCellAlignment.Center">
             <FluentBadge Appearance="@(context.IsActive ? BadgeAppearance.Outline : BadgeAppearance.Ghost)">
                 @(context.IsActive ? "Đang bán" : "Ngưng")
