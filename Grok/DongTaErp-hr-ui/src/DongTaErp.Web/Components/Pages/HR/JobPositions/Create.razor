@@ -1,0 +1,45 @@
+@page "/hr/job-positions/create"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.JobPositions
+@inject IJobPositionService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Tạo chức vụ</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Tạo chức vụ" />
+
+<EditForm Model="dto" OnSubmit="SaveAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 480px;">
+        <FluentTextInput @bind-Value="dto.Code" Label="Mã chức vụ" Required="true" />
+        <FluentTextInput @bind-Value="dto.Name" Label="Tên chức vụ" Required="true" />
+        <FluentCheckbox @bind-Value="dto.IsActive" Label="Đang dùng" Style="margin-top: 34px;" />
+        <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/hr/job-positions/list" />
+    </FluentStack>
+</EditForm>
+
+@code {
+    private Alert? alert;
+    private readonly CreateJobPositionDto dto = new() { Code = "CV".GetRandomCode(), Name = "" };
+    private bool isSaving;
+
+    private async Task SaveAsync()
+    {
+        isSaving = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var result = await Service.CreateAsync(dto);
+            if (!result.Succeeded || string.IsNullOrEmpty(result.Value))
+            {
+                alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không tạo được chức vụ.");
+                return;
+            }
+            Navigation.NavigateTo($"/hr/job-positions/view/{result.Value}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}
