@@ -14,6 +14,7 @@ using DongTaErp.Application.Services.Payments;
 using DongTaErp.Application.Services.Payrolls;
 using DongTaErp.Application.Services.Products;
 using DongTaErp.Application.Services.PurchaseOrders;
+using DongTaErp.Application.Services.SalesOrders;
 using DongTaErp.Application.Services.VendorBills;
 using DongTaErp.Application.Services.Warehouses;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,6 +47,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<IInvoiceService, InvoiceService>();
         builder.Services.AddScoped<IPaymentService, PaymentService>();
         builder.Services.AddScoped<IGoodsIssueService, GoodsIssueService>();
+        builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
 
         builder.Services.AddValidatorsFromAssemblies([typeof(DependencyInjection).Assembly],includeInternalTypes: true);
     }

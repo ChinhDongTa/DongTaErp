@@ -20,6 +20,15 @@ public class PurchaseOrderService
         _logger = logger;
     }
 
+    public override async Task<Result<string>> CreateAsync(CreatePurchaseOrderDto dto, CancellationToken ct = default)
+    {
+        var number = dto.Number.Trim();
+        var exists = await _unitOfWork.PurchaseOrders.Query().AnyAsync(x => x.Number == number, ct);
+        if (exists)
+            return Result<string>.Error($"Số đơn {number} đã tồn tại.");
+        return await base.CreateAsync(dto, ct);
+    }
+
     public async Task<Result<PaginatedList<PurchaseOrderDto>>> SearchAsync(SimpleSearch search, CancellationToken ct = default)
     {
         try

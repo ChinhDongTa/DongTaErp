@@ -2,16 +2,13 @@
 
 public class SalesOrderLineDto : BaseDto
 {
+    public Guid SalesOrderId { get; set; }
     public string SalesOrderNumber { get; set; } = null!;
-
+    public Guid ProductId { get; set; }
     public string ProductSku { get; set; } = null!;
-
     public string ProductName { get; set; } = null!;
-
     public decimal Qty { get; set; }
-
     public decimal UnitPrice { get; set; }
-
     public decimal LineTotal { get; set; }
 }
 

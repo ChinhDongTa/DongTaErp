@@ -7,12 +7,12 @@
 <PageTitle>Đơn bán</PageTitle>
 <ActionTitle Text="Đơn bán" />
 
-<FluentMessageBar Intent="MessageIntent.Info" Style="margin-bottom: 12px;">
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
     Chọn sản phẩm ở đơn bán. Xác nhận đơn chưa trừ kho và chưa ra hóa đơn.
 </FluentMessageBar>
 
 <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
-    <FluentSearch @bind-Value="searchTerm" Placeholder="Số đơn, khách hàng" Style="width: 280px;" @onkeypress="OnSearchKey" />
+    <FluentTextInput @bind-Value="searchTerm" Placeholder="Số đơn, khách hàng" Style="width: 280px;" @onkeypress="OnSearchKey" />
     <FluentButton Appearance="ButtonAppearance.Outline" OnClick="SearchAsync">Tìm</FluentButton>
     <FluentButton IconStart="@(new Icons.Regular.Size20.Add())" Appearance="ButtonAppearance.Primary"
                   OnClick="@(() => Navigation.NavigateTo("/sales-orders/create"))">Tạo đơn bán</FluentButton>
@@ -24,8 +24,8 @@
     <PropertyColumn TGridItem="SalesOrderDto" TProp="string" Title="Số đơn" Property="@(c => c!.Number)" />
     <PropertyColumn TGridItem="SalesOrderDto" TProp="string" Title="Khách hàng" Property="@(c => c!.PartnerName)" />
     <PropertyColumn TGridItem="SalesOrderDto" TProp="string" Title="Kho đề xuất" Property="@(c => c!.WarehouseName)" />
-    <PropertyColumn TGridItem="SalesOrderDto" TProp="DateTime" Title="Ngày" Property="@(c => c!.OrderDate)" Format="dd/MM/yyyy" />
-    <PropertyColumn TGridItem="SalesOrderDto" TProp="decimal" Title="Tổng" Property="@(c => c!.Total)" Format="N0" Align="DataGridCellAlignment.End" />
+    <PropertyColumn TGridItem="SalesOrderDto" TProp="string" Title="Ngày" Property="@(c => c!.OrderDate.ToDateString())" />
+    <PropertyColumn TGridItem="SalesOrderDto" TProp="string" Title="Tổng" Property="@(c => c!.Total.ToCurrency())" Align="DataGridCellAlignment.End" />
     <TemplateColumn TGridItem="SalesOrderDto" Title="Trạng thái">
         <FluentBadge Appearance="@Badge(context.Status)">@context.StatusName</FluentBadge>
     </TemplateColumn>

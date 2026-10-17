@@ -11,45 +11,45 @@
 <Alert @ref="alert" />
 <ActionTitle Text="Tạo đơn bán" />
 
-<FluentMessageBar Intent="MessageIntent.Info" Style="margin-bottom: 12px;">
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
     Chọn sản phẩm ở đây. Kho chỉ là kho đề xuất. Xuất kho và hóa đơn làm ở bước sau.
 </FluentMessageBar>
 
 <EditForm Model="dto" OnSubmit="SaveAsync">
-    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 960px;">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10">
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
-            <FluentTextInput @bind-Value="dto.Number" Label="Số đơn" Required="true" Style="width: 180px;" />
+            <FluentTextInput @bind-Value="dto.Number" Label="Số đơn" Required="true" />
             <FluentSelect TOption="OptionItem" TValue="string" Items="customers" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
-                          @bind-Value="customerId" Label="Khách hàng" Style="min-width: 280px;" />
+                          @bind-Value="customerId" Label="Khách hàng" />
             <FluentSelect TOption="OptionItem" TValue="string" Items="warehouses" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
-                          @bind-Value="warehouseId" Label="Kho đề xuất" Style="min-width: 240px;" />
+                          @bind-Value="warehouseId" Label="Kho đề xuất" />
         </FluentStack>
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
             <FluentDatePicker @bind-Value="orderDate" Label="Ngày đơn" />
-            <FluentNumberInput @bind-Value="dto.TaxRate" Label="Thuế suất" Min="0" Max="1" TValue="decimal" Style="width: 140px;" />
+            <DecimalInput @bind-Value="dto.TaxRate" Label="Thuế suất" Min="0" Max="1" TValue="decimal" />
             <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" Style="width: 360px;" />
         </FluentStack>
 
         <h4>Chọn sản phẩm</h4>
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
             <FluentSelect TOption="ProductOption" TValue="string" Items="products" OptionText="@(x => x.Label)" OptionValue="@(x => x.Id)"
-                          Value="selectedProductId" ValueChanged="OnProductChanged" Label="Sản phẩm" Style="min-width: 320px;" />
-            <FluentNumberInput @bind-Value="newQty" Label="Số lượng" Min="0" TValue="decimal" Style="width: 120px;" />
-            <FluentNumberInput @bind-Value="newPrice" Label="Đơn giá" Min="0" TValue="decimal" Style="width: 160px;" />
-            <FluentButton Appearance="ButtonAppearance.Outline" Style="align-self: end;" OnClick="AddLine">Thêm dòng</FluentButton>
+                          @bind-Value="selectedProductId" Label="Sản phẩm" />
+            <DecimalInput @bind-Value="newQty" Label="Số lượng" Min="0" TValue="decimal" />
+            <DecimalInput @bind-Value="newPrice" Label="Đơn giá" Min="0" TValue="decimal" Unit="đ" />
+            <FluentButton Appearance="ButtonAppearance.Primary" Style="align-self: end;" OnClick="AddLine">Thêm dòng</FluentButton>
         </FluentStack>
 
         <FluentDataGrid Items="@lines.AsQueryable()" Style="width: 100%;">
             <PropertyColumn Title="Sản phẩm" Property="@(c => c.Label)" />
-            <PropertyColumn Title="Số lượng" Property="@(c => c.Qty)" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Đơn giá" Property="@(c => c.UnitPrice)" Format="N0" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Thành tiền" Property="@(c => c.LineTotal)" Format="N0" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Số lượng" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đơn giá" Property="@(c => c.UnitPrice.ToCurrency())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Thành tiền" Property="@(c => c.LineTotal.ToCurrency())" Align="DataGridCellAlignment.End" />
             <TemplateColumn Title="" Context="line">
                 <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => lines.Remove(line))">Xóa</FluentButton>
             </TemplateColumn>
         </FluentDataGrid>
 
-        <div><strong>Tạm tính gồm thuế:</strong> @Total.ToString("N0")</div>
+        <div><strong>Tạm tính gồm thuế:</strong> @Total.ToCurrency()</div>
         <FormActionButtons IsSaving="@isSaving" SaveText="Lưu nháp" CancelUrl="/sales-orders/list" />
     </FluentStack>
 </EditForm>
@@ -93,12 +93,6 @@
         warehouseId = warehouses.FirstOrDefault()?.Id ?? "";
         selectedProductId = products.FirstOrDefault()?.Id ?? "";
         newPrice = products.FirstOrDefault()?.SalePrice ?? 0;
-    }
-
-    private void OnProductChanged(string value)
-    {
-        selectedProductId = value;
-        newPrice = products.FirstOrDefault(x => x.Id == value)?.SalePrice ?? 0;
     }
 
     private void AddLine()

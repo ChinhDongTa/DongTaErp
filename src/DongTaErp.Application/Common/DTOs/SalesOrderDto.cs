@@ -5,26 +5,20 @@ namespace DongTaErp.Application.Common.DTOs;
 public class SalesOrderDto : BaseDto
 {
     public string Number { get; set; } = null!;
-
+    public Guid PartnerId { get; set; }
     public string PartnerName { get; set; } = null!;
-
+    public Guid WarehouseId { get; set; }
     public string WarehouseName { get; set; } = null!;
-
     public DateTime OrderDate { get; set; }
     public SalesOrderStatus Status { get; set; }
     public string StatusName => Status.ToDisplayName();
-
     public string? Notes { get; set; }
-
     public decimal SubTotal { get; set; }
-
     public decimal TaxRate { get; set; }
-
     public decimal TaxAmount { get; set; }
-
     public decimal Total { get; set; }
-
     public DateTime? ConfirmedAt { get; set; }
+    public List<SalesOrderLineDto> Lines { get; set; } = [];
 }
 
 public class CreateSalesOrderDto
@@ -56,6 +50,8 @@ public class CreateSalesOrderDto
     public string? Notes { get; set; }
 
     public decimal TaxRate { get; set; } = 0.08m;
+
+    public List<CreateSalesOrderLineDto> Lines { get; set; } = [];
 }
 
 public class UpdateSalesOrderDto
