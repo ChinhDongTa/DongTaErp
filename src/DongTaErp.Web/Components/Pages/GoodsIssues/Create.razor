@@ -51,7 +51,7 @@
 
 @code {
     private Alert? alert;
-    private readonly CreateGoodsIssueDto dto = new() { Code = $"PX-{DateTime.Today:yyMMdd}-" };
+    private readonly CreateGoodsIssueDto dto = new() { Code = "GI".GetRandomCode() };
     private DateTime? issueDate = DateTime.Today;
     private string orderId = "";
     private string warehouseId = "";

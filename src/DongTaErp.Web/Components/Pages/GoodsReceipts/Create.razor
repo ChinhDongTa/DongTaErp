@@ -51,7 +51,7 @@
 
 @code {
     private Alert? alert;
-    private readonly CreateGoodsReceiptDto dto = new() { Code = $"PN-{DateTime.Today:yyMMdd}-" };
+    private readonly CreateGoodsReceiptDto dto = new() { Code = "GR".GetRandomCode() };
     private DateTime? receiptDate = DateTime.Today;
     private string orderId = "";
     private string warehouseId = "";

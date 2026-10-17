@@ -56,7 +56,7 @@
 
 @code {
     private Alert? alert;
-    private readonly CreatePurchaseOrderDto dto = new() { Number = "", TaxRate = 0.08m };
+    private readonly CreatePurchaseOrderDto dto = new() { Number = "PO".GetRandomCode(), TaxRate = 0.08m };
     private DateTime? orderDate = DateTime.Today;
     private string supplierId = "";
     private string warehouseId = "";
@@ -93,22 +93,6 @@
         warehouseId = warehouses.FirstOrDefault()?.Id ?? "";
         selectedProductId = products.FirstOrDefault()?.Id ?? "";
         newPrice = products.FirstOrDefault()?.CostPrice ?? 0;
-        dto.Number = await NextNumberAsync();
-    }
-
-    private async Task<string> NextNumberAsync()
-    {
-        var prefix = $"PO-{DateTime.Today:yyMMdd}-";
-        var last = await UnitOfWork.PurchaseOrders.Query()
-            .Where(x => x.Number.StartsWith(prefix))
-            .OrderByDescending(x => x.Number)
-            .Select(x => x.Number)
-            .FirstOrDefaultAsync();
-
-        var seq = 1;
-        if (last is not null && int.TryParse(last[prefix.Length..], out var n))
-            seq = n + 1;
-        return $"{prefix}{seq:000}";
     }
 
     private void AddLine()

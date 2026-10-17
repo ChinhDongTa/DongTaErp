@@ -58,7 +58,7 @@
 
 @code {
     private Alert? alert;
-    private readonly CreateInvoiceDto dto = new() { Number = $"HD-{DateTime.Today:yyMMdd}-", TaxRate = 0.08m };
+    private readonly CreateInvoiceDto dto = new() { Number = "InV".GetRandomCode(), TaxRate = 0.08m };
     private DateTime? issueDate = DateTime.Today;
     private DateTime? dueDate = DateTime.Today.AddDays(30);
     private string orderId = "";

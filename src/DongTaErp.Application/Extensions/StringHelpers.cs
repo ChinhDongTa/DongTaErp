@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -100,6 +101,33 @@ public static class StringHelpers
         }
 
         return sb.ToString();
+    }
+
+
+    public static string Random3Chars()
+    {
+        Random Random = new();
+        string Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+        char[] result = new char[3];
+
+        for (int i = 0; i < 3; i++)
+        {
+            result[i] = Chars[Random.Next(Chars.Length)];
+        }
+
+        return new string(result);
+    }
+
+    /// <summary>
+    /// Tạo mã ngẫu nhiên cho phiếu nhập hàng, hóa đơn,...
+    /// prefix-Today-suffix
+    /// </summary>
+    /// <param name="value">PN, PC, HD, PO, ...</param>
+    /// <returns></returns>
+    public static string GetRandomCode(this string prefix, string? suffix = null)
+    {
+        return $"{prefix}-{DateTime.Today:yyMMdd}-{suffix ?? Random3Chars()}";
     }
 
     private static string RemoveDiacritics(string text)

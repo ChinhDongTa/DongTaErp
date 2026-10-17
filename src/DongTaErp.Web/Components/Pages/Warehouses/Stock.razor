@@ -24,7 +24,7 @@
     <TemplateColumn Title="Cảnh báo" Align="DataGridCellAlignment.Center">
         @if (context.Qty <= context.MinQty)
         {
-            <FluentBadge Appearance="BadgeAppearance.Filled">Thấp</FluentBadge>
+            <FluentBadge Appearance="BadgeAppearance.Filled" Color="BadgeColor.Danger">Thấp</FluentBadge>
         }
     </TemplateColumn>
 </FluentDataGrid>
