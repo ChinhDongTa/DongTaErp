@@ -1,0 +1,108 @@
+@page "/disbursements/view/{Id}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Disbursements
+@inject IDisbursementService Service
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Phiếu chi</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <FluentSpinner />
+}
+else
+{
+    <ActionTitle Text="@dto.Number" />
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="32" Style="margin-bottom: 12px;">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <DetailItem Label="Nhà cung cấp" Value="@dto.PartnerName" />
+            <DetailItem Label="Ngày chi" Value="@dto.PaidAt.ToDateString()" />
+            <DetailItem Label="Hình thức" Value="@dto.MethodName" />
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <DetailItem Label="Số tiền" Value="@dto.Amount.ToCurrency()" />
+            <DetailItem Label="Đã phân bổ" Value="@dto.AllocatedAmount.ToCurrency()" />
+            <DetailItem Label="Chưa phân bổ" Value="@dto.UnallocatedAmount.ToCurrency()" />
+            <DetailItem Label="Trạng thái" Value="@dto.StatusName" />
+        </FluentStack>
+    </FluentStack>
+
+    <FluentDataGrid Items="@dto.Allocations.AsQueryable()">
+        <PropertyColumn Title="Hóa đơn mua" Property="@(c => c.VendorBillNumber)" />
+        <PropertyColumn Title="Số phân bổ" Property="@(c => c.Amount.ToCurrency())" Align="DataGridCellAlignment.End" />
+    </FluentDataGrid>
+
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 16px;">
+        @if (dto.Status == DisbursementStatus.Draft)
+        {
+            <FluentButton Appearance="ButtonAppearance.Primary" Loading="busy" OnClick="PostAsync">Ghi sổ</FluentButton>
+        }
+        @if (dto.Status != DisbursementStatus.Cancelled)
+        {
+            <FluentButton Appearance="ButtonAppearance.Outline" Loading="busy" OnClick="CancelAsync">Hủy phiếu</FluentButton>
+        }
+        <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/disbursements/list"))">Danh sách</FluentButton>
+    </FluentStack>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+
+    private DisbursementDto? dto;
+    private Alert? alert;
+    private bool busy;
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var result = await Service.GetByIdAsync(Id.ToGuid());
+        dto = result.Succeeded ? result.Value : null;
+        if (dto is null)
+            alert?.AddAlertError("Không tìm thấy phiếu chi.");
+    }
+
+    private async Task PostAsync()
+    {
+        var dialog = await DialogService.ShowConfirmationAsync(
+            "Ghi sổ phiếu chi? Công nợ nhà cung cấp sẽ giảm.",
+            title: "Ghi sổ",
+            primaryButton: "Ghi sổ",
+            secondaryButton: "Hủy");
+        if (dialog.Cancelled)
+            return;
+
+        busy = true;
+        var result = await Service.PostAsync(Id.ToGuid());
+        busy = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không ghi sổ được.");
+            return;
+        }
+        await LoadAsync();
+    }
+
+    private async Task CancelAsync()
+    {
+        var dialog = await DialogService.ShowConfirmationAsync(
+            "Hủy phiếu chi? Nếu đã ghi sổ, công nợ sẽ được hoàn.",
+            title: "Hủy phiếu",
+            primaryButton: "Hủy phiếu",
+            secondaryButton: "Không");
+        if (dialog.Cancelled)
+            return;
+
+        busy = true;
+        var result = await Service.CancelAsync(Id.ToGuid());
+        busy = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không hủy được phiếu.");
+            return;
+        }
+        await LoadAsync();
+    }
+}

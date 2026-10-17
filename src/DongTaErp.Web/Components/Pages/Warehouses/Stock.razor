@@ -10,9 +10,9 @@
 
 <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
     <FluentSelect TValue="string" TOption="WarehouseOption" Items="warehouseOptions" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
-                  @bind-Value="warehouseId" Label="Kho" Style="min-width: 240px;" />
-    <FluentCheckbox @bind-Value="lowOnly" Label="Chỉ tồn thấp" Style="align-self: end;" />
-    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="LoadAsync">Lọc</FluentButton>
+                  @bind-Value="warehouseId" Label="Kho"  />
+    <FluentCheckbox @bind-Value="lowOnly" Label="Chỉ tồn thấp" style="margin-top: 48px;" />
+    <FluentButton Appearance="ButtonAppearance.Outline" style="margin-top: 34px;" OnClick="LoadAsync">Lọc</FluentButton>
 </FluentStack>
 
 <FluentDataGrid Items="@rows" Style="width: 100%;">

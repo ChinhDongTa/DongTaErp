@@ -1,0 +1,201 @@
+@page "/payments/create"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Common.Interfaces
+@using DongTaErp.Application.Services.Payments
+@using Microsoft.EntityFrameworkCore
+@inject IPaymentService Service
+@inject IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+<PageTitle>Tạo phiếu thu</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Tạo phiếu thu" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Phân bổ vào hóa đơn đã phát hành còn nợ. Ghi sổ mới trừ công nợ.
+</FluentMessageBar>
+
+<EditForm Model="dto" OnSubmit="SaveDraftAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10">
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+            <FluentTextInput @bind-Value="dto.Number" Label="Số phiếu" Required="true" />
+            <FluentSelect TOption="OptionItem" TValue="string" Items="customers" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                          Value="customerId" ValueChanged="OnCustomerChanged" Label="Khách hàng" />
+            <FluentSelect TOption="MethodOption" TValue="PaymentMethod" Items="methods" OptionText="@(x => x.Name)" OptionValue="@(x => x.Value)"
+                          @bind-Value="dto.Method" Label="Hình thức" />
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+            <FluentDatePicker @bind-Value="paidAt" Label="Ngày thu" />
+            <DecimalInput @bind-Value="dto.Amount" Label="Số tiền thu" Min="0" TValue="decimal" Unit="đ" />
+            <FluentTextInput @bind-Value="dto.ReferenceNumber" Label="Số tham chiếu" />
+            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" Style="width: 280px;" />
+        </FluentStack>
+
+        <h4>Phân bổ hóa đơn</h4>
+        <FluentDataGrid Items="@openInvoices.AsQueryable()">
+            <PropertyColumn Title="Số HĐ" Property="@(c => c.Number)" />
+            <PropertyColumn Title="Tổng" Property="@(c => c.Total.ToCurrency())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Còn nợ" Property="@(c => c.Balance.ToCurrency())" Align="DataGridCellAlignment.End" />
+            <TemplateColumn Title="Phân bổ">
+                <DecimalInput @bind-Value="context.Allocate" Min="0" TValue="decimal" Unit="đ" />
+            </TemplateColumn>
+        </FluentDataGrid>
+
+        <div>Đã phân bổ: @Allocated.ToCurrency() — Chưa phân bổ: @Unallocated.ToCurrency()</div>
+
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+            <FluentButton Appearance="ButtonAppearance.Outline" Type="ButtonType.Submit" Loading="isSaving">Lưu nháp</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary" Loading="isSaving" OnClick="SaveAndPostAsync">Lưu và ghi sổ</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/payments/list"))">Hủy</FluentButton>
+        </FluentStack>
+    </FluentStack>
+</EditForm>
+
+@code {
+    [SupplyParameterFromQuery] public string? InvoiceId { get; set; }
+
+    private Alert? alert;
+    private readonly CreatePaymentDto dto = new() { Number = "PT".GetRandomCode() };
+    private DateTime? paidAt = DateTime.Today;
+    private string customerId = "";
+    private bool isSaving;
+    private List<OptionItem> customers = [];
+    private List<OpenInvoice> openInvoices = [];
+    private decimal Allocated => openInvoices.Sum(x => x.Allocate);
+    private decimal Unallocated => dto.Amount - Allocated;
+    private readonly List<MethodOption> methods =
+    [
+        new(PaymentMethod.Cash, "Tiền mặt"),
+        new(PaymentMethod.BankTransfer, "Chuyển khoản"),
+        new(PaymentMethod.Card, "Thẻ"),
+        new(PaymentMethod.Other, "Khác")
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        customers = await UnitOfWork.Partners.Query()
+            .Where(x => x.IsActive && (x.Type == PartnerType.Customer || x.Type == PartnerType.Both))
+            .OrderBy(x => x.Code)
+            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.Name}"))
+            .ToListAsync();
+
+        if (Guid.TryParse(InvoiceId, out var invoiceId))
+        {
+            var invoice = await UnitOfWork.Invoices.Query()
+                .Where(x => x.Id == invoiceId)
+                .Select(x => new { x.PartnerId, x.Total, x.PaidAmount })
+                .FirstOrDefaultAsync();
+            if (invoice is not null)
+            {
+                customerId = invoice.PartnerId.ToString();
+                dto.Amount = Math.Max(0, invoice.Total - invoice.PaidAmount);
+            }
+        }
+
+        customerId = string.IsNullOrEmpty(customerId) ? customers.FirstOrDefault()?.Id ?? "" : customerId;
+        await LoadInvoicesAsync();
+    }
+
+    private async Task OnCustomerChanged(string value)
+    {
+        customerId = value;
+        await LoadInvoicesAsync();
+    }
+
+    private async Task LoadInvoicesAsync()
+    {
+        if (!Guid.TryParse(customerId, out var partnerId))
+        {
+            openInvoices = [];
+            return;
+        }
+
+        openInvoices = await UnitOfWork.Invoices.Query()
+            .Where(x => x.PartnerId == partnerId && (x.Status == InvoiceStatus.Issued || x.Status == InvoiceStatus.PartiallyPaid))
+            .OrderBy(x => x.IssueDate)
+            .Select(x => new OpenInvoice(x.Id, x.Number, x.Total, x.Total - x.PaidAmount))
+            .ToListAsync();
+
+        if (Guid.TryParse(InvoiceId, out var invoiceId))
+        {
+            var selected = openInvoices.FirstOrDefault(x => x.Id == invoiceId);
+            if (selected is not null)
+                selected.Allocate = Math.Min(dto.Amount, selected.Balance);
+        }
+    }
+
+    private Task SaveDraftAsync() => SaveAsync(post: false);
+
+    private Task SaveAndPostAsync() => SaveAsync(post: true);
+
+    private async Task SaveAsync(bool post)
+    {
+        if (!Guid.TryParse(customerId, out var partnerId))
+        {
+            alert?.AddAlertError("Chọn khách hàng.");
+            return;
+        }
+        if (dto.Amount <= 0)
+        {
+            alert?.AddAlertError("Số tiền thu phải lớn hơn 0.");
+            return;
+        }
+        if (Allocated > dto.Amount)
+        {
+            alert?.AddAlertError("Tổng phân bổ vượt số tiền thu.");
+            return;
+        }
+        if (openInvoices.Any(x => x.Allocate > x.Balance))
+        {
+            alert?.AddAlertError("Phân bổ vượt số còn nợ của hóa đơn.");
+            return;
+        }
+
+        dto.PartnerId = partnerId;
+        dto.PaidAt = paidAt ?? DateTime.Today;
+        dto.Allocations = openInvoices.Where(x => x.Allocate > 0)
+            .Select(x => new CreatePaymentAllocationDto { InvoiceId = x.Id, Amount = x.Allocate })
+            .ToList();
+
+        isSaving = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var created = await Service.CreateAsync(dto);
+            if (!created.Succeeded || string.IsNullOrEmpty(created.Value))
+            {
+                alert?.AddAlertError(created.Errors?.FirstOrDefault() ?? "Không tạo được phiếu thu.");
+                return;
+            }
+
+            if (post && Guid.TryParse(created.Value, out var id))
+            {
+                var posted = await Service.PostAsync(id);
+                if (!posted.Succeeded)
+                {
+                    alert?.AddAlertError(posted.Errors?.FirstOrDefault() ?? "Đã lưu nháp nhưng chưa ghi sổ.");
+                    Navigation.NavigateTo($"/payments/view/{created.Value}");
+                    return;
+                }
+            }
+
+            Navigation.NavigateTo($"/payments/view/{created.Value}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private sealed record OptionItem(string Id, string Name);
+    private sealed record MethodOption(PaymentMethod Value, string Name);
+    private sealed class OpenInvoice(Guid id, string number, decimal total, decimal balance)
+    {
+        public Guid Id { get; } = id;
+        public string Number { get; } = number;
+        public decimal Total { get; } = total;
+        public decimal Balance { get; } = balance;
+        public decimal Allocate { get; set; }
+    }
+}

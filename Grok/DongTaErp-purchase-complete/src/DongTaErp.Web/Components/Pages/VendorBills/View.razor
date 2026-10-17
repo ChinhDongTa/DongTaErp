@@ -1,0 +1,116 @@
+@page "/vendor-bills/view/{Id}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.VendorBills
+@inject IVendorBillService Service
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Hóa đơn mua</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <FluentSpinner />
+}
+else
+{
+    <ActionTitle Text="@dto.Number" />
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="32" Style="margin-bottom: 12px;">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <DetailItem Label="Nhà cung cấp" Value="@dto.PartnerName" />
+            <DetailItem Label="Đơn mua" Value="@dto.PurchaseOrderNumber" />
+            <DetailItem Label="Số chứng từ NCC" Value="@dto.SupplierNumber" />
+            <DetailItem Label="Ngày" Value="@dto.BillDate.ToDateString()" />
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <DetailItem Label="Trạng thái" Value="@dto.StatusName" />
+            <DetailItem Label="Tổng" Value="@dto.Total.ToCurrency()" />
+            <DetailItem Label="Đã trả" Value="@dto.PaidAmount.ToCurrency()" />
+            <DetailItem Label="Còn nợ" Value="@dto.Balance.ToCurrency()" />
+        </FluentStack>
+    </FluentStack>
+
+    <FluentDataGrid Items="@dto.Lines.AsQueryable()">
+        <PropertyColumn Title="Mã SP" Property="@(c => c.ProductSku)" />
+        <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductName)" />
+        <PropertyColumn Title="Số lượng" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Đơn giá" Property="@(c => c.UnitPrice.ToCurrency())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Thành tiền" Property="@(c => c.LineTotal.ToCurrency())" Align="DataGridCellAlignment.End" />
+    </FluentDataGrid>
+
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 16px;">
+        @if (dto.Status == VendorBillStatus.Draft)
+        {
+            <FluentButton Appearance="ButtonAppearance.Primary" Loading="busy" OnClick="PostAsync">Ghi sổ</FluentButton>
+        }
+        @if (dto.Status is VendorBillStatus.Posted or VendorBillStatus.PartiallyPaid)
+        {
+            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo($"/disbursements/create?billId={dto.Id}"))">Chi tiền</FluentButton>
+        }
+        @if (dto.Status != VendorBillStatus.Cancelled && dto.PaidAmount == 0)
+        {
+            <FluentButton Appearance="ButtonAppearance.Outline" Loading="busy" OnClick="CancelAsync">Hủy hóa đơn</FluentButton>
+        }
+        <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/vendor-bills/list"))">Danh sách</FluentButton>
+    </FluentStack>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+
+    private VendorBillDto? dto;
+    private Alert? alert;
+    private bool busy;
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var result = await Service.GetByIdAsync(Id.ToGuid());
+        dto = result.Succeeded ? result.Value : null;
+        if (dto is null)
+            alert?.AddAlertError("Không tìm thấy hóa đơn mua.");
+    }
+
+    private async Task PostAsync()
+    {
+        var dialog = await DialogService.ShowConfirmationAsync(
+            "Ghi sổ hóa đơn mua? Công nợ nhà cung cấp sẽ phát sinh.",
+            title: "Ghi sổ",
+            primaryButton: "Ghi sổ",
+            secondaryButton: "Hủy");
+        if (dialog.Cancelled)
+            return;
+
+        busy = true;
+        var result = await Service.PostAsync(Id.ToGuid());
+        busy = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không ghi sổ được.");
+            return;
+        }
+        await LoadAsync();
+    }
+
+    private async Task CancelAsync()
+    {
+        var dialog = await DialogService.ShowConfirmationAsync(
+            "Hủy hóa đơn mua này?",
+            title: "Hủy hóa đơn",
+            primaryButton: "Hủy",
+            secondaryButton: "Không");
+        if (dialog.Cancelled)
+            return;
+
+        busy = true;
+        var result = await Service.CancelAsync(Id.ToGuid());
+        busy = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không hủy được hóa đơn.");
+            return;
+        }
+        await LoadAsync();
+    }
+}

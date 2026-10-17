@@ -15,7 +15,7 @@
     Chọn sản phẩm ở đây. Kho chỉ là kho đề xuất. Xuất kho và hóa đơn làm ở bước sau.
 </FluentMessageBar>
 
-<EditForm Model="dto" OnSubmit="SaveAsync">
+<EditForm Model="dto" OnSubmit="SaveAsync" style="width:100%">
     <FluentStack Orientation="Orientation.Vertical" VerticalGap="10">
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
             <FluentTextInput @bind-Value="dto.Number" Label="Số đơn" Required="true" />
@@ -33,10 +33,10 @@
         <h4>Chọn sản phẩm</h4>
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
             <FluentSelect TOption="ProductOption" TValue="string" Items="products" OptionText="@(x => x.Label)" OptionValue="@(x => x.Id)"
-                          @bind-Value="selectedProductId" Label="Sản phẩm" />
-            <DecimalInput @bind-Value="newQty" Label="Số lượng" Min="0" TValue="decimal" />
+                          @bind-Value="selectedProductId" Label="Sản phẩm" style="width:300px"/>
+            <DecimalInput @bind-Value="newQty" Label="Số lượng" Min="0" TValue="decimal" style="width:100px" />
             <DecimalInput @bind-Value="newPrice" Label="Đơn giá" Min="0" TValue="decimal" Unit="đ" />
-            <FluentButton Appearance="ButtonAppearance.Primary" Style="align-self: end;" OnClick="AddLine">Thêm dòng</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary" style="margin-top: 34px;" OnClick="AddLine">Thêm dòng</FluentButton>
         </FluentStack>
 
         <FluentDataGrid Items="@lines.AsQueryable()" Style="width: 100%;">

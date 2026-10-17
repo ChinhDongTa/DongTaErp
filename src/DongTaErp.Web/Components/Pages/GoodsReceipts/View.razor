@@ -39,6 +39,10 @@ else
         {
             <FluentButton Appearance="ButtonAppearance.Primary" Loading="busy" OnClick="PostAsync">Ghi sổ</FluentButton>
         }
+        @if (dto.Status == GoodsReceiptStatus.Posted)
+        {
+            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo("/vendor-bills/create"))">Tạo hóa đơn mua</FluentButton>
+        }
         @if (dto.Status != GoodsReceiptStatus.Cancelled)
         {
             <FluentButton Appearance="ButtonAppearance.Outline" Loading="busy" OnClick="CancelAsync">Hủy phiếu</FluentButton>

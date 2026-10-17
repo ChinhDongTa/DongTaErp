@@ -1,0 +1,80 @@
+@page "/disbursements/list"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Disbursements
+@inject NavigationManager Navigation
+@inject IDisbursementService Service
+
+<PageTitle>Chi tiền</PageTitle>
+<ActionTitle Text="Phiếu chi" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Ghi sổ phiếu chi mới giảm công nợ nhà cung cấp.
+</FluentMessageBar>
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
+    <FluentTextInput @bind-Value="searchTerm" Placeholder="Số phiếu, nhà cung cấp" Style="width: 300px;" @onkeypress="OnSearchKey" />
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="SearchAsync">Tìm</FluentButton>
+    <FluentButton IconStart="@(new Icons.Regular.Size20.Add())" Appearance="ButtonAppearance.Primary"
+                  OnClick="@(() => Navigation.NavigateTo("/disbursements/create"))">Tạo phiếu chi</FluentButton>
+</FluentStack>
+
+<PaginatedTable TItem="DisbursementDto" Data="page" PageSize="pageSize"
+                GridTemplateColumns="1fr 1.4fr 1fr 1fr 1fr 1fr .8fr"
+                OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
+    <PropertyColumn TGridItem="DisbursementDto" TProp="string" Title="Số phiếu" Property="@(c => c!.Number)" />
+    <PropertyColumn TGridItem="DisbursementDto" TProp="string" Title="Nhà cung cấp" Property="@(c => c!.PartnerName)" />
+    <PropertyColumn TGridItem="DisbursementDto" TProp="string" Title="Ngày" Property="@(c => c!.PaidAt.ToDateString())" />
+    <PropertyColumn TGridItem="DisbursementDto" TProp="string" Title="Số tiền" Property="@(c => c!.Amount.ToCurrency())" Align="DataGridCellAlignment.End" />
+    <PropertyColumn TGridItem="DisbursementDto" TProp="string" Title="Chưa phân bổ" Property="@(c => c!.UnallocatedAmount.ToCurrency())" Align="DataGridCellAlignment.End" />
+    <TemplateColumn TGridItem="DisbursementDto" Title="Trạng thái">
+        <FluentBadge Appearance="BadgeAppearance.Filled">@context.StatusName</FluentBadge>
+    </TemplateColumn>
+    <TemplateColumn TGridItem="DisbursementDto" Title="Thao tác" Context="item">
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem"
+                      @onclick="@(() => Navigation.NavigateTo($"/disbursements/view/{item.Id}"))" />
+    </TemplateColumn>
+</PaginatedTable>
+
+@code {
+    private PaginatedList<DisbursementDto>? page;
+    private readonly int pageSize = Models.Constants.PageSize;
+    private int currentPage = 1;
+    private bool isLoading;
+    private int requestVersion;
+    private string? searchTerm;
+
+    protected override Task OnInitializedAsync() => LoadData(1);
+
+    private Task LoadPageAsync(int pageNumber)
+    {
+        currentPage = pageNumber;
+        return LoadData(pageNumber);
+    }
+
+    private Task SearchAsync()
+    {
+        currentPage = 1;
+        return LoadData(1);
+    }
+
+    private Task OnSearchKey(KeyboardEventArgs e) => e.Key == "Enter" ? SearchAsync() : Task.CompletedTask;
+
+    private async Task LoadData(int pageNumber)
+    {
+        var version = ++requestVersion;
+        isLoading = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize));
+            if (version == requestVersion && result.Succeeded)
+                page = result.Value;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+        }
+    }
+}
