@@ -1,0 +1,199 @@
+@page "/"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Common.Interfaces
+@using Microsoft.EntityFrameworkCore
+@inject IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+<PageTitle>Dashboard</PageTitle>
+<ActionTitle Text="Dashboard" />
+
+@if (!loaded)
+{
+    <PageLoading />
+}
+else
+{
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" Style="margin-bottom: 16px; flex-wrap: wrap;">
+        <FluentCard Style="min-width: 180px;">
+            <FluentLabel>Bán trong tuần</FluentLabel>
+            <div style="font-size: 1.4rem; font-weight: 600;">@salesWeek.ToCurrency()</div>
+        </FluentCard>
+        <FluentCard Style="min-width: 180px;">
+            <FluentLabel>Bán trong tháng</FluentLabel>
+            <div style="font-size: 1.4rem; font-weight: 600;">@salesMonth.ToCurrency()</div>
+        </FluentCard>
+        <FluentCard Style="min-width: 180px;">
+            <FluentLabel>Phải thu tới hạn</FluentLabel>
+            <div style="font-size: 1.4rem; font-weight: 600;">@receivableDue.ToCurrency()</div>
+        </FluentCard>
+        <FluentCard Style="min-width: 180px;">
+            <FluentLabel>Phải trả tới hạn</FluentLabel>
+            <div style="font-size: 1.4rem; font-weight: 600;">@payableDue.ToCurrency()</div>
+        </FluentCard>
+    </FluentStack>
+
+    <h3>Tồn cao</h3>
+    <FluentMessageBar Intent="MessageBarIntent.Warning" Style="margin-bottom: 8px;">
+        Kho có tồn từ 5 lần tồn tối thiểu trở lên được xem là tồn cao.
+    </FluentMessageBar>
+    @if (highStock.Count == 0)
+    {
+        <p>Không có kho nào tồn cao.</p>
+    }
+    else
+    {
+        <FluentDataGrid Items="@highStock.AsQueryable()">
+            <PropertyColumn Title="Kho" Property="@(c => c.Warehouse)" />
+            <PropertyColumn Title="Sản phẩm" Property="@(c => c.Product)" />
+            <PropertyColumn Title="Tồn" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Tồn tối thiểu" Property="@(c => c.MinQty.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Vượt" Property="@(c => c.Ratio.ToString("0.#") + " lần")" Align="DataGridCellAlignment.End" />
+        </FluentDataGrid>
+    }
+
+    <h3 style="margin-top: 20px;">Đề xuất bổ sung</h3>
+    <FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 8px;">
+        Tồn dưới mức tối thiểu. Ưu tiên điều chuyển từ kho thừa, không đủ thì đề xuất mua mới.
+    </FluentMessageBar>
+    @if (replenish.Count == 0)
+    {
+        <p>Không có sản phẩm dưới tồn tối thiểu.</p>
+    }
+    else
+    {
+        <FluentDataGrid Items="@replenish.AsQueryable()">
+            <PropertyColumn Title="Kho thiếu" Property="@(c => c.Warehouse)" />
+            <PropertyColumn Title="Sản phẩm" Property="@(c => c.Product)" />
+            <PropertyColumn Title="Tồn" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Thiếu" Property="@(c => c.Shortage.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <TemplateColumn Title="Đề xuất">
+                <FluentBadge Appearance="BadgeAppearance.Filled">@context.Action</FluentBadge>
+                <span style="margin-left: 8px;">@context.Detail</span>
+            </TemplateColumn>
+        </FluentDataGrid>
+    }
+
+    <h3 style="margin-top: 20px;">Công nợ tới hạn</h3>
+    <FluentDataGrid Items="@dues.AsQueryable()">
+        <PropertyColumn Title="Loại" Property="@(c => c.Kind)" />
+        <PropertyColumn Title="Số chứng từ" Property="@(c => c.Number)" />
+        <PropertyColumn Title="Đối tác" Property="@(c => c.Partner)" />
+        <PropertyColumn Title="Hạn" Property="@(c => c.DueDate.ToDateString())" />
+        <PropertyColumn Title="Còn nợ" Property="@(c => c.Balance.ToCurrency())" Align="DataGridCellAlignment.End" />
+        <TemplateColumn Title="Trạng thái">
+            <FluentBadge Appearance="BadgeAppearance.Filled">@context.State</FluentBadge>
+        </TemplateColumn>
+    </FluentDataGrid>
+
+    <h3 style="margin-top: 20px;">Top sản phẩm bán chạy trong tháng</h3>
+    @if (topProducts.Count == 0)
+    {
+        <p>Tháng này chưa có hóa đơn đã phát hành.</p>
+    }
+    else
+    {
+        <FluentDataGrid Items="@topProducts.AsQueryable()">
+            <PropertyColumn Title="Mã" Property="@(c => c.Sku)" />
+            <PropertyColumn Title="Sản phẩm" Property="@(c => c.Name)" />
+            <PropertyColumn Title="Số lượng" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Doanh số" Property="@(c => c.Amount.ToCurrency())" Align="DataGridCellAlignment.End" />
+        </FluentDataGrid>
+    }
+}
+
+@code {
+    private bool loaded;
+    private decimal salesWeek;
+    private decimal salesMonth;
+    private decimal receivableDue;
+    private decimal payableDue;
+    private List<StockRow> highStock = [];
+    private List<ReplenishRow> replenish = [];
+    private List<DueRow> dues = [];
+    private List<TopRow> topProducts = [];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        await LoadAsync();
+        loaded = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadAsync()
+    {
+        var today = DateTime.Today;
+        var weekStart = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+        var monthStart = new DateTime(today.Year, today.Month, 1);
+        var dueLimit = today.AddDays(7);
+        var openInvoice = new[] { InvoiceStatus.Issued, InvoiceStatus.PartiallyPaid };
+        var countedInvoice = new[] { InvoiceStatus.Issued, InvoiceStatus.PartiallyPaid, InvoiceStatus.Paid };
+        var openBill = new[] { VendorBillStatus.Posted, VendorBillStatus.PartiallyPaid };
+
+        salesWeek = await UnitOfWork.Invoices.Query()
+            .Where(x => countedInvoice.Contains(x.Status) && x.IssueDate >= weekStart && x.IssueDate <= today)
+            .SumAsync(x => (decimal?)x.Total) ?? 0;
+        salesMonth = await UnitOfWork.Invoices.Query()
+            .Where(x => countedInvoice.Contains(x.Status) && x.IssueDate >= monthStart && x.IssueDate <= today)
+            .SumAsync(x => (decimal?)x.Total) ?? 0;
+
+        var balances = await UnitOfWork.StockBalances.Query()
+            .Where(x => x.MinQty > 0)
+            .Select(x => new BalanceRow(x.ProductId, x.Product.Sku + " - " + x.Product.Name, x.WarehouseId, x.Warehouse.Code + " - " + x.Warehouse.Name, x.Qty, x.MinQty))
+            .ToListAsync();
+
+        highStock = balances.Where(x => x.Qty >= x.MinQty * 5)
+            .OrderByDescending(x => x.Qty / x.MinQty)
+            .Select(x => new StockRow(x.Warehouse, x.Product, x.Qty, x.MinQty, x.Qty / x.MinQty))
+            .ToList();
+
+        replenish = balances.Where(x => x.Qty < x.MinQty)
+            .Select(x => Suggest(x, balances))
+            .OrderByDescending(x => x.Shortage)
+            .ToList();
+
+        var receivableRows = await UnitOfWork.Invoices.Query()
+            .Where(x => openInvoice.Contains(x.Status) && x.DueDate != null && x.DueDate <= dueLimit && x.Total > x.PaidAmount)
+            .OrderBy(x => x.DueDate)
+            .Select(x => new DueRow("Phải thu", x.Number, x.Partner.Name, x.DueDate!.Value, x.Total - x.PaidAmount, x.DueDate < today ? "Quá hạn" : "Tới hạn"))
+            .ToListAsync();
+        var payableRows = await UnitOfWork.VendorBills.Query()
+            .Where(x => openBill.Contains(x.Status) && x.DueDate != null && x.DueDate <= dueLimit && x.Total > x.PaidAmount)
+            .OrderBy(x => x.DueDate)
+            .Select(x => new DueRow("Phải trả", x.Number, x.Partner.Name, x.DueDate!.Value, x.Total - x.PaidAmount, x.DueDate < today ? "Quá hạn" : "Tới hạn"))
+            .ToListAsync();
+        dues = receivableRows.Concat(payableRows).OrderBy(x => x.DueDate).ToList();
+        receivableDue = receivableRows.Sum(x => x.Balance);
+        payableDue = payableRows.Sum(x => x.Balance);
+
+        topProducts = await UnitOfWork.InvoiceLines.Query()
+            .Where(x => countedInvoice.Contains(x.Invoice.Status) && x.Invoice.IssueDate >= monthStart && x.Invoice.IssueDate <= today)
+            .GroupBy(x => new { x.ProductId, x.Product.Sku, x.Product.Name })
+            .Select(g => new TopRow(g.Key.Sku, g.Key.Name, g.Sum(x => x.Qty), g.Sum(x => x.LineTotal)))
+            .OrderByDescending(x => x.Qty)
+            .Take(5)
+            .ToListAsync();
+    }
+
+    private static ReplenishRow Suggest(BalanceRow row, List<BalanceRow> all)
+    {
+        var shortage = row.MinQty - row.Qty;
+        var source = all.Where(x => x.ProductId == row.ProductId && x.WarehouseId != row.WarehouseId && x.Qty > x.MinQty)
+            .OrderByDescending(x => x.Qty - x.MinQty)
+            .FirstOrDefault();
+        var excess = source is null ? 0 : source.Qty - source.MinQty;
+        if (source is not null && excess >= shortage)
+            return new ReplenishRow(row.Warehouse, row.Product, row.Qty, shortage, "Điều chuyển", $"Lấy {shortage.ToDisplay()} từ {source.Warehouse}");
+        if (source is not null && excess > 0)
+            return new ReplenishRow(row.Warehouse, row.Product, row.Qty, shortage, "Điều chuyển + mua", $"Chuyển {excess.ToDisplay()} từ {source.Warehouse}, mua thêm {(shortage - excess).ToDisplay()}");
+        return new ReplenishRow(row.Warehouse, row.Product, row.Qty, shortage, "Mua mới", $"Không có kho thừa. Mua {shortage.ToDisplay()}");
+    }
+
+    private sealed record BalanceRow(Guid ProductId, string Product, Guid WarehouseId, string Warehouse, decimal Qty, decimal MinQty);
+    private sealed record StockRow(string Warehouse, string Product, decimal Qty, decimal MinQty, decimal Ratio);
+    private sealed record ReplenishRow(string Warehouse, string Product, decimal Qty, decimal Shortage, string Action, string Detail);
+    private sealed record DueRow(string Kind, string Number, string Partner, DateTime DueDate, decimal Balance, string State);
+    private sealed record TopRow(string Sku, string Name, decimal Qty, decimal Amount);
+}
