@@ -1,0 +1,103 @@
+@page "/invoices/view/{Id}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Invoices
+@inject IInvoiceService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Hóa đơn</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="@dto.Number" />
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="32" Style="margin-bottom: 12px;">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <DetailItem Label="Khách hàng" Value="@dto.PartnerName" />
+            <DetailItem Label="Đơn bán" Value="@dto.SalesOrderNumber" />
+            <DetailItem Label="Ngày" Value="@dto.IssueDate.ToDateString()" />
+            <DetailItem Label="Hạn thanh toán" Value="@dto.DueDate.ToDateString()" />
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <DetailItem Label="Trạng thái" Value="@dto.StatusName" />
+            <DetailItem Label="Tổng" Value="@dto.Total.ToCurrency()" />
+            <DetailItem Label="Đã thu" Value="@dto.PaidAmount.ToCurrency()" />
+            <DetailItem Label="Còn nợ" Value="@dto.Balance.ToCurrency()" />
+        </FluentStack>
+    </FluentStack>
+
+    <FluentDataGrid Items="@dto.Lines.AsQueryable()">
+        <PropertyColumn Title="Mã SP" Property="@(c => c.ProductSku)" />
+        <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductName)" />
+        <PropertyColumn Title="Số lượng" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Đơn giá" Property="@(c => c.UnitPrice.ToCurrency())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Thành tiền" Property="@(c => c.LineTotal.ToCurrency())" Align="DataGridCellAlignment.End" />
+    </FluentDataGrid>
+
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 16px;">
+        @if (dto.Status == InvoiceStatus.Draft)
+        {
+            <FluentButton Appearance="ButtonAppearance.Primary" Loading="busy" OnClick="IssueAsync">Phát hành</FluentButton>
+        }
+        @if (dto.Status is InvoiceStatus.Issued or InvoiceStatus.PartiallyPaid)
+        {
+            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo($"/payments/create?invoiceId={dto.Id}"))">Thu tiền</FluentButton>
+        }
+        @if (dto.Status != InvoiceStatus.Cancelled && dto.PaidAmount == 0)
+        {
+            <FluentButton Appearance="ButtonAppearance.Outline" Loading="busy" OnClick="CancelAsync">Hủy hóa đơn</FluentButton>
+        }
+        <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/invoices/list"))">Danh sách</FluentButton>
+    </FluentStack>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+
+    private InvoiceDto? dto;
+    private Alert? alert;
+    private bool busy;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await Service.GetByIdAsync(Id.ToGuid());
+        dto = result.Succeeded ? result.Value : null;
+        if (dto is null)
+            alert?.AddAlertError("Không tìm thấy hóa đơn.");
+    }
+
+    private async Task IssueAsync()
+    {
+        busy = true;
+        var result = await Service.IssueAsync(Id.ToGuid());
+        busy = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không phát hành được.");
+            return;
+        }
+        await LoadAsync();
+    }
+
+    private async Task CancelAsync()
+    {
+        busy = true;
+        var result = await Service.CancelAsync(Id.ToGuid());
+        busy = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không hủy được hóa đơn.");
+            return;
+        }
+        await LoadAsync();
+    }
+}

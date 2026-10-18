@@ -1,0 +1,69 @@
+@page "/hr/leave-requests/list"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.LeaveRequests
+@inject NavigationManager Navigation
+@inject ILeaveRequestService Service
+
+<PageTitle>Nghỉ phép</PageTitle>
+<ActionTitle Text="Đơn nghỉ phép" />
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
+    <FluentTextInput @bind-Value="searchTerm" Placeholder="Nhân viên, lý do" Style="width: 280px;" @onkeypress="OnSearchKey" />
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="SearchAsync">Tìm</FluentButton>
+    <FluentButton IconStart="@(new Icons.Regular.Size20.Add())" Appearance="ButtonAppearance.Primary"
+                  OnClick="@(() => Navigation.NavigateTo("/hr/leave-requests/create"))">Tạo đơn nghỉ</FluentButton>
+</FluentStack>
+
+<PaginatedTable TItem="LeaveRequestDto" Data="page" PageSize="pageSize"
+                GridTemplateColumns="1.4fr 1fr 1.4fr .7fr 2fr 1fr .8fr"
+                OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
+    <PropertyColumn TGridItem="LeaveRequestDto" TProp="string" Title="Nhân viên" Property="@(c => c!.EmployeeName)" />
+    <PropertyColumn TGridItem="LeaveRequestDto" TProp="string" Title="Loại" Property="@(c => c!.TypeName)" />
+    <PropertyColumn TGridItem="LeaveRequestDto" TProp="string" Title="Từ - đến" Property="@(c => $"{c!.FromDate.ToDateString()} - {c.ToDate.ToDateString()}")" />
+    <PropertyColumn TGridItem="LeaveRequestDto" TProp="string" Title="Số ngày" Property="@(c => c!.Days.ToDisplay())" Align="DataGridCellAlignment.End" />
+    <PropertyColumn TGridItem="LeaveRequestDto" TProp="string" Title="Lý do" Property="@(c => c!.Reason)" />
+    <TemplateColumn TGridItem="LeaveRequestDto" Title="Trạng thái">
+        <FluentBadge Appearance="BadgeAppearance.Filled">@context.StatusName</FluentBadge>
+    </TemplateColumn>
+    <TemplateColumn TGridItem="LeaveRequestDto" Title="Thao tác" Context="item">
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem"
+                      @onclick="@(() => Navigation.NavigateTo($"/hr/leave-requests/view/{item.Id}"))" />
+    </TemplateColumn>
+</PaginatedTable>
+
+@code {
+    private PaginatedList<LeaveRequestDto>? page;
+    private readonly int pageSize = Models.Constants.PageSize;
+    private int currentPage = 1;
+    private bool isLoading;
+    private int requestVersion;
+    private string? searchTerm;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadData(1);
+    }
+    private Task LoadPageAsync(int pageNumber) { currentPage = pageNumber; return LoadData(pageNumber); }
+    private Task SearchAsync() { currentPage = 1; return LoadData(1); }
+    private Task OnSearchKey(KeyboardEventArgs e) => e.Key == "Enter" ? SearchAsync() : Task.CompletedTask;
+
+    private async Task LoadData(int pageNumber)
+    {
+        var version = ++requestVersion;
+        isLoading = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize));
+            if (version == requestVersion && result.Succeeded)
+                page = result.Value;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+        }
+    }
+}

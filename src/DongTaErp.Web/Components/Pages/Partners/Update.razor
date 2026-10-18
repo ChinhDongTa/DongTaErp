@@ -10,7 +10,7 @@
 <Alert @ref="alertComponent" />
 @if (dto is null)
 {
-    <FluentSpinner />
+    <PageLoading />
 }
 else
 {
@@ -38,8 +38,11 @@ else
     UpdatePartnerDto? dto;
     private static readonly IReadOnlyList<PartnerType?> partnerTypes = Enum.GetValues<PartnerType>().Cast<PartnerType?>().ToList();
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender)
+            return;
+
         if(string.IsNullOrWhiteSpace(Id))
         {
             alertComponent?.AddAlertError("Id không hợp lệ.");

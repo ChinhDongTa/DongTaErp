@@ -1,0 +1,82 @@
+﻿@page "/hr/departments/update/{Id}"
+@using DongTaErp.Application.Services.Departments
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject IDepartmentService DepartmentService
+@inject NavigationManager Navigation
+
+<PageTitle> Cập nhật phòng</PageTitle>
+<ActionTitle Text="Cập nhật phòng" />
+ <Alert @ref="alertComponent" /> 
+ @if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <EditForm Model="dto" OnSubmit="SaveAsync" >
+        <DataAnnotationsValidator />
+        <FluentValidationSummary />
+        <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Left" VerticalGap="10" Style="margin:10px auto;">
+            <FluentTextInput @bind-Value="dto.Code" Label="Mã phòng ban" Placeholder="Nhập mã phòng ban" />
+            <FluentTextInput @bind-Value="dto.Name" Label="Tên phòng ban" Placeholder="Nhập tên phòng ban"  />
+            <FluentTextInput @bind-Value="dto.Note" Label="Ghi chú" Placeholder="Nhập ghi chú" class="text200" />
+            <FluentCheckbox @bind-Value="dto.IsActive" Label="Hoạt động" />
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/Hr/Departments/list" />
+        </FluentStack>
+    </EditForm>
+}
+ 
+ @code {
+    [Parameter] public required string Id{ get; set; }
+    private Alert? alertComponent;
+    private UpdateDepartmentDto? dto;
+    private bool isSaving;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        if (string.IsNullOrWhiteSpace(Id))
+        {
+            alertComponent?.AddAlertError("Id không hợp lệ.");
+        }
+        var result = await DepartmentService.GetUpdateByIdAsync(Id.ToGuid());
+        if (result.Succeeded && result.Value != null)
+        {
+            dto = result.Value;
+            //alertComponent?.AddAlert("Lấy dữ liệu thành công");
+        }
+        else
+        {
+            alertComponent?.AddAlertError("Không tìm thấy phòng.");
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        isSaving = true;
+        if (dto is null)
+        {
+            alertComponent?.AddAlertError("Dữ liệu không hợp lệ.");
+            return;
+        }
+        StateHasChanged();
+        await Task.Yield();
+
+        try
+        {
+            var result = await DepartmentService.UpdateAsync(Id.ToGuid(), dto);
+            if (!result.Succeeded)
+            {
+                alertComponent?.AddAlertError(result.Errors?.ToLine("--") ?? "Cập nhật phòng thất bại.");
+                return;
+            }
+            Navigation.NavigateTo($"/Hr/Departments/view/{Id}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

@@ -1,0 +1,40 @@
+﻿@* DetailItem.razor *@
+<div class="detail-item" style="@ItemStyle">
+    <span class="detail-item__label">@Label:</span>
+    <span class="detail-item__value">
+        @if (ChildContent is not null)
+        {
+            @ChildContent
+        }
+        else
+        {
+            @(string.IsNullOrWhiteSpace(Value) ? "-" : Value)
+        }
+    </span>
+</div>
+
+@code {
+    [Parameter]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Khoảng cách dưới mỗi dòng. Ví dụ: 4px, 0.5rem, 12px.
+    /// </summary>
+    [Parameter]
+    public string Spacing { get; set; } = "0.2rem";
+
+    /// <summary>
+    /// Khoảng cách giữa nhãn và giá trị trên cùng một dòng.
+    /// </summary>
+    [Parameter]
+    public string LabelGap { get; set; } = "0.8rem";
+
+    private string ItemStyle =>
+        $"margin-bottom:{Spacing};gap:{LabelGap};";
+}

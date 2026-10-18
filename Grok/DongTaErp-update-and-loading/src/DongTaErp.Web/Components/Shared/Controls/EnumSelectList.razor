@@ -1,0 +1,76 @@
+﻿@using DongTaErp.Application.Common.DTOs
+@using DongTaErp.Application.Extensions
+
+@if (HasError)
+{
+    <FluentLabel Style="color: var(--error);">@ErrorMessage</FluentLabel>
+}
+else if (Items.Count == 0)
+{
+    <FluentLabel>Không có dữ liệu</FluentLabel>
+}
+else
+{
+    <FluentSelect TOption="EnumItemDto" TValue="int?"
+                  Items="@Items"
+                  @bind-Value="Value"
+                  OptionValue="@(item => item.Value)"
+                  OptionText="@(item => item.Name)"
+                  Label="@Label"
+                  Required="@Required"
+                  Placeholder="@(string.IsNullOrEmpty(Placeholder) ? "Chọn..." : Placeholder)"
+                  Disabled="@Disabled"
+                  Style="@Style"
+                  Class="@Class"
+                  @attributes="AdditionalAttributes" />
+}
+
+@code {
+    [Parameter, EditorRequired] public string EnumName { get; set; } = string.Empty;
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+    private int? _value;
+    [Parameter]
+    public int? Value
+    {
+        get => _value;
+        set
+        {
+            if (_value == value) return;
+            _value = value;
+            _ = ValueChanged.InvokeAsync(value);
+        }
+    }
+    [Parameter] public EventCallback<int?> ValueChanged { get; set; }
+
+    private List<EnumItemDto> Items { get; set; } = [];
+    private bool HasError { get; set; }
+    private string? ErrorMessage { get; set; }
+    private string? loadedEnumName;
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrWhiteSpace(EnumName))
+        {
+            HasError = true;
+            ErrorMessage = "EnumName phải có giá trị.";
+            Items = [];
+            return;
+        }
+
+        HasError = false;
+        ErrorMessage = null;
+        if (string.Equals(loadedEnumName, EnumName, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Items = EnumExtensions.GetEnumItemDtos(EnumName).ToList();
+        loadedEnumName = EnumName;
+        StateHasChanged();
+    }
+}

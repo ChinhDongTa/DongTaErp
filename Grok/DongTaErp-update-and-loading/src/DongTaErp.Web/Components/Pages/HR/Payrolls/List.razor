@@ -1,0 +1,68 @@
+@page "/hr/payrolls/list"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Payrolls
+@inject NavigationManager Navigation
+@inject IPayrollService Service
+
+<PageTitle>Lương</PageTitle>
+<ActionTitle Text="Bảng lương" />
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
+    <FluentTextInput @bind-Value="searchTerm" Placeholder="Tên nhân viên" Style="width: 280px;" @onkeypress="OnSearchKey" />
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="SearchAsync">Tìm</FluentButton>
+    <FluentButton IconStart="@(new Icons.Regular.Size20.Add())" Appearance="ButtonAppearance.Primary"
+                  OnClick="@(() => Navigation.NavigateTo("/hr/payrolls/create"))">Tạo bảng lương</FluentButton>
+</FluentStack>
+
+<PaginatedTable TItem="PayrollDto" Data="page" PageSize="pageSize"
+                GridTemplateColumns="1.6fr 1.4fr 1fr 1fr 1fr .8fr"
+                OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
+    <PropertyColumn TGridItem="PayrollDto" TProp="string" Title="Nhân viên" Property="@(c => c!.EmployeeName)" />
+    <PropertyColumn TGridItem="PayrollDto" TProp="string" Title="Kỳ" Property="@(c => $"{c!.PeriodStartDate:dd/MM} - {c.PeriodEndDate:dd/MM/yyyy}")" />
+    <PropertyColumn TGridItem="PayrollDto" TProp="string" Title="Lương cơ bản" Property="@(c => c!.BaseSalary.ToCurrency())" Align="DataGridCellAlignment.End" />
+    <PropertyColumn TGridItem="PayrollDto" TProp="string" Title="Thực lãnh" Property="@(c => c!.NetAmount.ToCurrency())" Align="DataGridCellAlignment.End" />
+    <TemplateColumn TGridItem="PayrollDto" Title="Trạng thái">
+        <FluentBadge Appearance="BadgeAppearance.Filled">@context.PaymentStatusName</FluentBadge>
+    </TemplateColumn>
+    <TemplateColumn TGridItem="PayrollDto" Title="Thao tác" Context="item">
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem"
+                      @onclick="@(() => Navigation.NavigateTo($"/hr/payrolls/view/{item.Id}"))" />
+    </TemplateColumn>
+</PaginatedTable>
+
+@code {
+    private PaginatedList<PayrollDto>? page;
+    private readonly int pageSize = Models.Constants.PageSize;
+    private int currentPage = 1;
+    private bool isLoading;
+    private int requestVersion;
+    private string? searchTerm;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadData(1);
+    }
+    private Task LoadPageAsync(int pageNumber) { currentPage = pageNumber; return LoadData(pageNumber); }
+    private Task SearchAsync() { currentPage = 1; return LoadData(1); }
+    private Task OnSearchKey(KeyboardEventArgs e) => e.Key == "Enter" ? SearchAsync() : Task.CompletedTask;
+
+    private async Task LoadData(int pageNumber)
+    {
+        var version = ++requestVersion;
+        isLoading = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize));
+            if (version == requestVersion && result.Succeeded)
+                page = result.Value;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+        }
+    }
+}

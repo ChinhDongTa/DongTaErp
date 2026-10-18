@@ -9,7 +9,7 @@
  <Alert @ref="alertComponent" /> 
  @if (dto is null)
 {
-    <FluentSpinner />
+    <PageLoading />
 }
 else
 {
@@ -32,8 +32,11 @@ else
     private UpdateDepartmentDto? dto;
     private bool isSaving;
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender)
+            return;
+
         if (string.IsNullOrWhiteSpace(Id))
         {
             alertComponent?.AddAlertError("Id không hợp lệ.");

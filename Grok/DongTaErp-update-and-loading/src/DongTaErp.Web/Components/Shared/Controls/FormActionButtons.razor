@@ -1,0 +1,50 @@
+﻿@* FormActionButtons.razor *@
+<FluentStack Orientation="Orientation.Horizontal"
+             HorizontalGap="12"
+             HorizontalAlignment="HorizontalAlignment.Left"
+             Style="width:100%; margin-top:16px;">
+
+    <!-- Nút Lưu (Submit) -->
+    <FluentButton Type="ButtonType.Submit"
+                  Appearance="ButtonAppearance.Primary"
+                  Disabled="@IsSaving" Loading="@IsSaving">
+            @SaveText
+    </FluentButton>
+
+    <!-- Nút Hủy / Quay lại -->
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@OnCancelClick">
+        @CancelText
+    </FluentButton>
+</FluentStack>
+
+@code {
+    [Parameter]
+    public bool IsSaving { get; set; }
+
+    [Parameter]
+    public string SaveText { get; set; } = "Lưu";
+
+    [Parameter]
+    public string CancelText { get; set; } = "Quay lại danh sách";
+
+    [Parameter]
+    public string? CancelUrl { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    private async Task OnCancelClick()
+    {
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+        else if (!string.IsNullOrEmpty(CancelUrl))
+        {
+            Navigation.NavigateTo(CancelUrl);
+        }
+    }
+}

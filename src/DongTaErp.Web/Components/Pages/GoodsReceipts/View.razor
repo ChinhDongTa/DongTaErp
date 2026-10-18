@@ -9,7 +9,7 @@
 
 @if (dto is null)
 {
-    <FluentSpinner />
+    <PageLoading />
 }
 else
 {
@@ -58,7 +58,11 @@ else
     private Alert? alert;
     private bool busy;
 
-    protected override async Task OnParametersSetAsync() => await LoadAsync();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {

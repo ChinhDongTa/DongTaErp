@@ -9,7 +9,7 @@
 
 @if (dto is null)
 {
-    <FluentSpinner />
+    <PageLoading />
 }
 else
 {
@@ -39,8 +39,11 @@ else
     private UpdateWarehouseDto? dto;
     private bool isSaving;
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender)
+            return;
+
         var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
         if (result.Succeeded && result.Value is not null)
             dto = result.Value;

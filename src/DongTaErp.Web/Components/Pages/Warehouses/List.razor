@@ -52,7 +52,11 @@
     private int requestVersion;
     private string? searchTerm;
 
-    protected override Task OnInitializedAsync() => LoadData(1);
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadData(1);
+    }
 
     private Task LoadPageAsync(int page)
     {
@@ -73,8 +77,7 @@
     {
         var version = ++requestVersion;
         isLoading = true;
-        StateHasChanged();
-        await Task.Yield();
+      
 
         try
         {
@@ -88,6 +91,7 @@
         {
             if (version == requestVersion)
                 isLoading = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 }

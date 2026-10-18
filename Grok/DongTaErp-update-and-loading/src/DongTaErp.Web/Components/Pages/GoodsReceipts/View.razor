@@ -1,0 +1,100 @@
+@page "/goods-receipts/view/{Id}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.GoodsReceipts
+@inject IGoodsReceiptService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Phiếu nhập</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="@dto.Code" />
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="32" Style="margin-bottom: 12px;">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <DetailItem Label="Đơn mua" Value="@dto.PurchaseOrderNumber" />
+            <DetailItem Label="Kho nhập" Value="@dto.WarehouseName" />
+            <DetailItem Label="Ngày nhập" Value="@dto.ReceiptDate.ToDateString()" />
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <DetailItem Label="Trạng thái" Value="@dto.StatusName" />
+            <DetailItem Label="Chứng từ NCC" Value="@dto.SupplierRef" />
+            <DetailItem Label="Ghi chú" Value="@dto.Notes" />
+        </FluentStack>
+    </FluentStack>
+
+    <FluentDataGrid Items="@dto.Lines.AsQueryable()" Style="width: 100%;">
+        <PropertyColumn Title="Mã SP" Property="@(c => c.ProductSku)" />
+        <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductName)" />
+        <PropertyColumn Title="Số lượng" Property="@(c => c.Quantity.ToDisplay())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Ghi chú" Property="@(c => c.Note)" />
+    </FluentDataGrid>
+
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 16px;">
+        @if (dto.Status == GoodsReceiptStatus.Draft)
+        {
+            <FluentButton Appearance="ButtonAppearance.Primary" Loading="busy" OnClick="PostAsync">Ghi sổ</FluentButton>
+        }
+        @if (dto.Status == GoodsReceiptStatus.Posted)
+        {
+            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo("/vendor-bills/create"))">Tạo hóa đơn mua</FluentButton>
+        }
+        @if (dto.Status != GoodsReceiptStatus.Cancelled)
+        {
+            <FluentButton Appearance="ButtonAppearance.Outline" Loading="busy" OnClick="CancelAsync">Hủy phiếu</FluentButton>
+        }
+        <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/goods-receipts/list"))">Danh sách</FluentButton>
+    </FluentStack>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+
+    private GoodsReceiptDto? dto;
+    private Alert? alert;
+    private bool busy;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await Service.GetByIdAsync(Id.ToGuid());
+        dto = result.Succeeded ? result.Value : null;
+        if (dto is null)
+            alert?.AddAlertError("Không tìm thấy phiếu nhập.");
+    }
+
+    private async Task PostAsync()
+    {
+        busy = true;
+        var result = await Service.PostAsync(Id.ToGuid());
+        busy = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không ghi sổ được.");
+            return;
+        }
+        await LoadAsync();
+    }
+
+    private async Task CancelAsync()
+    {
+        busy = true;
+        var result = await Service.CancelAsync(Id.ToGuid());
+        busy = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không hủy được phiếu.");
+            return;
+        }
+        await LoadAsync();
+    }
+}

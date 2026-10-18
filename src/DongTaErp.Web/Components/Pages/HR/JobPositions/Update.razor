@@ -1,0 +1,65 @@
+@page "/hr/job-positions/update/{Id}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.JobPositions
+@inject IJobPositionService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Cập nhật chức vụ</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="Cập nhật chức vụ" />
+    <EditForm Model="dto" OnSubmit="SaveAsync">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 480px;">
+            <FluentTextInput @bind-Value="dto.Code" Label="Mã chức vụ" />
+            <FluentTextInput @bind-Value="dto.Name" Label="Tên chức vụ" />
+            <FluentCheckbox @bind-Value="isActive" Label="Đang dùng" Style="margin-top: 34px;" />
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/hr/job-positions/list" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private UpdateJobPositionDto? dto;
+    private bool isActive = true;
+    private bool isSaving;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
+        if (!result.Succeeded || result.Value is null)
+        {
+            alert?.AddAlertError("Không tìm thấy chức vụ.");
+            return;
+        }
+        dto = result.Value;
+        isActive = dto.IsActive ?? true;
+        StateHasChanged();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (dto is null)
+            return;
+        dto.IsActive = isActive;
+        isSaving = true;
+        var result = await Service.UpdateAsync(Id.ToGuid(), dto);
+        isSaving = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không cập nhật được.");
+            return;
+        }
+        Navigation.NavigateTo($"/hr/job-positions/view/{Id}");
+    }
+}

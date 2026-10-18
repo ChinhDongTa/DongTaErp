@@ -1,0 +1,27 @@
+<div class="page-loading" aria-busy="true">
+    <span class="page-loading-ring"></span>
+    <span>Đang tải...</span>
+</div>
+
+<style>
+    .page-loading {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 120px;
+        color: var(--neutral-foreground-hint);
+    }
+
+    .page-loading-ring {
+        width: 22px;
+        height: 22px;
+        border: 3px solid var(--neutral-stroke-rest);
+        border-top-color: var(--accent-fill-rest);
+        border-radius: 50%;
+        animation: page-loading-spin .7s linear infinite;
+    }
+
+    @@keyframes page-loading-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>

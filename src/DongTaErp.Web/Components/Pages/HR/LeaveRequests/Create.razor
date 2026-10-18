@@ -37,10 +37,10 @@
     private List<OptionItem> employees = [];
     private readonly List<TypeOption> types =
     [
-        new(LeaveType.Annual, "Nghỉ phép năm"),
-        new(LeaveType.Sick, "Nghỉ ốm"),
-        new(LeaveType.Unpaid, "Nghỉ không lương"),
-        new(LeaveType.Other, "Khác")
+        new(LeaveType.Annual, LeaveType.Annual.ToDisplayName()),
+        new(LeaveType.Sick, LeaveType.Sick.ToDisplayName()),
+        new(LeaveType.Unpaid, LeaveType.Unpaid.ToDisplayName()),
+        new(LeaveType.Other, LeaveType.Other.ToDisplayName())
     ];
 
     protected override async Task OnInitializedAsync()

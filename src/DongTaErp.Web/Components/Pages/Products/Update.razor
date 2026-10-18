@@ -12,7 +12,7 @@
 
 @if (dto is null)
 {
-    <FluentSpinner />
+    <PageLoading />
 }
 else
 {
@@ -42,8 +42,11 @@ else
     private List<CategoryOption> categories = [new("", "Không chọn")];
     private bool isSaving;
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender)
+            return;
+
         var items = await UnitOfWork.Categories.Query()
             .OrderBy(x => x.Name)
             .Select(x => new CategoryOption(x.Id.ToString(), x.Name))

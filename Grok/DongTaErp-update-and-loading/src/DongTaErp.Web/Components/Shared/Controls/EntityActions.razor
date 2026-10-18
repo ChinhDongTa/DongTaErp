@@ -1,0 +1,58 @@
+﻿@rendermode InteractiveServer
+@inject NavigationManager navigationManager
+<div class="entity-actions">
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Style="width:100%; margin-top:16px;">
+        <FluentButton IconStart="@(new Icons.Filled.Size16.Edit())" Appearance="ButtonAppearance.Primary" OnClick="UpdateClick">
+            Cập nhật
+        </FluentButton>
+
+        <FluentButton IconStart="@(new Icons.Filled.Size20.Add())" Appearance="ButtonAppearance.Subtle" OnClick="CreateClick">
+            Tạo mới
+        </FluentButton>
+
+        <FluentButton BackgroundColor="#dc3545" Color="#fff" Style="min-width: 100px;" IconStart="@(new Icons.Filled.Size20.Delete().WithColor("#fff"))" OnClick="OnDeleteClick">
+            Xóa
+        </FluentButton>
+
+        <FluentButton IconStart="@(new Icons.Filled.Size20.ArrowDownload())" Appearance="ButtonAppearance.Outline" OnClick="ExportClick">
+            Xuất file
+        </FluentButton>
+
+        <FluentButton IconStart="@(new Icons.Filled.Size20.ArrowLeft())" Appearance="ButtonAppearance.Outline" OnClick="BackClick">
+            Trở về danh sách
+        </FluentButton>
+    </FluentStack>
+</div>
+
+@code {
+    [Parameter] public required string EntityId { get; set; }
+    /// <summary>
+    /// Thư mục chứa các hành động (update, delete, create,...) của entity, ví dụ: "categories", "products", ...
+    /// </summary>
+    [Parameter] public required string Folder { get; set; }
+
+
+    [Parameter] public EventCallback OnDeleteClick { get; set; }
+    // [Parameter] public EventCallback OnCreateClick { get; set; }
+    // [Parameter] public EventCallback OnBackClick { get; set; }
+
+    private void UpdateClick()
+    {
+        navigationManager.NavigateTo($"{Folder}/Update/{EntityId}");
+    }
+
+    private void CreateClick()
+    {
+        navigationManager.NavigateTo($"{Folder}/Create");
+    }
+
+    private void BackClick()
+    {
+        navigationManager.NavigateTo($"{Folder}/List");
+    }
+
+    private void ExportClick()
+    {
+
+    }
+}

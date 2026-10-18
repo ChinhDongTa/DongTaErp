@@ -7,7 +7,7 @@
 <ActionTitle Text="Phòng ban" />
 @if (paginatedList is null)
 {
-    <FluentSpinner />
+    <PageLoading />
 }
 else
 {
@@ -30,14 +30,17 @@ else
     private int requestVersion;
     private readonly int pageSize = Models.Constants.PageSize;
     private int currentPage = 1;
-    protected override async Task OnInitializedAsync() => await LoadData(currentPage);
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadData(currentPage);
+    }
    
     private async Task LoadData(int page)
     {
         var version = ++requestVersion;
         isLoading = true;
-        StateHasChanged();
-        await Task.Yield();
+       
 
         try
         {
@@ -52,6 +55,7 @@ else
         {
             if (version == requestVersion)
                 isLoading = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 

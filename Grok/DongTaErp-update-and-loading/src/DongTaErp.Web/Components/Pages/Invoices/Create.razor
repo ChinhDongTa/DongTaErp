@@ -1,0 +1,193 @@
+@page "/invoices/create"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Common.Interfaces
+@using DongTaErp.Application.Services.Invoices
+@using Microsoft.EntityFrameworkCore
+@inject IInvoiceService Service
+@inject IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+<PageTitle>Tạo hóa đơn</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Tạo hóa đơn bán" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Chỉ xuất hóa đơn cho số đã xuất kho. Nháp chưa phát sinh công nợ. Phát hành mới thành phải thu.
+</FluentMessageBar>
+
+<EditForm Model="dto" OnSubmit="SaveDraftAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10">
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+            <FluentTextInput @bind-Value="dto.Number" Label="Số hóa đơn" Required="true" />
+            <FluentSelect TValue="string" TOption="OrderOption" Items="orders" OptionText="@(x => x.Label)" OptionValue="@(x => x.Id)"
+                          Value="orderId" ValueChanged="OnOrderChanged" Label="Đơn bán đã xác nhận" />
+            <FluentDatePicker @bind-Value="issueDate" Label="Ngày hóa đơn" />
+            <FluentDatePicker @bind-Value="dueDate" Label="Hạn thanh toán" />
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+            <DecimalInput @bind-Value="dto.TaxRate" Label="Thuế suất" Min="0" Max="1" TValue="decimal" />
+            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" style="width:600px"/>
+        </FluentStack>
+
+        <h4>Dòng hóa đơn</h4>
+        <FluentDataGrid Items="@lines.AsQueryable()" Style="width: 100%;" GridTemplateColumns="3fr 1fr 1fr 1fr 1fr 1fr 2fr">
+            <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductLabel)" />
+            <PropertyColumn Title="Đặt" Property="@(c => c.Ordered.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đã xuất" Property="@(c => c.Shipped.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đã xuất HĐ" Property="@(c => c.Invoiced.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <TemplateColumn Title="Số lượng" Context="qty">
+                <DecimalInput @bind-Value="qty.Qty" Min="0" TValue="decimal"  />
+            </TemplateColumn>
+            <TemplateColumn Title="Đơn giá" Context="price">
+                <DecimalInput @bind-Value="price.UnitPrice" Min="0" TValue="decimal" />
+            </TemplateColumn>
+            <TemplateColumn Title="Thành tiền" Align="DataGridCellAlignment.End" Context="total">
+                @((total.Qty * total.UnitPrice).ToCurrency())
+            </TemplateColumn>
+        </FluentDataGrid>
+
+        <div><strong>Tạm tính:</strong> @Total.ToCurrency()</div>
+
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+            <FluentButton Appearance="ButtonAppearance.Outline" Type="ButtonType.Submit" Loading="isSaving">Lưu nháp</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary" Loading="isSaving" OnClick="SaveAndIssueAsync">Lưu và phát hành</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/invoices/list"))">Hủy</FluentButton>
+        </FluentStack>
+    </FluentStack>
+</EditForm>
+
+@code {
+    private Alert? alert;
+    private readonly CreateInvoiceDto dto = new() { Number = "InV".GetRandomCode(), TaxRate = 0.08m };
+    private DateTime? issueDate = DateTime.Today;
+    private DateTime? dueDate = DateTime.Today.AddDays(30);
+    private string orderId = "";
+    private bool isSaving;
+    private List<OrderOption> orders = [];
+    private List<InvoiceLine> lines = [];
+    private decimal Total => lines.Sum(x => x.Qty * x.UnitPrice) * (1 + dto.TaxRate);
+
+    protected override async Task OnInitializedAsync()
+    {
+        orders = await UnitOfWork.SalesOrders.Query()
+            .Where(x => x.Status == SalesOrderStatus.Confirmed)
+            .OrderByDescending(x => x.OrderDate)
+            .Select(x => new OrderOption(x.Id.ToString(), $"{x.Number} - {x.Partner.Name}"))
+            .ToListAsync();
+        if (orders.Count > 0)
+            await OnOrderChanged(orders[0].Id);
+    }
+
+    private async Task OnOrderChanged(string value)
+    {
+        orderId = value;
+        if (!Guid.TryParse(value, out var id))
+            return;
+
+        var orderLines = await UnitOfWork.SalesOrderLines.Query()
+            .Where(x => x.SalesOrderId == id)
+            .Select(x => new { x.Id, x.Product.Sku, x.Product.Name, x.Qty, x.UnitPrice })
+            .ToListAsync();
+        var lineIds = orderLines.Select(x => x.Id).ToList();
+
+        var shipped = await UnitOfWork.GoodsIssueLines.Query()
+            .Where(x => lineIds.Contains(x.SalesOrderLineId) && x.GoodsIssue.Status == GoodsIssueStatus.Posted)
+            .GroupBy(x => x.SalesOrderLineId)
+            .Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Quantity) })
+            .ToListAsync();
+
+        var invoiced = await UnitOfWork.InvoiceLines.Query()
+            .Where(x => lineIds.Contains(x.SalesOrderLineId) && x.Invoice.Status != InvoiceStatus.Draft && x.Invoice.Status != InvoiceStatus.Cancelled)
+            .GroupBy(x => x.SalesOrderLineId)
+            .Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Qty) })
+            .ToListAsync();
+
+        lines = orderLines.Select(x =>
+        {
+            var shippedQty = shipped.FirstOrDefault(s => s.LineId == x.Id)?.Qty ?? 0;
+            var invoicedQty = invoiced.FirstOrDefault(s => s.LineId == x.Id)?.Qty ?? 0;
+            return new InvoiceLine(x.Id, $"{x.Sku} - {x.Name}", x.Qty, shippedQty, invoicedQty, x.UnitPrice);
+        }).ToList();
+    }
+
+    private Task SaveDraftAsync() => SaveAsync(issue: false);
+
+    private Task SaveAndIssueAsync() => SaveAsync(issue: true);
+
+    private async Task SaveAsync(bool issue)
+    {
+        if (!Guid.TryParse(orderId, out var salesOrderId))
+        {
+            alert?.AddAlertError("Chọn đơn bán.");
+            return;
+        }
+
+        var selected = lines.Where(x => x.Qty > 0).ToList();
+        if (selected.Count == 0)
+        {
+            alert?.AddAlertError("Nhập số lượng ít nhất một dòng.");
+            return;
+        }
+        if (selected.Any(x => x.Qty > x.Shipped - x.Invoiced))
+        {
+            var qty= selected.Sum(x => x.Qty);
+            var s = selected.Sum(x => x.Shipped);
+            var si = selected.Sum(x => x.Invoiced);
+            var te = $"Soluong: {qty},Shipped={s}, Invoi={si} ";
+            alert?.AddAlertError($"Số lượng hóa đơn vượt số đã xuất kho còn lại.{te}");
+            return;
+        }
+
+        dto.SalesOrderId = salesOrderId;
+        dto.IssueDate = issueDate ?? DateTime.Today;
+        dto.DueDate = dueDate;
+        dto.Lines = selected.Select(x => new CreateInvoiceLineDto
+        {
+            SalesOrderLineId = x.SalesOrderLineId,
+            Qty = x.Qty,
+            UnitPrice = x.UnitPrice
+        }).ToList();
+
+        isSaving = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var created = await Service.CreateAsync(dto);
+            if (!created.Succeeded || string.IsNullOrEmpty(created.Value))
+            {
+                alert?.AddAlertError(created.Errors?.FirstOrDefault() ?? "Không tạo được hóa đơn.");
+                return;
+            }
+
+            if (issue && Guid.TryParse(created.Value, out var id))
+            {
+                var issued = await Service.IssueAsync(id);
+                if (!issued.Succeeded)
+                {
+                    alert?.AddAlertError(issued.Errors?.FirstOrDefault() ?? "Đã lưu nháp nhưng chưa phát hành.");
+                    Navigation.NavigateTo($"/invoices/view/{created.Value}");
+                    return;
+                }
+            }
+
+            Navigation.NavigateTo($"/invoices/view/{created.Value}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private sealed record OrderOption(string Id, string Label);
+    private sealed class InvoiceLine(Guid salesOrderLineId, string productLabel, decimal ordered, decimal shipped, decimal invoiced, decimal unitPrice)
+    {
+        public Guid SalesOrderLineId { get; } = salesOrderLineId;
+        public string ProductLabel { get; } = productLabel;
+        public decimal Ordered { get; } = ordered;
+        public decimal Shipped { get; } = shipped;
+        public decimal Invoiced { get; } = invoiced;
+        public decimal Qty { get; set; }
+        public decimal UnitPrice { get; set; } = unitPrice;
+    }
+}

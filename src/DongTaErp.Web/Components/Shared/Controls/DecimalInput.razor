@@ -22,15 +22,26 @@
 </FluentTextInput>
 
 @code {
+    /// <summary>Giá trị. Hỗ trợ decimal và decimal?.</summary>
     [Parameter] public TValue? Value { get; set; }
+
     [Parameter] public EventCallback<TValue?> ValueChanged { get; set; }
+
     [Parameter] public string? Label { get; set; }
+
     [Parameter] public string? Placeholder { get; set; }
+
     [Parameter] public string? Style { get; set; }
+
+    /// <summary>Đơn vị hiển thị sau số: đ, cái, kg, m, gram...</summary>
     [Parameter] public string? Unit { get; set; }
+
     [Parameter] public bool Required { get; set; }
+
     [Parameter] public bool Disabled { get; set; }
+
     [Parameter] public decimal? Min { get; set; }
+
     [Parameter] public decimal? Max { get; set; }
 
     private string displayValue = "";

@@ -6,7 +6,7 @@
 
 <PageTitle>Sản phẩm</PageTitle>
 <ActionTitle Text="Sản phẩm" />
-@if (page is null)
+@if (page is null || page.Items.Count==0)
 {
     <FluentSpinner  />
 }
@@ -46,7 +46,11 @@ else
     private int requestVersion;
     private string? searchTerm; 
 
-    protected override Task OnInitializedAsync() => LoadData(1);
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadData(1);
+    }
 
     private Task LoadPageAsync(int pageNumber)
     {
@@ -66,8 +70,6 @@ else
     {
         var version = ++requestVersion;
         isLoading = true;
-        StateHasChanged();
-        await Task.Yield();
         try
         {
             var result = await Service.SearchAsync(searchTerm, pageNumber, pageSize);
@@ -78,6 +80,7 @@ else
         {
             if (version == requestVersion)
                 isLoading = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 }

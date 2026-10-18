@@ -1,0 +1,141 @@
+﻿
+<div class="alerts-container" role="status" aria-live="polite">
+    @foreach (var alert in _alerts)
+    {
+        <div class="alert-item" style="margin-bottom: 12px;">
+            <FluentCard Style="@($"border-left: 4px solid {GetBorderColor(alert.Type)}; padding: 12px;")">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                    <div style="flex: 1;">
+                        <FluentLabel Color="@GetColor(alert.Type)" Typo="Typography.H5">
+                            <span style="margin-right: 8px;">@GetIcon(alert.Type)</span>
+                            @alert.Message
+                        </FluentLabel>
+                    </div>
+                    <FluentButton Appearance="ButtonAppearance.Subtle"
+                                  OnClick="@(() => RemoveAlert(alert.Id))"
+                                  Title="Đóng"
+                                  Style="flex-shrink: 0;">
+                        ✕
+                    </FluentButton>
+                </div>
+            </FluentCard>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Mô tả một alert item nội bộ
+    /// </summary>
+    private class AlertItem
+    {
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public string Message { get; set; } = string.Empty;
+        public AlertType Type { get; set; } = AlertType.Success;
+        public int? DismissMs { get; set; } // null = không auto-dismiss
+    }
+
+    private List<AlertItem> _alerts = new();
+
+    /// <summary>
+    /// Thêm alert mới vào danh sách hiển thị
+    /// </summary>
+    /// <param name="message">Nội dung alert</param>
+    /// <param name="type">Loại alert (Success, Error, Warning, Info)</param>
+    /// <param name="dismissMs">Thời gian auto-dismiss (ms), null = không auto-dismiss</param>
+    public void AddAlert(string message, AlertType type = AlertType.Success, int? dismissMs = null)
+    {
+        var alert = new AlertItem
+        {
+            Message = message,
+            Type = type,
+            DismissMs = dismissMs
+        };
+
+        _alerts.Add(alert);
+        StateHasChanged();
+
+        // Auto-dismiss sau thời gian cấu hình
+        if (dismissMs.HasValue && dismissMs.Value > 0)
+        {
+            _ = Task.Delay(dismissMs.Value).ContinueWith(_ => RemoveAlert(alert.Id));
+        }
+    }
+
+    public void AddAlertError(string message, int? dismissMs = 5000)
+    {
+        var alert = new AlertItem
+        {
+            Message = message,
+            Type = AlertType.Error,
+            DismissMs = dismissMs
+        };
+
+        _alerts.Add(alert);
+        StateHasChanged();
+
+        // Auto-dismiss sau thời gian cấu hình
+        if (dismissMs.HasValue && dismissMs.Value > 0)
+        {
+            _ = Task.Delay(dismissMs.Value).ContinueWith(_ => RemoveAlert(alert.Id));
+        }
+    }
+
+    /// <summary>
+    /// Xóa alert theo ID
+    /// </summary>
+    public void RemoveAlert(Guid id)
+    {
+        _alerts.RemoveAll(a => a.Id == id);
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Xóa tất cả alerts
+    /// </summary>
+    public void ClearAll()
+    {
+        _alerts.Clear();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Lấy icon dựa trên loại alert
+    /// </summary>
+    private string GetIcon(AlertType type) => type switch
+    {
+        AlertType.Error => "❌",
+        AlertType.Warning => "⚠️",
+        AlertType.Info => "ℹ️",
+        _ => "✅"
+    };
+
+    /// <summary>
+    /// Lấy màu FluentUI dựa trên loại alert
+    /// </summary>
+    private Color GetColor(AlertType type) => type switch
+    {
+        AlertType.Error => Color.Error,
+        AlertType.Warning => Color.Warning,
+        AlertType.Info => Color.Info,
+        _ => Color.Success
+    };
+
+    /// <summary>
+    /// Lấy màu border dựa trên loại alert
+    /// </summary>
+    private string GetBorderColor(AlertType type) => type switch
+    {
+        AlertType.Error => "#d13438",
+        AlertType.Warning => "#f7630c",
+        AlertType.Info => "#0078d4",
+        _ => "#107c10"
+    };
+    public enum AlertType
+    {
+        Success = 0,
+        Warning = 1,
+        Error = 2,
+        Info = 3,
+    }
+}

@@ -43,7 +43,11 @@
     private int requestVersion;
     private string? searchTerm;
 
-    protected override Task OnInitializedAsync() => LoadData(1);
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadData(1);
+    }
 
     private Task LoadPageAsync(int pageNumber)
     {
@@ -63,8 +67,6 @@
     {
         var version = ++requestVersion;
         isLoading = true;
-        StateHasChanged();
-        await Task.Yield();
         try
         {
             var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize));
@@ -75,6 +77,8 @@
         {
             if (version == requestVersion)
                 isLoading = false;
+            await InvokeAsync(StateHasChanged);
         }
+
     }
 }

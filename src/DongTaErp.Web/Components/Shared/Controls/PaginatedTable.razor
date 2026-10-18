@@ -1,20 +1,23 @@
 ﻿@using DongTaErp.Application.Common.Models
 @typeparam TItem
 
+<div class="paginated-table">
     <FluentDataGrid TGridItem="TItem"
-                    ShowHover="Hover"
                     Loading="IsLoading"
                     Items="@itemsQuery"
-                    GridTemplateColumns="@GridTemplateColumns">
+                    GridTemplateColumns="@GridTemplateColumns"
+                    Style="width: 100%; height: auto; flex: none;">
         @ChildContent
     </FluentDataGrid>
 
     @if (ShouldShowPaginator)
     {
-    <div class="pager-host">
-            <FluentPaginator State="@PState" CurrentPageIndexChanged="HandlePageChanged" />
-    </div>
+        <div class="pager-host">
+            <FluentPaginator State="@PState" Class="my-paginator"
+                             CurrentPageIndexChanged="HandlePageChanged" />
+        </div>
     }
+</div>
 
 @code {
     private readonly PaginationState PState = new();
@@ -31,7 +34,6 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public string? GridTemplateColumns { get; set; }
     [Parameter] public bool IsLoading { get; set; }
-    [Parameter] public bool Hover { get; set; } = true;
 
     private bool ShouldShowPaginator => Data is not null && Data.TotalCount > PageSize;
 
