@@ -7,6 +7,10 @@
 
 <PageTitle>Hóa đơn mua</PageTitle>
 <ActionTitle Text="Hóa đơn mua" />
+@if (Due == "1")
+{
+    <FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">Đang xem phải trả tới hạn trong 7 ngày.</FluentMessageBar>
+}
 
 <FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
     Chỉ ghi nhận công nợ cho số đã nhập kho. Nháp chưa thành phải trả.
@@ -46,6 +50,7 @@
     private bool isLoading;
     private int requestVersion;
     private string? searchTerm;
+    [SupplyParameterFromQuery(Name = "due")] public string? Due { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -74,7 +79,7 @@
        
         try
         {
-            var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize));
+            var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize), Due == "1");
             if (version == requestVersion && result.Succeeded)
                 page = result.Value;
         }

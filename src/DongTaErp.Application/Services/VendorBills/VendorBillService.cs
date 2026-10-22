@@ -20,11 +20,18 @@ public class VendorBillService
         _logger = logger;
     }
 
-    public async Task<Result<PaginatedList<VendorBillDto>>> SearchAsync(SimpleSearch search, CancellationToken ct = default)
+    public async Task<Result<PaginatedList<VendorBillDto>>> SearchAsync(SimpleSearch search, bool dueOnly = false, CancellationToken ct = default)
     {
         try
         {
             var query = _unitOfWork.VendorBills.Query();
+            if (dueOnly)
+            {
+                var today = DateTime.Today;
+                var dueLimit = today.AddDays(7);
+                var open = new[] { VendorBillStatus.Posted, VendorBillStatus.PartiallyPaid };
+                query = query.Where(x => open.Contains(x.Status) && x.DueDate != null && x.DueDate <= dueLimit && x.Total > x.PaidAmount);
+            }
             if (!string.IsNullOrWhiteSpace(search.SearchTerm))
             {
                 var term = $"%{search.SearchTerm.ToLower()}%";

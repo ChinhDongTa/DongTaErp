@@ -20,11 +20,37 @@ public class InvoiceService
         _logger = logger;
     }
 
-    public async Task<Result<PaginatedList<InvoiceDto>>> SearchAsync(SimpleSearch search, CancellationToken ct = default)
+    public override async Task<Result<string>> CreateAsync(CreateInvoiceDto dto, CancellationToken ct = default)
+    {
+        var number = dto.Number.Trim();
+        var exists = await _unitOfWork.Invoices.Query().AnyAsync(x => x.Number == number, ct);
+        if (exists)
+            return Result<string>.Error($"Số hóa đơn {number} đã tồn tại.");
+        return await base.CreateAsync(dto, ct);
+    }
+
+    public async Task<Result<PaginatedList<InvoiceDto>>> SearchAsync(SimpleSearch search, string? range = null, bool dueOnly = false, CancellationToken ct = default)
     {
         try
         {
             var query = _unitOfWork.Invoices.Query();
+            var today = DateTime.Today;
+            if (range == "week")
+            {
+                var weekStart = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+                query = query.Where(x => x.IssueDate >= weekStart && x.IssueDate <= today);
+            }
+            else if (range == "month")
+            {
+                var monthStart = new DateTime(today.Year, today.Month, 1);
+                query = query.Where(x => x.IssueDate >= monthStart && x.IssueDate <= today);
+            }
+            if (dueOnly)
+            {
+                var dueLimit = today.AddDays(7);
+                var open = new[] { InvoiceStatus.Issued, InvoiceStatus.PartiallyPaid };
+                query = query.Where(x => open.Contains(x.Status) && x.DueDate != null && x.DueDate <= dueLimit && x.Total > x.PaidAmount);
+            }
             if (!string.IsNullOrWhiteSpace(search.SearchTerm))
             {
                 var term = $"%{search.SearchTerm.ToLower()}%";

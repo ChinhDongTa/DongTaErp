@@ -7,6 +7,10 @@
 
 <PageTitle>Hóa đơn</PageTitle>
 <ActionTitle Text="Hóa đơn bán" />
+@if (!string.IsNullOrWhiteSpace(filterText))
+{
+    <FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">@filterText</FluentMessageBar>
+}
 
 <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
     <FluentTextInput @bind-Value="searchTerm" Placeholder="Số hóa đơn, khách, đơn bán" Style="width: 300px;" @onkeypress="OnSearchKey" />
@@ -42,6 +46,14 @@
     private bool isLoading;
     private int requestVersion;
     private string? searchTerm;
+    [SupplyParameterFromQuery(Name = "range")] public string? Range { get; set; }
+    [SupplyParameterFromQuery(Name = "due")] public string? Due { get; set; }
+    private string? filterText => Range switch
+    {
+        "week" => "Đang xem hóa đơn bán trong tuần.",
+        "month" => "Đang xem hóa đơn bán trong tháng.",
+        _ => Due == "1" ? "Đang xem phải thu tới hạn trong 7 ngày." : null
+    };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -70,7 +82,7 @@
        
         try
         {
-            var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize));
+            var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize), Range, Due == "1");
             if (version == requestVersion && result.Succeeded)
                 page = result.Value;
         }
