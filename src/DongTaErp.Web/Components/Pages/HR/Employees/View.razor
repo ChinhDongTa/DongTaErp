@@ -31,6 +31,7 @@ else
     <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 16px;">
         <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo("/hr/leave-requests/create"))">Tạo đơn nghỉ</FluentButton>
         <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo("/hr/payrolls/create"))">Tạo bảng lương</FluentButton>
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo($"/hr/employees/update/{dto.Id}"))">Sửa</FluentButton>
         <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/hr/employees/list"))">Danh sách</FluentButton>
     </FluentStack>
 }

@@ -1,0 +1,87 @@
+@page "/disbursements/update/{Id}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Disbursements
+@inject IDisbursementService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Cập nhật phiếu chi</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="Cập nhật phiếu chi" />
+    <FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+        Chỉ sửa được phiếu đang nháp. Phân bổ hóa đơn không đổi ở màn này.
+    </FluentMessageBar>
+    <EditForm Model="dto" OnSubmit="SaveAsync">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 520px;">
+            <FluentTextInput @bind-Value="dto.Number" Label="Số phiếu" />
+            <FluentDatePicker @bind-Value="paidAt" Label="Ngày chi" />
+            <DecimalInput @bind-Value="amount" Label="Số tiền" Min="0" TValue="decimal" Unit="đ" />
+            <FluentSelect TOption="MethodOption" TValue="PaymentMethod" Items="methods" OptionText="@(x => x.Name)" OptionValue="@(x => x.Value)"
+                          @bind-Value="method" Label="Hình thức" />
+            <FluentTextInput @bind-Value="dto.ReferenceNumber" Label="Số tham chiếu" />
+            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" />
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/disbursements/list" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private UpdateDisbursementDto? dto;
+    private DateTime? paidAt;
+    private decimal amount;
+    private PaymentMethod method = PaymentMethod.BankTransfer;
+    private bool isSaving;
+    private readonly List<MethodOption> methods =
+    [
+        new(PaymentMethod.Cash, "Tiền mặt"),
+        new(PaymentMethod.BankTransfer, "Chuyển khoản"),
+        new(PaymentMethod.Card, "Thẻ"),
+        new(PaymentMethod.Other, "Khác")
+    ];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
+        if (!result.Succeeded || result.Value is null)
+        {
+            alert?.AddAlertError("Không tìm thấy phiếu chi.");
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+        dto = result.Value;
+        paidAt = dto.PaidAt;
+        amount = dto.Amount ?? 0;
+        method = dto.Method ?? PaymentMethod.BankTransfer;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (dto is null)
+            return;
+        dto.PaidAt = paidAt;
+        dto.Amount = amount;
+        dto.Method = method;
+        isSaving = true;
+        var result = await Service.UpdateAsync(Id.ToGuid(), dto);
+        isSaving = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không cập nhật được. Chỉ sửa phiếu nháp.");
+            return;
+        }
+        Navigation.NavigateTo($"/disbursements/view/{Id}");
+    }
+
+    private sealed record MethodOption(PaymentMethod Value, string Name);
+}

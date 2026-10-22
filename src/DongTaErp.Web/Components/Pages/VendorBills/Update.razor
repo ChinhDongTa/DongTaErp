@@ -1,0 +1,77 @@
+@page "/vendor-bills/update/{Id}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.VendorBills
+@inject IVendorBillService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Cập nhật hóa đơn mua</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="Cập nhật hóa đơn mua" />
+    <FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+        Chỉ sửa được hóa đơn đang nháp. Dòng hàng không đổi ở màn này.
+    </FluentMessageBar>
+    <EditForm Model="dto" OnSubmit="SaveAsync">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 520px;">
+            <FluentTextInput @bind-Value="dto.Number" Label="Số hóa đơn" />
+            <FluentTextInput @bind-Value="dto.SupplierNumber" Label="Số chứng từ NCC" />
+            <FluentDatePicker @bind-Value="billDate" Label="Ngày hóa đơn" />
+            <FluentDatePicker @bind-Value="dueDate" Label="Hạn thanh toán" />
+            <DecimalInput @bind-Value="taxRate" Label="Thuế suất" Min="0" Max="1" TValue="decimal" />
+            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" />
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/vendor-bills/list" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private UpdateVendorBillDto? dto;
+    private DateTime? billDate;
+    private DateTime? dueDate;
+    private decimal taxRate;
+    private bool isSaving;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
+        if (!result.Succeeded || result.Value is null)
+        {
+            alert?.AddAlertError("Không tìm thấy hóa đơn mua.");
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+        dto = result.Value;
+        billDate = dto.BillDate;
+        dueDate = dto.DueDate;
+        taxRate = dto.TaxRate ?? 0;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (dto is null)
+            return;
+        dto.BillDate = billDate;
+        dto.DueDate = dueDate;
+        dto.TaxRate = taxRate;
+        isSaving = true;
+        var result = await Service.UpdateAsync(Id.ToGuid(), dto);
+        isSaving = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không cập nhật được. Chỉ sửa hóa đơn nháp.");
+            return;
+        }
+        Navigation.NavigateTo($"/vendor-bills/view/{Id}");
+    }
+}

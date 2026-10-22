@@ -1,0 +1,207 @@
+@page "/goods-issues/create"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Common.Interfaces
+@using DongTaErp.Application.Services.GoodsIssues
+@using Microsoft.EntityFrameworkCore
+@inject IGoodsIssueService Service
+@inject IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+<PageTitle>Tạo phiếu xuất</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Tạo phiếu xuất kho" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Kho trên đơn chỉ là kho đề xuất. Kho xuất thật chọn trên phiếu. Ghi sổ mới trừ tồn. Hóa đơn chỉ lấy số đã ghi sổ.
+</FluentMessageBar>
+
+<EditForm Model="dto" OnSubmit="SaveDraftAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 960px;">
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+            <FluentTextInput @bind-Value="dto.Code" Label="Mã phiếu" Required="true" Style="width: 180px;" />
+            <FluentSelect TOption="OrderOption" TValue="string" Items="orders" OptionText="@(x => x.Label)" OptionValue="@(x => x.Id)"
+                          Value="orderId" ValueChanged="OnOrderChanged" Label="Đơn bán đã xác nhận" Style="min-width: 300px;" />
+            <FluentSelect TOption="WarehouseOption" TValue="string" Items="warehouses" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                          Value="warehouseId" ValueChanged="OnWarehouseChanged" Label="Kho xuất" Style="min-width: 240px;" />
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+            <FluentDatePicker @bind-Value="issueDate" Label="Ngày xuất" />
+            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" Style="width: 420px;" />
+        </FluentStack>
+
+        <h4>Dòng xuất</h4>
+        <FluentDataGrid Items="@lines.AsQueryable()" Style="width: 100%;">
+            <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductLabel)" />
+            <PropertyColumn Title="Đặt" Property="@(c => c.Ordered.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đã xuất" Property="@(c => c.Issued.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Còn xuất" Property="@(c => c.Remaining.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Tồn kho này" Property="@(c => c.Stock.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <TemplateColumn Title="Xuất lần này" Context="line">
+                <DecimalInput @bind-Value="line.Quantity" Min="0" TValue="decimal" Style="width: 120px;" />
+            </TemplateColumn>
+        </FluentDataGrid>
+
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+            <FluentButton Appearance="ButtonAppearance.Outline" Type="ButtonType.Submit" Loading="isSaving">Lưu nháp</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary" Loading="isSaving" OnClick="SaveAndPostAsync">Lưu và ghi sổ</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/goods-issues/list"))">Hủy</FluentButton>
+        </FluentStack>
+    </FluentStack>
+</EditForm>
+
+@code {
+    private Alert? alert;
+    private readonly CreateGoodsIssueDto dto = new() { Code = "GI".GetRandomCode() };
+    private DateTime? issueDate = DateTime.Today;
+    private string orderId = "";
+    private string warehouseId = "";
+    private bool isSaving;
+    private List<OrderOption> orders = [];
+    private List<WarehouseOption> warehouses = [];
+    private List<IssueLine> lines = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        orders = await UnitOfWork.SalesOrders.Query()
+            .Where(x => x.Status == SalesOrderStatus.Confirmed)
+            .OrderByDescending(x => x.OrderDate)
+            .Select(x => new OrderOption(x.Id.ToString(), $"{x.Number} - {x.Partner.Name}", x.WarehouseId.ToString()))
+            .ToListAsync();
+        warehouses = await UnitOfWork.Warehouses.Query()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.Code)
+            .Select(x => new WarehouseOption(x.Id.ToString(), $"{x.Code} - {x.Name}"))
+            .ToListAsync();
+        if (orders.Count > 0)
+            await OnOrderChanged(orders[0].Id);
+    }
+
+    private async Task OnOrderChanged(string value)
+    {
+        orderId = value;
+        var order = orders.FirstOrDefault(x => x.Id == value);
+        if (order is null)
+            return;
+        warehouseId = order.WarehouseId;
+        await LoadLinesAsync();
+    }
+
+    private async Task OnWarehouseChanged(string value)
+    {
+        warehouseId = value;
+        await LoadStockAsync();
+    }
+
+    private async Task LoadLinesAsync()
+    {
+        if (!Guid.TryParse(orderId, out var id))
+            return;
+
+        var orderLines = await UnitOfWork.SalesOrderLines.Query()
+            .Where(x => x.SalesOrderId == id)
+            .Select(x => new { x.Id, x.ProductId, x.Product.Sku, x.Product.Name, x.Qty })
+            .ToListAsync();
+        var lineIds = orderLines.Select(x => x.Id).ToList();
+        var issued = await UnitOfWork.GoodsIssueLines.Query()
+            .Where(x => lineIds.Contains(x.SalesOrderLineId) && x.GoodsIssue.Status == GoodsIssueStatus.Posted)
+            .GroupBy(x => x.SalesOrderLineId)
+            .Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Quantity) })
+            .ToListAsync();
+
+        lines = orderLines.Select(x =>
+        {
+            var done = issued.FirstOrDefault(r => r.LineId == x.Id)?.Qty ?? 0;
+            var remaining = Math.Max(0, x.Qty - done);
+            return new IssueLine(x.Id, x.ProductId, $"{x.Sku} - {x.Name}", x.Qty, done, remaining);
+        }).ToList();
+        await LoadStockAsync();
+    }
+
+    private async Task LoadStockAsync()
+    {
+        if (!Guid.TryParse(warehouseId, out var whId) || lines.Count == 0)
+            return;
+
+        var productIds = lines.Select(x => x.ProductId).ToList();
+        var stocks = await UnitOfWork.StockBalances.Query()
+            .Where(x => x.WarehouseId == whId && productIds.Contains(x.ProductId))
+            .Select(x => new { x.ProductId, x.Qty })
+            .ToListAsync();
+        foreach (var line in lines)
+            line.Stock = stocks.FirstOrDefault(x => x.ProductId == line.ProductId)?.Qty ?? 0;
+    }
+
+    private Task SaveDraftAsync() => SaveAsync(post: false);
+
+    private Task SaveAndPostAsync() => SaveAsync(post: true);
+
+    private async Task SaveAsync(bool post)
+    {
+        if (!Guid.TryParse(orderId, out var soId) || !Guid.TryParse(warehouseId, out var whId))
+        {
+            alert?.AddAlertError("Chọn đơn bán và kho xuất.");
+            return;
+        }
+
+        var selected = lines.Where(x => x.Quantity > 0).ToList();
+        if (selected.Count == 0)
+        {
+            alert?.AddAlertError("Nhập số lượng ít nhất một dòng.");
+            return;
+        }
+        if (selected.Any(x => x.Quantity > x.Remaining))
+        {
+            alert?.AddAlertError("Số xuất vượt số còn lại của dòng đơn.");
+            return;
+        }
+        if (post && selected.Any(x => x.Quantity > x.Stock))
+        {
+            alert?.AddAlertError("Kho xuất không đủ tồn. Đổi kho hoặc giảm số lượng.");
+            return;
+        }
+
+        dto.SalesOrderId = soId;
+        dto.WarehouseId = whId;
+        dto.IssueDate = issueDate ?? DateTime.Today;
+        dto.Lines = selected.Select(x => new CreateGoodsIssueLineDto
+        {
+            SalesOrderLineId = x.SalesOrderLineId,
+            Quantity = x.Quantity
+        }).ToList();
+
+        isSaving = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var created = post
+                ? await Service.CreateAndPostAsync(dto)
+                : await Service.CreateAsync(dto);
+            if (!created.Succeeded || string.IsNullOrEmpty(created.Value))
+            {
+                alert?.AddAlertError(created.Errors?.FirstOrDefault() ?? "Không tạo được phiếu xuất.");
+                return;
+            }
+
+            Navigation.NavigateTo($"/goods-issues/view/{created.Value}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private sealed record OrderOption(string Id, string Label, string WarehouseId);
+    private sealed record WarehouseOption(string Id, string Name);
+    private sealed class IssueLine(Guid salesOrderLineId, Guid productId, string productLabel, decimal ordered, decimal issued, decimal remaining)
+    {
+        public Guid SalesOrderLineId { get; } = salesOrderLineId;
+        public Guid ProductId { get; } = productId;
+        public string ProductLabel { get; } = productLabel;
+        public decimal Ordered { get; } = ordered;
+        public decimal Issued { get; } = issued;
+        public decimal Remaining { get; } = remaining;
+        public decimal Stock { get; set; }
+        public decimal Quantity { get; set; } = remaining;
+    }
+}

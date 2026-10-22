@@ -1,0 +1,75 @@
+﻿@page "/hr/departments/list"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Departments
+@inject IDepartmentService DepartmentService
+@inject NavigationManager Navigation
+
+<ActionTitle Text="Phòng ban" />
+@if (paginatedList is null)
+{
+    <PageLoading />
+}
+else
+{
+    <PaginatedTable  TItem="DepartmentDto" Data="paginatedList" PageSize="pageSize" GridTemplateColumns="2fr 1fr 3fr 1fr 2fr" OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
+        <PropertyColumn TGridItem="DepartmentDto" TProp="string" Title="Name" Property="@(c => c!.Name)" Align="DataGridCellAlignment.Start" />
+        <PropertyColumn TGridItem="DepartmentDto" TProp="string" Title="Code" Property="@(c => c!.Code)" Align="DataGridCellAlignment.Start" />
+        <PropertyColumn TGridItem="DepartmentDto" TProp="string" Title="Note" Property="@(c => c!.Note)" Align="DataGridCellAlignment.Start" />
+        <PropertyColumn TGridItem="DepartmentDto" TProp="bool" Title="Type" Property="@(c => c!.IsActive)" Align="DataGridCellAlignment.Center" />
+
+        <TemplateColumn TGridItem="DepartmentDto" Context="item" Title="Actions">
+            <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem" @onclick="@(() => ViewHandler(item.Id))" />
+            <FluentButton IconStart="@(new Icons.Regular.Size20.Edit())" Appearance="ButtonAppearance.Primary" Title="Sửa" @onclick="@(() => EditHandler(item.Id))" />
+        </TemplateColumn>
+    </PaginatedTable> 
+}
+@code {
+    //IQueryable<DepartmentDto>? query;
+    private PaginatedList<DepartmentDto>? paginatedList;
+    bool isLoading = false;
+    private int requestVersion;
+    private readonly int pageSize = Models.Constants.PageSize;
+    private int currentPage = 1;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadData(currentPage);
+    }
+   
+    private async Task LoadData(int page)
+    {
+        var version = ++requestVersion;
+        isLoading = true;
+       
+
+        try
+        {
+            var result = await DepartmentService.GetAllAsync(1, 20);
+            if (version != requestVersion)
+                return;
+
+            if (result.Succeeded && result.Value is not null)
+                paginatedList = result.Value;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ViewHandler(Guid id) => Navigation.NavigateTo($"/hr/departments/view/{id}");
+
+    private void EditHandler(Guid id)
+    {
+        Navigation.NavigateTo($"/hr/departments/update/{id}");
+    }
+
+    private Task LoadPageAsync(int page)
+    {
+        currentPage = page;
+        return LoadData(page);
+    }
+} 
+

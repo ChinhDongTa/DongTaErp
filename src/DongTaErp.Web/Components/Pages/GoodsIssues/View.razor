@@ -47,6 +47,10 @@ else
         {
             <FluentButton Appearance="ButtonAppearance.Outline" Loading="busy" OnClick="CancelAsync">Hủy phiếu</FluentButton>
         }
+        @if (dto.Status == GoodsIssueStatus.Draft)
+        {
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo($"/goods-issues/update/{dto.Id}"))">Sửa</FluentButton>
+        }
         <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/goods-issues/list"))">Danh sách</FluentButton>
     </FluentStack>
 }

@@ -1,0 +1,68 @@
+@page "/hr/job-positions/list"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.JobPositions
+@inject NavigationManager Navigation
+@inject IJobPositionService Service
+
+<PageTitle>Chức vụ</PageTitle>
+<ActionTitle Text="Chức vụ" />
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
+    <FluentTextInput @bind-Value="searchTerm" Placeholder="Mã, tên chức vụ" Style="width: 280px;" @onkeypress="OnSearchKey" />
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="SearchAsync">Tìm</FluentButton>
+    <FluentButton IconStart="@(new Icons.Regular.Size20.Add())" Appearance="ButtonAppearance.Primary"
+                  OnClick="@(() => Navigation.NavigateTo("/hr/job-positions/create"))">Tạo chức vụ</FluentButton>
+</FluentStack>
+
+<PaginatedTable TItem="JobPositionDto" Data="page" PageSize="pageSize"
+                GridTemplateColumns="1fr 2fr 1fr .8fr"
+                OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
+    <PropertyColumn TGridItem="JobPositionDto" TProp="string" Title="Mã" Property="@(c => c!.Code)" />
+    <PropertyColumn TGridItem="JobPositionDto" TProp="string" Title="Tên" Property="@(c => c!.Name)" />
+    <TemplateColumn TGridItem="JobPositionDto" Title="Trạng thái">
+        <FluentBadge Appearance="BadgeAppearance.Filled">@(context.IsActive ? "Đang dùng" : "Ngừng")</FluentBadge>
+    </TemplateColumn>
+    <TemplateColumn TGridItem="JobPositionDto" Title="Thao tác" Context="item">
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem"
+                      @onclick="@(() => Navigation.NavigateTo($"/hr/job-positions/view/{item.Id}"))" />
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Edit())" Appearance="ButtonAppearance.Primary" Title="Sửa"
+                      @onclick="@(() => Navigation.NavigateTo($"/hr/job-positions/update/{item.Id}"))" />
+    </TemplateColumn>
+</PaginatedTable>
+
+@code {
+    private PaginatedList<JobPositionDto>? page;
+    private readonly int pageSize = Models.Constants.PageSize;
+    private int currentPage = 1;
+    private bool isLoading;
+    private int requestVersion;
+    private string? searchTerm;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadData(1);
+    }
+    private Task LoadPageAsync(int pageNumber) { currentPage = pageNumber; return LoadData(pageNumber); }
+    private Task SearchAsync() { currentPage = 1; return LoadData(1); }
+    private Task OnSearchKey(KeyboardEventArgs e) => e.Key == "Enter" ? SearchAsync() : Task.CompletedTask;
+
+    private async Task LoadData(int pageNumber)
+    {
+        var version = ++requestVersion;
+        isLoading = true;
+        
+        try
+        {
+            var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize));
+            if (version == requestVersion && result.Succeeded)
+                page = result.Value;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}

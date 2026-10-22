@@ -1,0 +1,101 @@
+@page "/products/view/{Id}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Common.Interfaces
+@using DongTaErp.Application.Services.Products
+@using Microsoft.EntityFrameworkCore
+@inject IProductService Service
+@inject IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+<PageTitle>Chi tiết sản phẩm</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="@dto.Name" />
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="32">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <DetailItem Label="Mã" Value="@dto.Sku" />
+            <DetailItem Label="Danh mục" Value="@dto.CategoryName" />
+            <DetailItem Label="Đơn vị" Value="@dto.Unit" />
+            <DetailItem Label="Trạng thái" Value="@(dto.IsActive ? "Đang kinh doanh" : "Ngưng")" />
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <DetailItem Label="Giá vốn" Value="@dto.CostPrice.ToString("N0")" />
+            <DetailItem Label="Giá bán" Value="@dto.SalePrice.ToString("N0")" />
+            <DetailItem Label="Tồn tối thiểu" Value="@dto.MinStock.ToString("N0")" />
+        </FluentStack>
+    </FluentStack>
+
+    <h4 style="margin-top: 16px;">Tồn theo kho</h4>
+    <FluentDataGrid Items="@stocks" Style="width: 100%;">
+        <PropertyColumn Title="Kho" Property="@(c => c.WarehouseName)" />
+        <PropertyColumn Title="Tồn" Property="@(c => c.Qty)" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Tối thiểu" Property="@(c => c.MinQty)" Align="DataGridCellAlignment.End" />
+    </FluentDataGrid>
+
+    <EntityActions EntityId="@Id" Folder="/products" OnDeleteClick="OpenDelete" />
+}
+
+<FluentDialog @bind-Hidden="hideDelete" Modal="true" Title="Xóa sản phẩm">
+    <p>Ngưng sử dụng @dto?.Name?</p>
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+        <FluentButton Appearance="ButtonAppearance.Primary" Loading="busy" OnClick="ConfirmDeleteAsync">Xóa</FluentButton>
+        <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => hideDelete = true)">Hủy</FluentButton>
+    </FluentStack>
+</FluentDialog>
+
+@code {
+    [Parameter] public required string Id { get; set; }
+
+    private ProductDto? dto;
+    private IQueryable<StockBalanceDto> stocks = Array.Empty<StockBalanceDto>().AsQueryable();
+    private Alert? alert;
+    private bool hideDelete = true;
+    private bool busy;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var result = await Service.GetByIdAsync(Id.ToGuid());
+        dto = result.Succeeded ? result.Value : null;
+        if (dto is null)
+        {
+            alert?.AddAlertError("Không tìm thấy sản phẩm.");
+            return;
+        }
+
+        stocks = UnitOfWork.StockBalances.Query()
+            .Where(x => x.ProductId == dto.Id)
+            .OrderBy(x => x.Warehouse.Code)
+            .Select(x => new StockBalanceDto
+            {
+                Id = x.Id,
+                ProductSku = x.Product.Sku,
+                ProductName = x.Product.Name,
+                WarehouseName = x.Warehouse.Name,
+                Qty = x.Qty,
+                MinQty = x.MinQty,
+                CreatedAt = x.Created
+            });
+    }
+
+    private void OpenDelete() => hideDelete = false;
+
+    private async Task ConfirmDeleteAsync()
+    {
+        busy = true;
+        var result = await Service.SoftDeleteAsync(Id.ToGuid());
+        busy = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không xóa được.");
+            return;
+        }
+
+        Navigation.NavigateTo("/products/list");
+    }
+}

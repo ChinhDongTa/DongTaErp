@@ -1,0 +1,54 @@
+@page "/warehouses/create"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Warehouses
+@inject NavigationManager Navigation
+@inject IWarehouseService Service
+
+<PageTitle>Tạo kho</PageTitle>
+<Alert @ref="alertComponent" />
+<ActionTitle Text="Tạo kho" />
+
+<EditForm Model="dto" OnSubmit="SaveAsync" Style="@(isSaving ? "opacity:.6; pointer-events:none;" : null)">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="width:100%; max-width:640px; margin:10px auto;">
+        <FluentTextInput @bind-Value="dto.Code" Label="Mã kho" Required="true" MaxLength="30" />
+        <FluentTextInput @bind-Value="dto.Name" Label="Tên kho" Required="true" MaxLength="160" />
+        <FluentSelect TOption="WarehouseType" TValue="WarehouseType" Items="types"
+                      OptionText="@(t => t.ToDisplayName())" @bind-Value="dto.Type" Label="Loại kho" />
+        <FluentTextInput @bind-Value="dto.CountryCode" Label="Quốc gia (ISO 2 ký tự)" MaxLength="2" />
+        <FluentTextInput @bind-Value="dto.City" Label="Thành phố" MaxLength="80" />
+        <FluentTextInput @bind-Value="dto.Address" Label="Địa chỉ" MaxLength="300" />
+        <FluentTextInput @bind-Value="dto.TimeZone" Label="Múi giờ" MaxLength="64" />
+        <FluentCheckbox @bind-Value="dto.IsDefault" Label="Kho mặc định khi tạo đơn" />
+        <FluentCheckbox @bind-Value="dto.IsActive" Label="Đang hoạt động" />
+        <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/warehouses/list" />
+    </FluentStack>
+</EditForm>
+
+@code {
+    private static readonly IReadOnlyList<WarehouseType> types = Enum.GetValues<WarehouseType>();
+    private Alert? alertComponent;
+    private readonly CreateWarehouseDto dto = new() { Code = "", Name = "" };
+    private bool isSaving;
+
+    private async Task SaveAsync()
+    {
+        isSaving = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var result = await Service.CreateAsync(dto);
+            if (!result.Succeeded || string.IsNullOrEmpty(result.Value))
+            {
+                alertComponent?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Tạo kho thất bại.");
+                return;
+            }
+
+            Navigation.NavigateTo($"/warehouses/view/{result.Value}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

@@ -50,6 +50,10 @@ else
         {
             <FluentButton Appearance="ButtonAppearance.Outline" Loading="busy" OnClick="CancelAsync">Hủy hóa đơn</FluentButton>
         }
+        @if (dto.Status == InvoiceStatus.Draft)
+        {
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo($"/invoices/update/{dto.Id}"))">Sửa</FluentButton>
+        }
         <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/invoices/list"))">Danh sách</FluentButton>
     </FluentStack>
 }

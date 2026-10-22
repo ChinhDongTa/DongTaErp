@@ -3,6 +3,7 @@ using System.Globalization;
 
 public static class DateFormats
 {
+
     public static string ToDateString(this DateTime value, CultureInfo? culture = null)
     {
         culture ??= CultureInfo.CurrentCulture;

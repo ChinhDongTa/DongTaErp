@@ -1,0 +1,39 @@
+@page "/hr/job-positions/view/{Id}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.JobPositions
+@inject IJobPositionService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Chức vụ</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="@dto.Name" />
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+        <DetailItem Label="Mã" Value="@dto.Code" />
+        <DetailItem Label="Tên" Value="@dto.Name" />
+        <DetailItem Label="Trạng thái" Value="@(dto.IsActive ? "Đang dùng" : "Ngừng")" />
+    </FluentStack>
+    <FluentButton Appearance="ButtonAppearance.Subtle" Style="margin-top: 16px;"
+                  <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo($"/hr/job-positions/update/{dto.Id}"))">Sửa</FluentButton>
+        OnClick="@(() => Navigation.NavigateTo("/hr/job-positions/list"))">Danh sách</FluentButton>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private JobPositionDto? dto;
+    private Alert? alert;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var result = await Service.GetByIdAsync(Id.ToGuid());
+        dto = result.Succeeded ? result.Value : null;
+        if (dto is null)
+            alert?.AddAlertError("Không tìm thấy chức vụ.");
+    }
+}

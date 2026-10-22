@@ -1,0 +1,87 @@
+@page "/vendor-bills/list"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.VendorBills
+@inject NavigationManager Navigation
+@inject IVendorBillService Service
+
+<PageTitle>Hóa đơn mua</PageTitle>
+<ActionTitle Text="Hóa đơn mua" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Chỉ ghi nhận công nợ cho số đã nhập kho. Nháp chưa thành phải trả.
+</FluentMessageBar>
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
+    <FluentTextInput @bind-Value="searchTerm" Placeholder="Số HĐ, nhà cung cấp, đơn mua" Style="width: 300px;" @onkeypress="OnSearchKey" />
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="SearchAsync">Tìm</FluentButton>
+    <FluentButton IconStart="@(new Icons.Regular.Size20.Add())" Appearance="ButtonAppearance.Primary"
+                  OnClick="@(() => Navigation.NavigateTo("/vendor-bills/create"))">Tạo hóa đơn mua</FluentButton>
+</FluentStack>
+
+<PaginatedTable TItem="VendorBillDto" Data="page" PageSize="pageSize"
+                GridTemplateColumns="1fr 1.4fr 1fr 1fr 1fr 1fr 1fr .8fr"
+                OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
+    <PropertyColumn TGridItem="VendorBillDto" TProp="string" Title="Số HĐ" Property="@(c => c!.Number)" />
+    <PropertyColumn TGridItem="VendorBillDto" TProp="string" Title="Nhà cung cấp" Property="@(c => c!.PartnerName)" />
+    <PropertyColumn TGridItem="VendorBillDto" TProp="string" Title="Đơn mua" Property="@(c => c!.PurchaseOrderNumber)" />
+    <PropertyColumn TGridItem="VendorBillDto" TProp="string" Title="Ngày" Property="@(c => c!.BillDate.ToDateString())" />
+    <PropertyColumn TGridItem="VendorBillDto" TProp="string" Title="Tổng" Property="@(c => c!.Total.ToCurrency())" Align="DataGridCellAlignment.End" />
+    <PropertyColumn TGridItem="VendorBillDto" TProp="string" Title="Còn nợ" Property="@(c => c!.Balance.ToCurrency())" Align="DataGridCellAlignment.End" />
+    <TemplateColumn TGridItem="VendorBillDto" Title="Trạng thái">
+        <FluentBadge Appearance="BadgeAppearance.Filled">@context.StatusName</FluentBadge>
+    </TemplateColumn>
+    <TemplateColumn TGridItem="VendorBillDto" Title="Thao tác" Context="item">
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem"
+                      @onclick="@(() => Navigation.NavigateTo($"/vendor-bills/view/{item.Id}"))" />
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Edit())" Appearance="ButtonAppearance.Primary" Title="Sửa"
+                      @onclick="@(() => Navigation.NavigateTo($"/vendor-bills/update/{item.Id}"))" />
+    </TemplateColumn>
+</PaginatedTable>
+
+@code {
+    private PaginatedList<VendorBillDto>? page;
+    private readonly int pageSize = Models.Constants.PageSize;
+    private int currentPage = 1;
+    private bool isLoading;
+    private int requestVersion;
+    private string? searchTerm;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadData(1);
+    }
+
+    private Task LoadPageAsync(int pageNumber)
+    {
+        currentPage = pageNumber;
+        return LoadData(pageNumber);
+    }
+
+    private Task SearchAsync()
+    {
+        currentPage = 1;
+        return LoadData(1);
+    }
+
+    private Task OnSearchKey(KeyboardEventArgs e) => e.Key == "Enter" ? SearchAsync() : Task.CompletedTask;
+
+    private async Task LoadData(int pageNumber)
+    {
+        var version = ++requestVersion;
+        isLoading = true;
+       
+        try
+        {
+            var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize));
+            if (version == requestVersion && result.Succeeded)
+                page = result.Value;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}

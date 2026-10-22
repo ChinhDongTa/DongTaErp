@@ -32,6 +32,8 @@
     <TemplateColumn TGridItem="PaymentDto" Title="Thao tác" Context="item">
         <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem"
                       @onclick="@(() => Navigation.NavigateTo($"/payments/view/{item.Id}"))" />
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Edit())" Appearance="ButtonAppearance.Primary" Title="Sửa"
+                      @onclick="@(() => Navigation.NavigateTo($"/payments/update/{item.Id}"))" />
     </TemplateColumn>
 </PaginatedTable>
 

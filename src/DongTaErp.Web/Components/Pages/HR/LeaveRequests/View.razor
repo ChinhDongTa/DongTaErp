@@ -31,6 +31,10 @@ else
             <FluentButton Appearance="ButtonAppearance.Primary" Loading="busy" OnClick="ApproveAsync">Duyệt</FluentButton>
             <FluentButton Appearance="ButtonAppearance.Outline" Loading="busy" OnClick="RejectAsync">Từ chối</FluentButton>
         }
+        @if (dto.Status == LeaveStatus.Pending)
+        {
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo($"/hr/leave-requests/update/{dto.Id}"))">Sửa</FluentButton>
+        }
         <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/hr/leave-requests/list"))">Danh sách</FluentButton>
     </FluentStack>
 }

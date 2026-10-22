@@ -1,0 +1,107 @@
+@page "/hr/employees/update/{Id}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Common.Interfaces
+@using DongTaErp.Application.Services.Employees
+@using Microsoft.EntityFrameworkCore
+@inject IEmployeeService Service
+@inject IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+<PageTitle>Cập nhật nhân viên</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="Cập nhật nhân viên" />
+    <EditForm Model="dto" OnSubmit="SaveAsync">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 760px;">
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+                <FluentTextInput @bind-Value="dto.Code" Label="Mã" />
+                <FluentTextInput @bind-Value="dto.FullName" Label="Họ tên" Style="width: 280px;" />
+                <FluentTextInput @bind-Value="dto.IdentityNumber" Label="CCCD" />
+            </FluentStack>
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+                <FluentSelect TOption="OptionItem" TValue="string" Items="departments" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                              @bind-Value="departmentId" Label="Phòng ban" />
+                <FluentSelect TOption="OptionItem" TValue="string" Items="positions" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                              @bind-Value="positionId" Label="Chức vụ" />
+                <FluentSelect TOption="StatusOption" TValue="EmployeeStatus" Items="statuses" OptionText="@(x => x.Name)" OptionValue="@(x => x.Value)"
+                              @bind-Value="status" Label="Trạng thái" />
+            </FluentStack>
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+                <FluentTextInput @bind-Value="dto.Phone" Label="Điện thoại" />
+                <FluentTextInput @bind-Value="dto.Email" Label="Email" />
+                <FluentTextInput @bind-Value="dto.Address" Label="Địa chỉ" Style="width: 280px;" />
+            </FluentStack>
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/hr/employees/list" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private UpdateEmployeeDto? dto;
+    private string departmentId = "";
+    private string positionId = "";
+    private EmployeeStatus status = EmployeeStatus.Working;
+    private bool isSaving;
+    private List<OptionItem> departments = [];
+    private List<OptionItem> positions = [];
+    private readonly List<StatusOption> statuses =
+    [
+        new(EmployeeStatus.Probation, "Thử việc"),
+        new(EmployeeStatus.Working, "Đang làm việc"),
+        new(EmployeeStatus.OnLeave, "Đang nghỉ phép"),
+        new(EmployeeStatus.Resigned, "Đã nghỉ việc")
+    ];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        departments = await UnitOfWork.Departments.Query().OrderBy(x => x.Code)
+            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.Name}")).ToListAsync();
+        positions = await UnitOfWork.JobPositions.Query().OrderBy(x => x.Code)
+            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.Name}")).ToListAsync();
+
+        var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
+        if (!result.Succeeded || result.Value is null)
+        {
+            alert?.AddAlertError("Không tìm thấy nhân viên.");
+            StateHasChanged();
+            return;
+        }
+        dto = result.Value;
+        departmentId = dto.DepartmentId?.ToString() ?? "";
+        positionId = dto.PositionId?.ToString() ?? "";
+        status = dto.Status ?? EmployeeStatus.Working;
+        StateHasChanged();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (dto is null)
+            return;
+        dto.DepartmentId = Guid.TryParse(departmentId, out var dep) ? dep : null;
+        dto.PositionId = Guid.TryParse(positionId, out var pos) ? pos : null;
+        dto.Status = status;
+        isSaving = true;
+        var result = await Service.UpdateAsync(Id.ToGuid(), dto);
+        isSaving = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không cập nhật được.");
+            return;
+        }
+        Navigation.NavigateTo($"/hr/employees/view/{Id}");
+    }
+
+    private sealed record OptionItem(string Id, string Name);
+    private sealed record StatusOption(EmployeeStatus Value, string Name);
+}

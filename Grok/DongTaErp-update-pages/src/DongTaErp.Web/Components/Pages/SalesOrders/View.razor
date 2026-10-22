@@ -1,0 +1,126 @@
+@page "/sales-orders/view/{Id}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.SalesOrders
+@inject ISalesOrderService Service
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Đơn bán</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="@dto.Number" />
+    <FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+        Sản phẩm đã chọn trên đơn này. Kho đề xuất: @dto.WarehouseName. Xuất kho và hóa đơn làm sau khi xác nhận.
+    </FluentMessageBar>
+
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="32" Style="margin-bottom: 12px;">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <DetailItem Label="Khách hàng" Value="@dto.PartnerName" />
+            <DetailItem Label="Kho đề xuất" Value="@dto.WarehouseName" />
+            <DetailItem Label="Ngày" Value="@dto.OrderDate.ToDateString()" />
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <DetailItem Label="Trạng thái" Value="@dto.StatusName" />
+            <DetailItem Label="Tổng" Value="@dto.Total.ToCurrency()" />
+            <DetailItem Label="Ghi chú" Value="@dto.Notes" />
+        </FluentStack>
+    </FluentStack>
+
+    <FluentDataGrid Items="@dto.Lines.AsQueryable()" Style="width: 100%;">
+        <PropertyColumn Title="Mã SP" Property="@(c => c.ProductSku)" />
+        <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductName)" />
+        <PropertyColumn Title="Số lượng" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Đơn giá" Property="@(c => c.UnitPrice.ToCurrency())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Thành tiền" Property="@(c => c.LineTotal.ToCurrency())" Align="DataGridCellAlignment.End" />
+    </FluentDataGrid>
+
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 16px;">
+        @if (dto.Status == SalesOrderStatus.Draft)
+        {
+            <FluentButton Appearance="ButtonAppearance.Primary" Loading="busy" OnClick="ConfirmAsync">Xác nhận</FluentButton>
+        }
+        @if (dto.Status == SalesOrderStatus.Confirmed)
+        {
+            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo("/goods-issues/create"))">Tạo phiếu xuất</FluentButton>
+        }
+        @if (dto.Status != SalesOrderStatus.Cancelled)
+        {
+            <FluentButton Appearance="ButtonAppearance.Outline" Loading="busy" OnClick="CancelAsync">Hủy đơn</FluentButton>
+        }
+        @if (dto.Status == SalesOrderStatus.Draft)
+        {
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo($"/sales-orders/update/{dto.Id}"))">Sửa</FluentButton>
+        }
+        <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/sales-orders/list"))">Danh sách</FluentButton>
+    </FluentStack>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+
+    private SalesOrderDto? dto;
+    private Alert? alert;
+    private bool busy;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await Service.GetByIdAsync(Id.ToGuid());
+        dto = result.Succeeded ? result.Value : null;
+        if (dto is null)
+            alert?.AddAlertError("Không tìm thấy đơn bán.");
+    }
+
+    private async Task ConfirmAsync()
+    {
+        var dialog = await DialogService.ShowConfirmationAsync(
+            "Xác nhận đơn bán? Sau bước này mới được xuất kho.",
+            title: "Xác nhận đơn",
+            primaryButton: "Xác nhận",
+            secondaryButton: "Hủy");
+        if (dialog.Cancelled)
+            return;
+
+        busy = true;
+        var result = await Service.ConfirmAsync(Id.ToGuid());
+        busy = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không xác nhận được.");
+            return;
+        }
+        await LoadAsync();
+    }
+
+    private async Task CancelAsync()
+    {
+        var dialog = await DialogService.ShowConfirmationAsync(
+            "Hủy đơn bán này?",
+            title: "Hủy đơn",
+            primaryButton: "Hủy đơn",
+            secondaryButton: "Không");
+        if (dialog.Cancelled)
+            return;
+
+        busy = true;
+        var result = await Service.CancelAsync(Id.ToGuid());
+        busy = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không hủy được đơn.");
+            return;
+        }
+        await LoadAsync();
+    }
+}

@@ -15,91 +15,112 @@
 else
 {
     <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" Style="margin-bottom: 16px; flex-wrap: wrap;">
-        <FluentCard Style="min-width: 180px;" >
+        <FluentCard Style="min-width: 200px; flex: 1; background: #e8f4fd; border-left: 4px solid #0f6cbd;">
             <FluentLabel>Bán trong tuần</FluentLabel>
-            <div style="font-size: 1.4rem; font-weight: 600;">@salesWeek.ToCurrency()</div>
+            <div style="font-size: 1.4rem; font-weight: 600; color: #0f6cbd;">@salesWeek.ToCurrency()</div>
         </FluentCard>
-        <FluentCard Style="min-width: 180px;">
+        <FluentCard Style="min-width: 200px; flex: 1; background: #e6f4ea; border-left: 4px solid #107c10;">
             <FluentLabel>Bán trong tháng</FluentLabel>
-            <div style="font-size: 1.4rem; font-weight: 600;">@salesMonth.ToCurrency()</div>
+            <div style="font-size: 1.4rem; font-weight: 600; color: #107c10;">@salesMonth.ToCurrency()</div>
         </FluentCard>
-        <FluentCard Style="min-width: 180px;">
+        <FluentCard Style="min-width: 200px; flex: 1; background: #fff4e5; border-left: 4px solid #ca5010;">
             <FluentLabel>Phải thu tới hạn</FluentLabel>
-            <div style="font-size: 1.4rem; font-weight: 600;">@receivableDue.ToCurrency()</div>
+            <div style="font-size: 1.4rem; font-weight: 600; color: #ca5010;">@receivableDue.ToCurrency()</div>
         </FluentCard>
-        <FluentCard Style="min-width: 180px;">
+        <FluentCard Style="min-width: 200px; flex: 1; background: #fde7e9; border-left: 4px solid #d13438;">
             <FluentLabel>Phải trả tới hạn</FluentLabel>
-            <div style="font-size: 1.4rem; font-weight: 600;">@payableDue.ToCurrency()</div>
+            <div style="font-size: 1.4rem; font-weight: 600; color: #d13438;">@payableDue.ToCurrency()</div>
         </FluentCard>
     </FluentStack>
 
-    <h3>Tồn cao</h3>
-    <FluentMessageBar Intent="MessageBarIntent.Warning" Style="margin-bottom: 8px;">
-        Kho có tồn từ 5 lần tồn tối thiểu trở lên được xem là tồn cao.
-    </FluentMessageBar>
-    @if (highStock.Count == 0)
-    {
-        <p>Không có kho nào tồn cao.</p>
-    }
-    else
-    {
-        <FluentDataGrid Items="@highStock.AsQueryable()" GridTemplateColumns="2fr 2fr 0.5fr 0.5fr 0.5fr">
-            <PropertyColumn Title="Kho" Property="@(c => c.Warehouse)" />
-            <PropertyColumn Title="Sản phẩm" Property="@(c => c.Product)" />
-            <PropertyColumn Title="Tồn" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Tồn tối thiểu" Property="@(c => c.MinQty.ToDisplay())" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Vượt" Property="@(c => c.Ratio.ToString("0.#") + " lần")" Align="DataGridCellAlignment.End" />
-        </FluentDataGrid>
-    }
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" Style="margin-bottom: 16px; flex-wrap: wrap;">
+        <div>
+            <h3>Tồn cao</h3>
+            <FluentMessageBar Intent="MessageBarIntent.Warning" Style="margin-bottom: 8px;">
+                Kho có tồn từ 5 lần tồn tối thiểu trở lên được xem là tồn cao.
+            </FluentMessageBar>
+            @if (highStock.Count == 0)
+            {
+                <p>Không có kho nào tồn cao.</p>
+            }
+            else
+            {
+                <FluentDataGrid Items="@highStock.AsQueryable()" GridTemplateColumns="1fr 1fr 0.3fr 0.4fr 0.7fr">
+                    <PropertyColumn Title="Kho" Property="@(c => c.Warehouse)" />
+                    <PropertyColumn Title="Sản phẩm" Property="@(c => c.Product)" />
+                    <PropertyColumn Title="Tồn" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+                    <PropertyColumn Title="Tồn tối thiểu" Property="@(c => c.MinQty.ToDisplay())" Align="DataGridCellAlignment.End" />
+                    <PropertyColumn Title="Vượt" Property="@(c => c.Ratio.ToString("0.#") + " lần")" Align="DataGridCellAlignment.End" />
+                </FluentDataGrid>
+            }
+        </div>
+        <div>
+            <h3>Đề xuất bổ sung</h3>
+            <FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 8px;">
+                Tồn dưới mức tối thiểu. Ưu tiên điều chuyển từ kho thừa, không đủ thì đề xuất mua mới.
+            </FluentMessageBar>
+            @if (replenish.Count == 0)
+            {
+                <p>Không có sản phẩm dưới tồn tối thiểu.</p>
+            }
+            else
+            {
+                <FluentDataGrid Items="@replenish.AsQueryable()" GridTemplateColumns="2fr 2fr 0.5fr 0.5fr 3fr">
+                    <PropertyColumn Title="Kho thiếu" Property="@(c => c.Warehouse)" />
+                    <PropertyColumn Title="Sản phẩm" Property="@(c => c.Product)" />
+                    <PropertyColumn Title="Tồn" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+                    <PropertyColumn Title="Thiếu" Property="@(c => c.Shortage.ToDisplay())" Align="DataGridCellAlignment.End" />
+                    <TemplateColumn Title="Đề xuất">
+                        <FluentBadge Appearance="BadgeAppearance.Filled">@context.Action</FluentBadge>
+                        <span style="margin-left: 8px;">@context.Detail</span>
+                    </TemplateColumn>
+                </FluentDataGrid>
+            }
+        </div>
+    </FluentStack>
+  
 
-    <h3 style="margin-top: 20px;">Đề xuất bổ sung</h3>
-    <FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 8px;">
-        Tồn dưới mức tối thiểu. Ưu tiên điều chuyển từ kho thừa, không đủ thì đề xuất mua mới.
-    </FluentMessageBar>
-    @if (replenish.Count == 0)
-    {
-        <p>Không có sản phẩm dưới tồn tối thiểu.</p>
-    }
-    else
-    {
-        <FluentDataGrid Items="@replenish.AsQueryable()" GridTemplateColumns="2fr 2fr 0.5fr 0.5fr 3fr" >
-            <PropertyColumn Title="Kho thiếu" Property="@(c => c.Warehouse)" />
-            <PropertyColumn Title="Sản phẩm" Property="@(c => c.Product)" />
-            <PropertyColumn Title="Tồn" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Thiếu" Property="@(c => c.Shortage.ToDisplay())" Align="DataGridCellAlignment.End" />
-            <TemplateColumn Title="Đề xuất">
-                <FluentBadge Appearance="BadgeAppearance.Filled">@context.Action</FluentBadge>
-                <span style="margin-left: 8px;">@context.Detail</span>
-            </TemplateColumn>
-        </FluentDataGrid>
-    }
+   <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" Style="margin-bottom: 16px; flex-wrap: wrap;">
+        <div>
+            <h3>Công nợ tới hạn</h3>
+            @if (dues.Count == 0)
+            {
+                <p>Tháng này chưa có công nợ tới hạn.</p>
+            }
+            else
+            {
+                <FluentDataGrid Items="@dues.AsQueryable()">
+                    <PropertyColumn Title="Loại" Property="@(c => c.Kind)" />
+                    <PropertyColumn Title="Số chứng từ" Property="@(c => c.Number)" />
+                    <PropertyColumn Title="Đối tác" Property="@(c => c.Partner)" />
+                    <PropertyColumn Title="Hạn" Property="@(c => c.DueDate.ToDateString())" />
+                    <PropertyColumn Title="Còn nợ" Property="@(c => c.Balance.ToCurrency())" Align="DataGridCellAlignment.End" />
+                    <TemplateColumn Title="Trạng thái">
+                        <FluentBadge Appearance="BadgeAppearance.Filled">@context.State</FluentBadge>
+                    </TemplateColumn>
+                </FluentDataGrid>
+                }
+       </div>       
+       <div>
+            <h3>Top sản phẩm bán chạy trong tháng</h3>
+            @if (topProducts.Count == 0)
+            {
+                <p>Tháng này chưa có hóa đơn đã phát hành.</p>
+            }
+            else
+            {
+                <FluentDataGrid Items="@topProducts.AsQueryable()" GridTemplateColumns="2fr 2fr 0.5fr 1fr ">
+                    <PropertyColumn Title="Mã" Property="@(c => c.Sku)" />
+                    <PropertyColumn Title="Sản phẩm" Property="@(c => c.Name)" />
+                    <PropertyColumn Title="Số lượng" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+                    <PropertyColumn Title="Doanh số" Property="@(c => c.Amount.ToCurrency())" Align="DataGridCellAlignment.End" />
+                </FluentDataGrid>
+            }
+        </div>
+   </FluentStack>
 
-    <h3 style="margin-top: 20px;">Công nợ tới hạn</h3>
-    <FluentDataGrid Items="@dues.AsQueryable()">
-        <PropertyColumn Title="Loại" Property="@(c => c.Kind)" />
-        <PropertyColumn Title="Số chứng từ" Property="@(c => c.Number)" />
-        <PropertyColumn Title="Đối tác" Property="@(c => c.Partner)" />
-        <PropertyColumn Title="Hạn" Property="@(c => c.DueDate.ToDateString())" />
-        <PropertyColumn Title="Còn nợ" Property="@(c => c.Balance.ToCurrency())" Align="DataGridCellAlignment.End" />
-        <TemplateColumn Title="Trạng thái">
-            <FluentBadge Appearance="BadgeAppearance.Filled">@context.State</FluentBadge>
-        </TemplateColumn>
-    </FluentDataGrid>
+    
 
-    <h3 style="margin-top: 20px;">Top sản phẩm bán chạy trong tháng</h3>
-    @if (topProducts.Count == 0)
-    {
-        <p>Tháng này chưa có hóa đơn đã phát hành.</p>
-    }
-    else
-    {
-        <FluentDataGrid Items="@topProducts.AsQueryable()" GridTemplateColumns="2fr 2fr 0.5fr 1fr ">
-            <PropertyColumn Title="Mã" Property="@(c => c.Sku)" />
-            <PropertyColumn Title="Sản phẩm" Property="@(c => c.Name)" />
-            <PropertyColumn Title="Số lượng" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
-            <PropertyColumn Title="Doanh số" Property="@(c => c.Amount.ToCurrency())" Align="DataGridCellAlignment.End" />
-        </FluentDataGrid>
-    }
 }
 
 @code {
@@ -141,7 +162,7 @@ else
 
         var balances = await UnitOfWork.StockBalances.Query()
             .Where(x => x.MinQty > 0)
-            .Select(x => new BalanceRow(x.ProductId, x.Product.Sku + " - " + x.Product.Name, x.WarehouseId, x.Warehouse.Code + " - " + x.Warehouse.Name, x.Qty, x.MinQty))
+            .Select(x => new BalanceRow(x.ProductId, x.Product.Name, x.WarehouseId, x.Warehouse.Name, x.Qty, x.MinQty))
             .ToListAsync();
 
         highStock = balances.Where(x => x.Qty >= x.MinQty * 5)

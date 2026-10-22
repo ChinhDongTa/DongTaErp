@@ -44,6 +44,8 @@ public static class DependencyInjection
 
 
         builder.Services.AddCors(o => o.AddPolicy("mobile", p =>
-            p.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin()));
+            p.AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowAnyOrigin()));
     }
 }

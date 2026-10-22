@@ -13,6 +13,9 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+
+
+
 app.MapDefaultEndpoints();
 
 // Configure the HTTP request pipeline.
@@ -22,8 +25,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference(options =>
     {
         options.WithTitle("DongTaErp.ApiGateway")
-            .WithTheme(ScalarTheme.Kepler)
-            ; 
+               .WithTheme(ScalarTheme.Laserwave); 
     });
 }
 

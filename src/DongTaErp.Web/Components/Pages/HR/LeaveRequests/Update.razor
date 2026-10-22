@@ -1,0 +1,98 @@
+@page "/hr/leave-requests/update/{Id}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Common.Interfaces
+@using DongTaErp.Application.Services.LeaveRequests
+@using Microsoft.EntityFrameworkCore
+@inject ILeaveRequestService Service
+@inject IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+<PageTitle>Cập nhật đơn nghỉ</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="Cập nhật đơn nghỉ phép" />
+    <EditForm Model="dto" OnSubmit="SaveAsync">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 560px;">
+            <FluentSelect TOption="OptionItem" TValue="string" Items="employees" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                          @bind-Value="employeeId" Label="Nhân viên" />
+            <FluentSelect TOption="TypeOption" TValue="LeaveType" Items="types" OptionText="@(x => x.Name)" OptionValue="@(x => x.Value)"
+                          @bind-Value="type" Label="Loại nghỉ" />
+            <FluentDatePicker @bind-Value="fromDate" Label="Từ ngày" />
+            <FluentDatePicker @bind-Value="toDate" Label="Đến ngày" />
+            <DecimalInput @bind-Value="days" Label="Số ngày" Min="0" TValue="decimal" />
+            <FluentTextInput @bind-Value="dto.Reason" Label="Lý do" />
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/hr/leave-requests/list" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private UpdateLeaveRequestDto? dto;
+    private string employeeId = "";
+    private LeaveType type = LeaveType.Annual;
+    private DateTime? fromDate;
+    private DateTime? toDate;
+    private decimal days;
+    private bool isSaving;
+    private List<OptionItem> employees = [];
+    private readonly List<TypeOption> types =
+    [
+        new(LeaveType.Annual, "Nghỉ phép năm"),
+        new(LeaveType.Sick, "Nghỉ ốm"),
+        new(LeaveType.Unpaid, "Nghỉ không lương"),
+        new(LeaveType.Other, "Khác")
+    ];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        employees = await UnitOfWork.Employees.Query().OrderBy(x => x.Code)
+            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.FullName}")).ToListAsync();
+        var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
+        if (!result.Succeeded || result.Value is null)
+        {
+            alert?.AddAlertError("Không tìm thấy đơn nghỉ.");
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+        dto = result.Value;
+        employeeId = dto.EmployeeId?.ToString() ?? "";
+        type = dto.Type ?? LeaveType.Annual;
+        fromDate = dto.FromDate;
+        toDate = dto.ToDate;
+        days = dto.Days ?? 0;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (dto is null)
+            return;
+        dto.EmployeeId = Guid.TryParse(employeeId, out var id) ? id : null;
+        dto.Type = type;
+        dto.FromDate = fromDate;
+        dto.ToDate = toDate;
+        dto.Days = days;
+        isSaving = true;
+        var result = await Service.UpdateAsync(Id.ToGuid(), dto);
+        isSaving = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không cập nhật được.");
+            return;
+        }
+        Navigation.NavigateTo($"/hr/leave-requests/view/{Id}");
+    }
+
+    private sealed record OptionItem(string Id, string Name);
+    private sealed record TypeOption(LeaveType Value, string Name);
+}

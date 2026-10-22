@@ -28,8 +28,8 @@ else
             <DetailItem Label="Trạng thái" Value="@dto.PaymentStatusName" />
         </FluentStack>
     </FluentStack>
-    <FluentButton Appearance="ButtonAppearance.Subtle" Style="margin-top: 16px;"
-                  OnClick="@(() => Navigation.NavigateTo("/hr/payrolls/list"))">Danh sách</FluentButton>
+    <FluentButton Appearance="ButtonAppearance.Subtle" Style="margin-top: 16px;" OnClick="@(() => Navigation.NavigateTo("/hr/payrolls/list"))">Danh sách</FluentButton>
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo($"/hr/payrolls/update/{dto.Id}"))">Sửa</FluentButton>
 }
 
 @code {

@@ -1,0 +1,93 @@
+@page "/purchase-orders/list"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.PurchaseOrders
+@inject NavigationManager Navigation
+@inject IPurchaseOrderService Service
+
+<PageTitle>Đơn mua</PageTitle>
+<ActionTitle Text="Đơn mua" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Đơn mua là nhu cầu mua hàng. Xác nhận đơn không cộng tồn. Hàng vào kho khi tạo phiếu nhập từ đơn đã xác nhận.
+</FluentMessageBar>
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
+    <FluentTextInput @bind-Value="searchTerm" Placeholder="Số đơn, nhà cung cấp" Style="width: 280px;" @onkeypress="OnSearchKey" />
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="SearchAsync">Tìm</FluentButton>
+    <FluentButton IconStart="@(new Icons.Regular.Size20.Add())" Appearance="ButtonAppearance.Primary"
+                  OnClick="@(() => Navigation.NavigateTo("/purchase-orders/create"))">Tạo đơn mua</FluentButton>
+</FluentStack>
+
+<PaginatedTable TItem="PurchaseOrderDto" Data="page" PageSize="pageSize"
+                GridTemplateColumns="1fr 1.6fr 1.3fr 1fr 1fr 1fr .8fr"
+                OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
+    <PropertyColumn TGridItem="PurchaseOrderDto" TProp="string" Title="Số đơn" Property="@(c => c!.Number)" />
+    <PropertyColumn TGridItem="PurchaseOrderDto" TProp="string" Title="Nhà cung cấp" Property="@(c => c!.PartnerName)" />
+    <PropertyColumn TGridItem="PurchaseOrderDto" TProp="string" Title="Kho đề xuất" Property="@(c => c!.WarehouseName)" />
+    <PropertyColumn TGridItem="PurchaseOrderDto" TProp="string" Title="Ngày" Property="@(c => c!.OrderDate.ToDateString())"  />
+    <PropertyColumn TGridItem="PurchaseOrderDto" TProp="string" Title="Tổng" Property="@(c => c!.Total.ToCurrency())"  Align="DataGridCellAlignment.End" />
+    <TemplateColumn TGridItem="PurchaseOrderDto" Title="Trạng thái">
+        <FluentBadge Appearance="@Badge(context.Status)">@context.StatusName</FluentBadge>
+    </TemplateColumn>
+    <TemplateColumn TGridItem="PurchaseOrderDto" Title="Thao tác" Context="item">
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem"
+                      @onclick="@(() => Navigation.NavigateTo($"/purchase-orders/view/{item.Id}"))" />
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Edit())" Appearance="ButtonAppearance.Primary" Title="Sửa"
+                      @onclick="@(() => Navigation.NavigateTo($"/purchase-orders/update/{item.Id}"))" />
+    </TemplateColumn>
+</PaginatedTable>
+
+@code {
+    private PaginatedList<PurchaseOrderDto>? page;
+    private readonly int pageSize = Models.Constants.PageSize;
+    private int currentPage = 1;
+    private bool isLoading;
+    private int requestVersion;
+    private string? searchTerm;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadData(1);
+    }
+
+    private Task LoadPageAsync(int pageNumber)
+    {
+        currentPage = pageNumber;
+        return LoadData(pageNumber);
+    }
+
+    private Task SearchAsync()
+    {
+        currentPage = 1;
+        return LoadData(1);
+    }
+
+    private Task OnSearchKey(KeyboardEventArgs e) => e.Key == "Enter" ? SearchAsync() : Task.CompletedTask;
+
+    private async Task LoadData(int pageNumber)
+    {
+        var version = ++requestVersion;
+        isLoading = true;
+     
+        try
+        {
+            var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize));
+            if (version == requestVersion && result.Succeeded)
+                page = result.Value;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private static BadgeAppearance Badge(PurchaseOrderStatus status) => status switch
+    {
+        PurchaseOrderStatus.Confirmed => BadgeAppearance.Filled,
+        PurchaseOrderStatus.Cancelled => BadgeAppearance.Ghost,
+        _ => BadgeAppearance.Outline
+    };
+}
