@@ -1,11 +1,10 @@
 @page "/invoices/create"
 @attribute [Authorize(Roles = AppRoles.SalesArea)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using DongTaErp.Application.Common.Interfaces
 @using DongTaErp.Application.Services.Invoices
-@using Microsoft.EntityFrameworkCore
 @inject IInvoiceService Service
-@inject IUnitOfWork UnitOfWork
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
 @inject NavigationManager Navigation
 
 <PageTitle>Tạo hóa đơn</PageTitle>
@@ -70,11 +69,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        orders = await UnitOfWork.SalesOrders.Query()
-            .Where(x => x.Status == SalesOrderStatus.Confirmed)
-            .OrderByDescending(x => x.OrderDate)
-            .Select(x => new OrderOption(x.Id.ToString(), $"{x.Number} - {x.Partner.Name}"))
-            .ToListAsync();
+        orders = ((await Lookup.GetConfirmedSalesOrdersAsync()).Value ?? [])
+            .Select(x => new OrderOption(x.Id.ToString(), x.Label)).ToList();
         if (orders.Count > 0)
             await OnOrderChanged(orders[0].Id);
     }
@@ -85,30 +81,8 @@
         if (!Guid.TryParse(value, out var id))
             return;
 
-        var orderLines = await UnitOfWork.SalesOrderLines.Query()
-            .Where(x => x.SalesOrderId == id)
-            .Select(x => new { x.Id, x.Product.Sku, x.Product.Name, x.Qty, x.UnitPrice })
-            .ToListAsync();
-        var lineIds = orderLines.Select(x => x.Id).ToList();
-
-        var shipped = await UnitOfWork.GoodsIssueLines.Query()
-            .Where(x => lineIds.Contains(x.SalesOrderLineId) && x.GoodsIssue.Status == GoodsIssueStatus.Posted)
-            .GroupBy(x => x.SalesOrderLineId)
-            .Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Quantity) })
-            .ToListAsync();
-
-        var invoiced = await UnitOfWork.InvoiceLines.Query()
-            .Where(x => lineIds.Contains(x.SalesOrderLineId) && x.Invoice.Status != InvoiceStatus.Draft && x.Invoice.Status != InvoiceStatus.Cancelled)
-            .GroupBy(x => x.SalesOrderLineId)
-            .Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Qty) })
-            .ToListAsync();
-
-        lines = orderLines.Select(x =>
-        {
-            var shippedQty = shipped.FirstOrDefault(s => s.LineId == x.Id)?.Qty ?? 0;
-            var invoicedQty = invoiced.FirstOrDefault(s => s.LineId == x.Id)?.Qty ?? 0;
-            return new InvoiceLine(x.Id, $"{x.Sku} - {x.Name}", x.Qty, shippedQty, invoicedQty, x.UnitPrice);
-        }).ToList();
+        var result = await Lookup.GetInvoiceLinesAsync(id);
+        lines = (result.Value ?? []).Select(x => new InvoiceLine(x.LineId, x.Label, x.OrderedQty, x.DoneQty, x.RelatedQty, x.UnitPrice)).ToList();
     }
 
     private Task SaveDraftAsync() => SaveAsync(issue: false);

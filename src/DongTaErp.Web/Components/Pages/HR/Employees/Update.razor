@@ -1,11 +1,10 @@
 @page "/hr/employees/update/{Id}"
 @attribute [Authorize(Roles = AppRoles.Hr)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using DongTaErp.Application.Common.Interfaces
 @using DongTaErp.Application.Services.Employees
-@using Microsoft.EntityFrameworkCore
 @inject IEmployeeService Service
-@inject IUnitOfWork UnitOfWork
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
 @inject NavigationManager Navigation
 
 <PageTitle>Cập nhật nhân viên</PageTitle>
@@ -66,10 +65,10 @@ else
         if (!firstRender)
             return;
 
-        departments = await UnitOfWork.Departments.Query().OrderBy(x => x.Code)
-            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.Name}")).ToListAsync();
-        positions = await UnitOfWork.JobPositions.Query().OrderBy(x => x.Code)
-            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.Name}")).ToListAsync();
+        departments = ((await Lookup.GetDepartmentsAsync()).Value ?? [])
+            .Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
+        positions = ((await Lookup.GetJobPositionsAsync()).Value ?? [])
+            .Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
 
         var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
         if (!result.Succeeded || result.Value is null)

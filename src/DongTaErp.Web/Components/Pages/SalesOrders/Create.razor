@@ -1,11 +1,10 @@
 @page "/sales-orders/create"
 @attribute [Authorize(Roles = AppRoles.SalesArea)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using DongTaErp.Application.Common.Interfaces
 @using DongTaErp.Application.Services.SalesOrders
-@using Microsoft.EntityFrameworkCore
 @inject ISalesOrderService Service
-@inject IUnitOfWork UnitOfWork
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
 @inject NavigationManager Navigation
 
 <PageTitle>Tạo đơn bán</PageTitle>
@@ -73,22 +72,12 @@
 
     protected override async Task OnInitializedAsync()
     {
-        customers = await UnitOfWork.Partners.Query()
-            .Where(x => x.IsActive && (x.Type == PartnerType.Customer || x.Type == PartnerType.Both))
-            .OrderBy(x => x.Code)
-            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.Name}"))
-            .ToListAsync();
-        warehouses = await UnitOfWork.Warehouses.Query()
-            .Where(x => x.IsActive)
-            .OrderByDescending(x => x.IsDefault)
-            .ThenBy(x => x.Code)
-            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.Name}"))
-            .ToListAsync();
-        products = await UnitOfWork.Products.Query()
-            .Where(x => x.IsActive)
-            .OrderBy(x => x.Sku)
-            .Select(x => new ProductOption(x.Id.ToString(), $"{x.Sku} - {x.Name}", x.SalePrice))
-            .ToListAsync();
+        customers = ((await Lookup.GetCustomersAsync()).Value ?? [])
+            .Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
+        warehouses = ((await Lookup.GetWarehousesAsync()).Value ?? [])
+            .Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
+        products = ((await Lookup.GetProductsAsync(salePrice: true)).Value ?? [])
+            .Select(x => new ProductOption(x.Id.ToString(), x.Label, x.Price)).ToList();
 
         customerId = customers.FirstOrDefault()?.Id ?? "";
         warehouseId = warehouses.FirstOrDefault()?.Id ?? "";

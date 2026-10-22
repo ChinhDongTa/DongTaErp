@@ -1,11 +1,10 @@
 @page "/products/create"
 @attribute [Authorize(Roles = AppRoles.Catalog)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using DongTaErp.Application.Common.Interfaces
 @using DongTaErp.Application.Services.Products
-@using Microsoft.EntityFrameworkCore
 @inject IProductService Service
-@inject IUnitOfWork UnitOfWork
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
 @inject NavigationManager Navigation
 
 <PageTitle>Tạo sản phẩm</PageTitle>
@@ -36,10 +35,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var items = await UnitOfWork.Categories.Query()
-            .OrderBy(x => x.Name)
-            .Select(x => new CategoryOption(x.Id.ToString(), x.Name))
-            .ToListAsync();
+        var items = ((await Lookup.GetCategoriesAsync()).Value ?? [])
+            .Select(x => new CategoryOption(x.Id.ToString(), x.Label))
+            .ToList();
         categories.AddRange(items);
     }
 

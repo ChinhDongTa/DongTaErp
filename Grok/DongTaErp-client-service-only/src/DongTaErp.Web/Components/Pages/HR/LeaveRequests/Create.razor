@@ -1,0 +1,96 @@
+@page "/hr/leave-requests/create"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.LeaveRequests
+@inject ILeaveRequestService Service
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
+@inject NavigationManager Navigation
+
+<PageTitle>Tạo đơn nghỉ</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Tạo đơn nghỉ phép" />
+
+<EditForm Model="dto" OnSubmit="SaveAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 640px;">
+        <FluentSelect TOption="OptionItem" TValue="string" Items="employees" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                      @bind-Value="employeeId" Label="Nhân viên" />
+        <FluentSelect TOption="TypeOption" TValue="LeaveType" Items="types" OptionText="@(x => x.Name)" OptionValue="@(x => x.Value)"
+                      @bind-Value="dto.Type" Label="Loại nghỉ" />
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+            <FluentDatePicker @bind-Value="fromDate" Label="Từ ngày" />
+            <FluentDatePicker @bind-Value="toDate" Label="Đến ngày" />
+            <DecimalInput @bind-Value="dto.Days" Label="Số ngày" Min="0" TValue="decimal" />
+        </FluentStack>
+        <FluentTextInput @bind-Value="dto.Reason" Label="Lý do" Required="true" Style="width: 100%;" />
+        <FormActionButtons IsSaving="@isSaving" SaveText="Gửi đơn" CancelUrl="/hr/leave-requests/list" />
+    </FluentStack>
+</EditForm>
+
+@code {
+    private Alert? alert;
+    private readonly CreateLeaveRequestDto dto = new() { Reason = "", Days = 1, Status = LeaveStatus.Pending };
+    private DateTime? fromDate = DateTime.Today;
+    private DateTime? toDate = DateTime.Today;
+    private string employeeId = "";
+    private bool isSaving;
+    private List<OptionItem> employees = [];
+    private readonly List<TypeOption> types =
+    [
+        new(LeaveType.Annual, LeaveType.Annual.ToDisplayName()),
+        new(LeaveType.Sick, LeaveType.Sick.ToDisplayName()),
+        new(LeaveType.Unpaid, LeaveType.Unpaid.ToDisplayName()),
+        new(LeaveType.Other, LeaveType.Other.ToDisplayName())
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        employees = ((await Lookup.GetEmployeesAsync()).Value ?? [])
+            .Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
+        employeeId = employees.FirstOrDefault()?.Id ?? "";
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!Guid.TryParse(employeeId, out var empId))
+        {
+            alert?.AddAlertError("Chọn nhân viên.");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(dto.Reason))
+        {
+            alert?.AddAlertError("Nhập lý do.");
+            return;
+        }
+
+        dto.EmployeeId = empId;
+        dto.FromDate = fromDate ?? DateTime.Today;
+        dto.ToDate = toDate ?? DateTime.Today;
+        if (dto.ToDate < dto.FromDate)
+        {
+            alert?.AddAlertError("Đến ngày phải lớn hơn hoặc bằng từ ngày.");
+            return;
+        }
+
+        isSaving = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var result = await Service.CreateAsync(dto);
+            if (!result.Succeeded || string.IsNullOrEmpty(result.Value))
+            {
+                alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không tạo được đơn nghỉ.");
+                return;
+            }
+            Navigation.NavigateTo($"/hr/leave-requests/view/{result.Value}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private sealed record OptionItem(string Id, string Name);
+    private sealed record TypeOption(LeaveType Value, string Name);
+}

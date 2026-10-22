@@ -1,9 +1,8 @@
 @page "/"
 @attribute [Authorize(Roles = AppRoles.All)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using DongTaErp.Application.Common.Interfaces
-@using Microsoft.EntityFrameworkCore
-@inject IUnitOfWork UnitOfWork
+@using DongTaErp.Application.Services.Dashboard
+@inject IDashboardService Dashboard
 @inject NavigationManager Navigation
 
 <PageTitle>Dashboard</PageTitle>
@@ -142,138 +141,29 @@ else
     private decimal salesMonth;
     private decimal receivableDue;
     private decimal payableDue;
-    private List<StockRow> highStock = [];
-    private List<ReplenishRow> replenish = [];
-    private List<DueRow> dues = [];
-    private List<TopRow> topProducts = [];
+    private List<DashboardStockDto> highStock = [];
+    private List<DashboardReplenishDto> replenish = [];
+    private List<DashboardDueDto> dues = [];
+    private List<DashboardTopProductDto> topProducts = [];
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)
             return;
-        await LoadAsync();
+        var result = await Dashboard.GetAsync();
+        var data = result.Value;
+        if (data is not null)
+        {
+            salesWeek = data.SalesWeek;
+            salesMonth = data.SalesMonth;
+            receivableDue = data.ReceivableDue;
+            payableDue = data.PayableDue;
+            highStock = data.HighStock;
+            replenish = data.Replenish;
+            dues = data.Dues;
+            topProducts = data.TopProducts;
+        }
         loaded = true;
         await InvokeAsync(StateHasChanged);
     }
-
-    private async Task LoadAsync()
-    {
-        var today = DateTime.Today;
-        var weekStart = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
-        var monthStart = new DateTime(today.Year, today.Month, 1);
-        var dueLimit = today.AddDays(7);
-        var openInvoice = new[] { InvoiceStatus.Issued, InvoiceStatus.PartiallyPaid };
-        var countedInvoice = new[] { InvoiceStatus.Issued, InvoiceStatus.PartiallyPaid, InvoiceStatus.Paid };
-        var openBill = new[] { VendorBillStatus.Posted, VendorBillStatus.PartiallyPaid };
-
-        salesWeek = await UnitOfWork.Invoices.Query()
-            .Where(x => countedInvoice.Contains(x.Status) && x.IssueDate >= weekStart && x.IssueDate <= today)
-            .SumAsync(x => (decimal?)x.Total) ?? 0;
-        salesMonth = await UnitOfWork.Invoices.Query()
-            .Where(x => countedInvoice.Contains(x.Status) && x.IssueDate >= monthStart && x.IssueDate <= today)
-            .SumAsync(x => (decimal?)x.Total) ?? 0;
-
-        var balances = await UnitOfWork.StockBalances.Query()
-            .Where(x => x.MinQty > 0)
-            .Select(x => new BalanceRow(x.ProductId, x.Product.Name, x.WarehouseId, x.Warehouse.Name, x.Qty, x.MinQty))
-            .ToListAsync();
-
-        highStock = balances.Where(x => x.Qty >= x.MinQty * 5)
-            .OrderByDescending(x => x.Qty / x.MinQty)
-            .Select(x => new StockRow(x.Warehouse, x.Product, x.Qty, x.MinQty, x.Qty / x.MinQty))
-            .ToList();
-
-        replenish = BuildBalance(balances);
-
-        var receivableRows = await UnitOfWork.Invoices.Query()
-            .Where(x => openInvoice.Contains(x.Status) && x.DueDate != null && x.DueDate <= dueLimit && x.Total > x.PaidAmount)
-            .OrderBy(x => x.DueDate)
-            .Select(x => new DueRow("Phải thu", x.Number, x.Partner.Name, x.DueDate!.Value, x.Total - x.PaidAmount, x.DueDate < today ? "Quá hạn" : "Tới hạn"))
-            .ToListAsync();
-        var payableRows = await UnitOfWork.VendorBills.Query()
-            .Where(x => openBill.Contains(x.Status) && x.DueDate != null && x.DueDate <= dueLimit && x.Total > x.PaidAmount)
-            .OrderBy(x => x.DueDate)
-            .Select(x => new DueRow("Phải trả", x.Number, x.Partner.Name, x.DueDate!.Value, x.Total - x.PaidAmount, x.DueDate < today ? "Quá hạn" : "Tới hạn"))
-            .ToListAsync();
-        dues = receivableRows.Concat(payableRows).OrderBy(x => x.DueDate).ToList();
-        receivableDue = receivableRows.Sum(x => x.Balance);
-        payableDue = payableRows.Sum(x => x.Balance);
-
-        var data = await UnitOfWork.InvoiceLines.Query()
-            .Where(x => countedInvoice.Contains(x.Invoice.Status) && x.Invoice.IssueDate >= monthStart && x.Invoice.IssueDate <= today)
-            .GroupBy(x => new { x.ProductId, x.Product.Sku, x.Product.Name })
-            .Select(g => new
-            {
-                g.Key.Sku,
-                g.Key.Name,
-                Qty = g.Sum(x => x.Qty),
-                Revenue = g.Sum(x => x.LineTotal)
-            })
-            .OrderByDescending(x => x.Qty)
-            .Take(5)
-            .ToListAsync();
-
-        topProducts = data.Select(x => new TopRow(x.Sku, x.Name, x.Qty, x.Revenue)).ToList();
-    }
-
-    private static ReplenishRow Suggest(BalanceRow row, List<BalanceRow> all)
-    {
-        var shortage = row.MinQty - row.Qty;
-        var source = all.Where(x => x.ProductId == row.ProductId && x.WarehouseId != row.WarehouseId && x.Qty > x.MinQty)
-            .OrderByDescending(x => x.Qty - x.MinQty)
-            .FirstOrDefault();
-        var excess = source is null ? 0 : source.Qty - source.MinQty;
-        if (source is not null && excess >= shortage)
-            return new ReplenishRow(row.Warehouse, row.Product, row.Qty, shortage, "Điều chuyển", $"Lấy {shortage.ToDisplay()} từ {source.Warehouse}");
-        if (source is not null && excess > 0)
-            return new ReplenishRow(row.Warehouse, row.Product, row.Qty, shortage, "Điều chuyển + mua", $"Chuyển {excess.ToDisplay()} từ {source.Warehouse}, mua thêm {(shortage - excess).ToDisplay()}");
-        return new ReplenishRow(row.Warehouse, row.Product, row.Qty, shortage, "Mua mới", $"Không có kho thừa. Mua {shortage.ToDisplay()}");
-    }
-    private static List<ReplenishRow> BuildBalance(List<BalanceRow> all)
-    {
-        var result = new List<ReplenishRow>();
-        foreach (var group in all.GroupBy(x => x.ProductId))
-        {
-            var rows = group.ToList();
-            if (rows.All(x => x.Qty >= x.MinQty * 2))
-                continue;
-
-            var surplus = rows
-                .Select(x => new { Row = x, Extra = x.Qty - x.MinQty * 2 })
-                .Where(x => x.Extra > 0)
-                .OrderByDescending(x => x.Extra)
-                .ToList();
-
-            foreach (var target in rows.Where(x => x.Qty < x.MinQty * 2).OrderBy(x => x.Qty / x.MinQty))
-            {
-                var safe = target.MinQty * 2;
-                var need = safe - target.Qty;
-                var source = surplus.FirstOrDefault(x => x.Row.WarehouseId != target.WarehouseId && x.Extra > 0);
-
-                if (source is not null)
-                {
-                    var move = Math.Min(need, source.Extra);
-                    var remain = need - move;
-                    var action = remain == 0 ? "Cân bằng" : target.Qty < target.MinQty ? "Cân bằng + mua" : "Cân bằng";
-                    var detail = remain == 0
-                        ? $"Chuyển {move.ToDisplay()} từ {source.Row.Warehouse} để đạt mức an toàn"
-                        : target.Qty < target.MinQty
-                            ? $"Chuyển {move.ToDisplay()} từ {source.Row.Warehouse}, mua thêm {remain.ToDisplay()}"
-                            : $"Chuyển {move.ToDisplay()} từ {source.Row.Warehouse}";
-                    result.Add(new ReplenishRow(target.Warehouse, target.Product, target.Qty, need, action, detail));
-                    surplus[surplus.IndexOf(source)] = source with { Extra = source.Extra - move };
-                    continue;
-                }
-
-                if (target.Qty < target.MinQty)
-                    result.Add(new ReplenishRow(target.Warehouse, target.Product, target.Qty, target.MinQty - target.Qty, "Mua mới", $"Không có kho dư trên mức an toàn. Mua {(target.MinQty - target.Qty).ToDisplay()}"));
-            }
-        }
-        return result.OrderByDescending(x => x.Shortage).ToList();
-    }
-    private sealed record BalanceRow(Guid ProductId, string Product, Guid WarehouseId, string Warehouse, decimal Qty, decimal MinQty);
-    private sealed record StockRow(string Warehouse, string Product, decimal Qty, decimal MinQty, decimal Ratio);
-    private sealed record ReplenishRow(string Warehouse, string Product, decimal Qty, decimal Shortage, string Action, string Detail);
-    private sealed record DueRow(string Kind, string Number, string Partner, DateTime DueDate, decimal Balance, string State);
-    private sealed record TopRow(string Sku, string Name, decimal Qty, decimal Amount);
 }

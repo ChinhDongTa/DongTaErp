@@ -1,11 +1,10 @@
 @page "/hr/payrolls/create"
 @attribute [Authorize(Roles = AppRoles.Hr)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using DongTaErp.Application.Common.Interfaces
 @using DongTaErp.Application.Services.Payrolls
-@using Microsoft.EntityFrameworkCore
 @inject IPayrollService Service
-@inject IUnitOfWork UnitOfWork
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
 @inject NavigationManager Navigation
 
 <PageTitle>Tạo bảng lương</PageTitle>
@@ -50,11 +49,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        employees = await UnitOfWork.Employees.Query()
-            .Where(x => x.Status != EmployeeStatus.Resigned)
-            .OrderBy(x => x.Code)
-            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.FullName}"))
-            .ToListAsync();
+        employees = ((await Lookup.GetEmployeesAsync()).Value ?? [])
+            .Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
         employeeId = employees.FirstOrDefault()?.Id ?? "";
     }
 

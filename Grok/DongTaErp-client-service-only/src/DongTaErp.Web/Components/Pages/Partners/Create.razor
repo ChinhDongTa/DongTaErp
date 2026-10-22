@@ -1,0 +1,61 @@
+﻿@page "/partners/create"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Partners
+@using DongTaErp.Domain.Enums
+@inject NavigationManager Navigation
+@inject IPartnerService PartnerService
+<PageTitle>Tạo mới đối tác</PageTitle>
+<Alert @ref="alertComponent" />
+<ActionTitle Text="Tạo mới đối tác" />
+<EditForm Model="dto" OnSubmit="SaveAsync" Style="@(isSaving ? "opacity:.6; pointer-events:none;" : null)">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="width:100%; max-width:640px; margin:10px auto;">
+        <FluentTextInput @bind-Value="dto.Code" 
+                         Label="Mã khách hàng" Placeholder="Nhập mã khách hàng" Required="true" MaxLength="40" />
+        <FluentTextInput @bind-Value="dto.Name" 
+                         Label="Tên khách hàng" Placeholder="Nhập tên khách hàng" Required="true" MaxLength="200" class="text200" />
+        <FluentSelect TOption="PartnerType" TValue="PartnerType"
+                      Items="partnerTypes"
+                      OptionText="@(t => t.ToDisplayName())"
+                      @bind-Value="dto.Type"
+                      Label="Loại khách hàng" />
+        <FluentTextInput @bind-Value="dto.Phone"  Label="Điện thoại" MaxLength="40" />
+        <FluentTextInput @bind-Value="dto.Email"  Label="Email" MaxLength="160" TextInputType="TextInputType.Email" />
+        <FluentTextInput @bind-Value="dto.TaxCode"  Label="Mã số thuế" MaxLength="40" />
+        <FluentTextInput @bind-Value="dto.Address"  Label="Địa chỉ" MaxLength="300" class="text200" />
+        <FluentCheckbox @bind-Value="dto.IsActive" Label="Kích hoạt" />
+        <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/partners/list" />
+    </FluentStack>
+</EditForm>
+
+@code {
+    private static readonly IReadOnlyList<PartnerType> partnerTypes = Enum.GetValues<PartnerType>();
+
+    private Alert? alertComponent;
+    private readonly CreatePartnerDto dto = new();
+    private bool isSaving;
+
+    private async Task SaveAsync()
+    {
+        isSaving = true;
+        StateHasChanged();
+        await Task.Yield();
+
+        try
+        {
+            var result = await PartnerService.CreateAsync(dto);
+            if (!result.Succeeded || string.IsNullOrEmpty(result.Value))
+            {
+                alertComponent?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Tạo khách hàng thất bại.");
+                return;
+            }
+
+            Navigation.NavigateTo($"/partners/view/{result.Value}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

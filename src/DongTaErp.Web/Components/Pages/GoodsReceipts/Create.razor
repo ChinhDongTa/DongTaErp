@@ -1,11 +1,10 @@
 @page "/goods-receipts/create"
 @attribute [Authorize(Roles = AppRoles.PurchaseArea)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using DongTaErp.Application.Common.Interfaces
 @using DongTaErp.Application.Services.GoodsReceipts
-@using Microsoft.EntityFrameworkCore
 @inject IGoodsReceiptService Service
-@inject IUnitOfWork UnitOfWork
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
 @inject NavigationManager Navigation
 
 <PageTitle>Tạo phiếu nhập</PageTitle>
@@ -63,17 +62,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        orders = await UnitOfWork.PurchaseOrders.Query()
-            .Where(x => x.Status == PurchaseOrderStatus.Confirmed)
-            .OrderByDescending(x => x.OrderDate)
-            .Select(x => new OrderOption(x.Id.ToString(), $"{x.Number} - {x.Partner.Name}", x.WarehouseId.ToString()))
-            .ToListAsync();
-
-        warehouses = await UnitOfWork.Warehouses.Query()
-            .Where(x => x.IsActive)
-            .OrderBy(x => x.Code)
-            .Select(x => new WarehouseOption(x.Id.ToString(), $"{x.Code} - {x.Name}"))
-            .ToListAsync();
+        orders = ((await Lookup.GetConfirmedPurchaseOrdersAsync()).Value ?? [])
+            .Select(x => new OrderOption(x.Id.ToString(), x.Label, x.ExtraId?.ToString() ?? "")).ToList();
+        warehouses = ((await Lookup.GetWarehousesAsync()).Value ?? [])
+            .Select(x => new WarehouseOption(x.Id.ToString(), x.Label)).ToList();
 
         if (orders.Count > 0)
             await OnOrderChanged(orders[0].Id);
@@ -89,23 +81,8 @@
         if (!Guid.TryParse(value, out var id))
             return;
 
-        var orderLines = await UnitOfWork.PurchaseOrderLines.Query()
-            .Where(x => x.PurchaseOrderId == id)
-            .Select(x => new { x.Id, x.ProductId, x.Product.Sku, x.Product.Name, x.Qty })
-            .ToListAsync();
-        var lineIds = orderLines.Select(x => x.Id).ToList();
-
-        var received = await UnitOfWork.GoodsReceiptLines.Query()
-            .Where(x => lineIds.Contains(x.PurchaseOrderLineId) && x.GoodsReceipt.Status == GoodsReceiptStatus.Posted)
-            .GroupBy(x => x.PurchaseOrderLineId)
-            .Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Quantity) })
-            .ToListAsync();
-
-        lines = orderLines.Select(x =>
-        {
-            var done = received.FirstOrDefault(r => r.LineId == x.Id)?.Qty ?? 0;
-            return new ReceiptLine(x.Id, x.ProductId, $"{x.Sku} - {x.Name}", x.Qty, done, Math.Max(0, x.Qty - done));
-        }).ToList();
+        var result = await Lookup.GetGoodsReceiptLinesAsync(id);
+        lines = (result.Value ?? []).Select(x => new ReceiptLine(x.LineId, x.ProductId, x.Label, x.OrderedQty, x.DoneQty, x.RemainingQty)).ToList();
     }
 
     private async Task SaveDraftAsync() => await SaveAsync(post: false);

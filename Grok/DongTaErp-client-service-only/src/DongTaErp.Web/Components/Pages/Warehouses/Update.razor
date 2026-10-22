@@ -1,0 +1,79 @@
+@page "/warehouses/update/{Id}"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Warehouses
+@inject IWarehouseService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Cập nhật kho</PageTitle>
+<Alert @ref="alertComponent" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="Cập nhật kho" />
+    <EditForm Model="dto" OnSubmit="SaveAsync" Style="@(isSaving ? "opacity:.6; pointer-events:none;" : null)">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="width:100%; max-width:640px; margin:10px auto;">
+            <FluentTextInput @bind-Value="dto.Code" Label="Mã kho" MaxLength="30" />
+            <FluentTextInput @bind-Value="dto.Name" Label="Tên kho" MaxLength="160" />
+            <FluentSelect TOption="WarehouseType?" TValue="WarehouseType?" Items="types"
+                          OptionText="@(t => t?.ToDisplayName())" @bind-Value="dto.Type" Label="Loại kho" />
+            <FluentTextInput @bind-Value="dto.CountryCode" Label="Quốc gia" MaxLength="2" />
+            <FluentTextInput @bind-Value="dto.City" Label="Thành phố" MaxLength="80" />
+            <FluentTextInput @bind-Value="dto.Address" Label="Địa chỉ" MaxLength="300" />
+            <FluentTextInput @bind-Value="dto.TimeZone" Label="Múi giờ" MaxLength="64" />
+            <FluentCheckbox @bind-Value="dto.IsDefault" Label="Kho mặc định khi tạo đơn" />
+            <FluentCheckbox @bind-Value="dto.IsActive" Label="Đang hoạt động" />
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/warehouses/list" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+
+    private static readonly IReadOnlyList<WarehouseType?> types = Enum.GetValues<WarehouseType>().Cast<WarehouseType?>().ToList();
+    private Alert? alertComponent;
+    private UpdateWarehouseDto? dto;
+    private bool isSaving;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
+        if (result.Succeeded && result.Value is not null)
+            dto = result.Value;
+        else
+            alertComponent?.AddAlertError("Không tìm thấy kho.");
+    }
+
+    private async Task SaveAsync()
+    {
+        if (dto is null)
+            return;
+
+        isSaving = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var result = await Service.UpdateAsync(Id.ToGuid(), dto);
+            if (!result.Succeeded)
+            {
+                alertComponent?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Cập nhật kho thất bại.");
+                return;
+            }
+
+            Navigation.NavigateTo($"/warehouses/view/{Id}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

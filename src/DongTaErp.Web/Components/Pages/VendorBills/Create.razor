@@ -1,11 +1,10 @@
 @page "/vendor-bills/create"
 @attribute [Authorize(Roles = AppRoles.PurchaseArea)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using DongTaErp.Application.Common.Interfaces
 @using DongTaErp.Application.Services.VendorBills
-@using Microsoft.EntityFrameworkCore
 @inject IVendorBillService Service
-@inject IUnitOfWork UnitOfWork
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
 @inject NavigationManager Navigation
 
 <PageTitle>Tạo hóa đơn mua</PageTitle>
@@ -72,11 +71,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        orders = await UnitOfWork.PurchaseOrders.Query()
-            .Where(x => x.Status == PurchaseOrderStatus.Confirmed)
-            .OrderByDescending(x => x.OrderDate)
-            .Select(x => new OrderOption(x.Id.ToString(), $"{x.Number} - {x.Partner.Name}"))
-            .ToListAsync();
+        orders = ((await Lookup.GetConfirmedPurchaseOrdersAsync()).Value ?? [])
+            .Select(x => new OrderOption(x.Id.ToString(), x.Label)).ToList();
         if (orders.Count > 0)
             await OnOrderChanged(orders[0].Id);
     }
@@ -87,30 +83,10 @@
         if (!Guid.TryParse(value, out var id))
             return;
 
-        var orderLines = await UnitOfWork.PurchaseOrderLines.Query()
-            .Where(x => x.PurchaseOrderId == id)
-            .Select(x => new { x.Id, x.Product.Sku, x.Product.Name, x.Qty, x.UnitPrice })
-            .ToListAsync();
-        var lineIds = orderLines.Select(x => x.Id).ToList();
-        var received = await UnitOfWork.GoodsReceiptLines.Query()
-            .Where(x => lineIds.Contains(x.PurchaseOrderLineId) && x.GoodsReceipt.Status == GoodsReceiptStatus.Posted)
-            .GroupBy(x => x.PurchaseOrderLineId)
-            .Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Quantity) })
-            .ToListAsync();
-        var billed = await UnitOfWork.VendorBillLines.Query()
-            .Where(x => lineIds.Contains(x.PurchaseOrderLineId) && x.VendorBill.Status != VendorBillStatus.Draft && x.VendorBill.Status != VendorBillStatus.Cancelled)
-            .GroupBy(x => x.PurchaseOrderLineId)
-            .Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Qty) })
-            .ToListAsync();
-
-        lines = orderLines.Select(x =>
+        var result = await Lookup.GetVendorBillLinesAsync(id);
+        lines = (result.Value ?? []).Select(x => new BillLine(x.LineId, x.Label, x.OrderedQty, x.DoneQty, x.RelatedQty, x.UnitPrice)
         {
-            var receivedQty = received.FirstOrDefault(s => s.LineId == x.Id)?.Qty ?? 0;
-            var billedQty = billed.FirstOrDefault(s => s.LineId == x.Id)?.Qty ?? 0;
-            return new BillLine(x.Id, $"{x.Sku} - {x.Name}", x.Qty, receivedQty, billedQty, x.UnitPrice)
-            {
-                Qty = Math.Max(0, receivedQty - billedQty)
-            };
+            Qty = x.RemainingQty
         }).ToList();
     }
 

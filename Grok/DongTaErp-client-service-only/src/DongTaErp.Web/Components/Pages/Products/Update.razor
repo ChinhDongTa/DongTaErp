@@ -1,0 +1,93 @@
+@page "/products/update/{Id}"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Products
+@inject IProductService Service
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
+@inject NavigationManager Navigation
+
+<PageTitle>Cập nhật sản phẩm</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="Cập nhật sản phẩm" />
+    <EditForm Model="dto" OnSubmit="SaveAsync" Style="@(isSaving ? "opacity:.6; pointer-events:none;" : null)">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="width:100%; max-width:640px; margin:10px auto;">
+            <FluentTextInput @bind-Value="dto.Sku" Label="Mã sản phẩm" MaxLength="40" />
+            <FluentTextInput @bind-Value="dto.Name" Label="Tên sản phẩm" MaxLength="200" />
+            <FluentSelect TValue="string" TOption="CategoryOption" Items="categories" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                          @bind-Value="categoryId" Label="Danh mục" />
+            <FluentTextInput @bind-Value="dto.Unit" Label="Đơn vị tính" MaxLength="20" />
+            <FluentNumberInput @bind-Value="dto.CostPrice" Label="Giá vốn" Min="0" TValue="decimal?" />
+            <FluentNumberInput @bind-Value="dto.SalePrice" Label="Giá bán" Min="0" TValue="decimal?" />
+            <FluentNumberInput @bind-Value="dto.MinStock" Label="Tồn tối thiểu" Min="0" TValue="decimal?" />
+            <FluentCheckbox @bind-Value="dto.IsActive" Label="Đang kinh doanh" />
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/products/list" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+
+    private Alert? alert;
+    private UpdateProductDto? dto;
+    private string categoryId = "";
+    private List<CategoryOption> categories = [new("", "Không chọn")];
+    private bool isSaving;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        var items = ((await Lookup.GetCategoriesAsync()).Value ?? [])
+            .Select(x => new CategoryOption(x.Id.ToString(), x.Label))
+            .ToList();
+        categories.AddRange(items);
+
+        var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
+        if (!result.Succeeded || result.Value is null)
+        {
+            alert?.AddAlertError("Không tìm thấy sản phẩm.");
+            return;
+        }
+
+        dto = result.Value;
+        categoryId = dto.CategoryId?.ToString() ?? "";
+    }
+
+    private async Task SaveAsync()
+    {
+        if (dto is null)
+            return;
+
+        dto.CategoryId = Guid.TryParse(categoryId, out var id) ? id : null;
+        isSaving = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var result = await Service.UpdateAsync(Id.ToGuid(), dto);
+            if (!result.Succeeded)
+            {
+                alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Cập nhật thất bại.");
+                return;
+            }
+
+            Navigation.NavigateTo($"/products/view/{Id}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private sealed record CategoryOption(string Id, string Name);
+}

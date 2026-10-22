@@ -1,0 +1,52 @@
+@page "/warehouses/stock"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
+@inject NavigationManager Navigation
+
+<PageTitle>Tồn kho</PageTitle>
+<ActionTitle Text="Tồn kho theo kho" />
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
+    <FluentSelect TValue="string" TOption="WarehouseOption" Items="warehouseOptions" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                  @bind-Value="warehouseId" Label="Kho"  />
+    <FluentCheckbox @bind-Value="lowOnly" Label="Chỉ tồn thấp" style="margin-top: 48px;" />
+    <FluentButton Appearance="ButtonAppearance.Outline" style="margin-top: 34px;" OnClick="LoadAsync">Lọc</FluentButton>
+</FluentStack>
+
+<FluentDataGrid Items="@rows" Style="width: 100%;">
+    <PropertyColumn Title="Kho" Property="@(c => c.WarehouseName)" />
+    <PropertyColumn Title="Mã SP" Property="@(c => c.ProductSku)" />
+    <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductName)" />
+    <PropertyColumn Title="Tồn" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+    <PropertyColumn Title="Tối thiểu" Property="@(c => c.MinQty.ToDisplay())" Align="DataGridCellAlignment.End" />
+    <TemplateColumn Title="Cảnh báo" Align="DataGridCellAlignment.Center">
+        @if (context.Qty <= context.MinQty)
+        {
+            <FluentBadge Appearance="BadgeAppearance.Filled" Color="BadgeColor.Danger">Thấp</FluentBadge>
+        }
+    </TemplateColumn>
+</FluentDataGrid>
+
+@code {
+    private string warehouseId = "";
+    private bool lowOnly;
+    private List<WarehouseOption> warehouseOptions = [new("", "Tất cả kho")];
+    private IQueryable<StockBalanceDto> rows = Array.Empty<StockBalanceDto>().AsQueryable();
+
+    protected override async Task OnInitializedAsync()
+    {
+        warehouseOptions.AddRange(((await Lookup.GetWarehousesAsync()).Value ?? [])
+            .Select(x => new WarehouseOption(x.Id.ToString(), x.Label)));
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        Guid? id = Guid.TryParse(warehouseId, out var parsed) ? parsed : null;
+        rows = ((await Lookup.GetStockAsync(id, lowOnly)).Value ?? []).AsQueryable();
+    }
+
+    private sealed record WarehouseOption(string Id, string Name);
+}

@@ -1,11 +1,10 @@
 @page "/products/view/{Id}"
 @attribute [Authorize(Roles = AppRoles.Catalog)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using DongTaErp.Application.Common.Interfaces
 @using DongTaErp.Application.Services.Products
-@using Microsoft.EntityFrameworkCore
 @inject IProductService Service
-@inject IUnitOfWork UnitOfWork
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
 @inject NavigationManager Navigation
 
 <PageTitle>Chi tiết sản phẩm</PageTitle>
@@ -69,19 +68,7 @@ else
             return;
         }
 
-        stocks = UnitOfWork.StockBalances.Query()
-            .Where(x => x.ProductId == dto.Id)
-            .OrderBy(x => x.Warehouse.Code)
-            .Select(x => new StockBalanceDto
-            {
-                Id = x.Id,
-                ProductSku = x.Product.Sku,
-                ProductName = x.Product.Name,
-                WarehouseName = x.Warehouse.Name,
-                Qty = x.Qty,
-                MinQty = x.MinQty,
-                CreatedAt = x.Created
-            });
+        stocks = ((await Lookup.GetStockAsync(productId: dto.Id)).Value ?? []).AsQueryable();
     }
 
     private void OpenDelete() => hideDelete = false;

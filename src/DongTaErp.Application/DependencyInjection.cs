@@ -16,10 +16,12 @@ using DongTaErp.Application.Services.Products;
 using DongTaErp.Application.Services.PurchaseOrders;
 using DongTaErp.Application.Services.SalesOrders;
 using DongTaErp.Application.Services.VendorBills;
-using DongTaErp.Application.Services.StockTransfers;
+using DongTaErp.Application.Services.Lookups;
+using DongTaErp.Application.Services.Dashboard;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using DongTaErp.Application.Services.Warehouses;
+using DongTaErp.Application.Services.StockTransfers;
 
 namespace DongTaErp.Application;
 
@@ -35,6 +37,8 @@ public static class DependencyInjection
         builder.Services.AddScoped<IProductService, ProductService>();
         builder.Services.AddScoped<IWarehouseService, WarehouseService>();
         builder.Services.AddScoped<IStockTransferService, StockTransferService>();
+        builder.Services.AddScoped<ILookupService, LookupService>();
+        builder.Services.AddScoped<IDashboardService, DashboardService>();
         builder.Services.AddScoped<IDepartmentService, DepartmentService>();
         builder.Services.AddScoped<IJobPositionService, JobPositionService>();
         builder.Services.AddScoped<IEmployeeService, EmployeeService>();

@@ -1,9 +1,8 @@
 @page "/warehouses/stock"
 @attribute [Authorize(Roles = AppRoles.Catalog)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using DongTaErp.Application.Common.Interfaces
-@using Microsoft.EntityFrameworkCore
-@inject IUnitOfWork UnitOfWork
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
 @inject NavigationManager Navigation
 
 <PageTitle>Tồn kho</PageTitle>
@@ -38,37 +37,15 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var warehouses = await UnitOfWork.Warehouses.Query()
-            .Where(x => x.IsActive)
-            .OrderBy(x => x.Code)
-            .Select(x => new WarehouseOption(x.Id.ToString(), $"{x.Code} - {x.Name}"))
-            .ToListAsync();
-        warehouseOptions.AddRange(warehouses);
+        warehouseOptions.AddRange(((await Lookup.GetWarehousesAsync()).Value ?? [])
+            .Select(x => new WarehouseOption(x.Id.ToString(), x.Label)));
         await LoadAsync();
     }
 
-    private Task LoadAsync()
+    private async Task LoadAsync()
     {
-        var query = UnitOfWork.StockBalances.Query();
-        if (Guid.TryParse(warehouseId, out var id))
-            query = query.Where(x => x.WarehouseId == id);
-        if (lowOnly)
-            query = query.Where(x => x.Qty <= x.MinQty);
-
-        rows = query
-            .OrderBy(x => x.Warehouse.Code)
-            .ThenBy(x => x.Product.Sku)
-            .Select(x => new StockBalanceDto
-            {
-                Id = x.Id,
-                ProductSku = x.Product.Sku,
-                ProductName = x.Product.Name,
-                WarehouseName = x.Warehouse.Name,
-                Qty = x.Qty,
-                MinQty = x.MinQty,
-                CreatedAt = x.Created
-            });
-        return Task.CompletedTask;
+        Guid? id = Guid.TryParse(warehouseId, out var parsed) ? parsed : null;
+        rows = ((await Lookup.GetStockAsync(id, lowOnly)).Value ?? []).AsQueryable();
     }
 
     private sealed record WarehouseOption(string Id, string Name);

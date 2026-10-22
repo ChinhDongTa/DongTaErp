@@ -1,0 +1,142 @@
+﻿@page "/partners/view/{Id}"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Partners
+@inject IPartnerService PartnerService
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+<PageTitle>Thông tin chi tiết đối tác</PageTitle>
+<Alert @ref="alertComponent" />
+
+<div style="position:relative; margin:10px auto; max-width:50%; min-height:180px;">
+    @if (dto is null && isLoading)
+    {
+        <PageLoading />
+    }
+    else if (dto is not null)
+    {
+        <ActionTitle Text="Thông tin chi tiết đối tác" />
+        <FluentStack Style="@($"margin:0; {(isLoading ? "opacity:.5; pointer-events:none;" : null)}")" HorizontalAlignment="HorizontalAlignment.Left">
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
+                <DetailItem Label="Mã khách hàng" Value="@dto.Code" />
+                <DetailItem Label="Tên khách hàng" Value="@dto.Name" />
+                <DetailItem Label="Loại khách hàng" Value="@dto.TypeName" />
+            </FluentStack>
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
+                <DetailItem Label="Điện thoại" Value="@dto.Phone" />
+                <DetailItem Label="Email" Value="@dto.Email" />
+                <DetailItem Label="Mã số thuế" Value="@dto.TaxCode" />
+            </FluentStack>
+
+        </FluentStack>
+        <EntityActions EntityId="@Id" Folder="/partners" OnDeleteClick="OpenDeleteAsync" />
+        @if (isLoading)
+        {
+            <FluentSpinner Style="position:absolute; inset:40% 0 auto; margin:auto;" />
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public required string Id { get; set; }
+
+    private PartnerDto? dto;
+    private Alert? alertComponent;
+    private bool isLoading;
+    private bool isDeleting;
+    private string? loadedId;
+    private string? pendingError;
+    private int requestVersion;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id == loadedId && dto is not null)
+            return;
+
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (pendingError is null || alertComponent is null)
+            return;
+
+        var message = pendingError;
+        pendingError = null;
+        alertComponent.AddAlertError(message);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadAsync()
+    {
+        if (!Guid.TryParse(Id, out var id))
+        {
+            dto = null;
+            loadedId = null;
+            pendingError = "Mã khách hàng không hợp lệ.";
+            return;
+        }
+
+        var version = ++requestVersion;
+        isLoading = true;
+        StateHasChanged();
+        await Task.Yield();
+
+        try
+        {
+            var result = await PartnerService.GetByIdAsync(id);
+            if (version != requestVersion)
+                return;
+
+            if (result.Succeeded && result.Value is not null)
+            {
+                dto = result.Value;
+                loadedId = Id;
+                return;
+            }
+
+            dto = null;
+            loadedId = null;
+            pendingError = result.Errors?.FirstOrDefault() ?? "Không tìm thấy khách hàng.";
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+        }
+    }
+
+    private async Task OpenDeleteAsync()
+    {
+        var dialog = await DialogService.ShowConfirmationAsync(
+            $"Xóa {dto?.Name}?",
+            title: "Xóa khách hàng",
+            primaryButton: "Xóa",
+            secondaryButton: "Hủy"
+            );
+       
+        if (dialog.Cancelled)
+            return;
+
+        await ConfirmDeleteAsync();
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (!Guid.TryParse(Id, out var id))
+            return;
+
+        isDeleting = true;
+        var result = await PartnerService.SoftDeleteAsync(id);
+        isDeleting = false;
+
+        if (!result.Succeeded)
+        {
+            alertComponent?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Xóa thất bại.");
+            return;
+        }
+
+        Navigation.NavigateTo("/partners/list");
+    }
+}

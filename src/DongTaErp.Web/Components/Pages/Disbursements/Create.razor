@@ -1,11 +1,10 @@
 @page "/disbursements/create"
 @attribute [Authorize(Roles = AppRoles.PurchaseArea)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using DongTaErp.Application.Common.Interfaces
 @using DongTaErp.Application.Services.Disbursements
-@using Microsoft.EntityFrameworkCore
 @inject IDisbursementService Service
-@inject IUnitOfWork UnitOfWork
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
 @inject NavigationManager Navigation
 
 <PageTitle>Tạo phiếu chi</PageTitle>
@@ -74,22 +73,16 @@
 
     protected override async Task OnInitializedAsync()
     {
-        suppliers = await UnitOfWork.Partners.Query()
-            .Where(x => x.IsActive && (x.Type == PartnerType.Supplier || x.Type == PartnerType.Both))
-            .OrderBy(x => x.Code)
-            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.Name}"))
-            .ToListAsync();
+        suppliers = ((await Lookup.GetSuppliersAsync()).Value ?? [])
+            .Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
 
         if (Guid.TryParse(BillId, out var billId))
         {
-            var bill = await UnitOfWork.VendorBills.Query()
-                .Where(x => x.Id == billId)
-                .Select(x => new { x.PartnerId, x.Total, x.PaidAmount })
-                .FirstOrDefaultAsync();
+            var bill = (await Lookup.GetVendorBillAsync(billId)).Value;
             if (bill is not null)
             {
                 supplierId = bill.PartnerId.ToString();
-                dto.Amount = Math.Max(0, bill.Total - bill.PaidAmount);
+                dto.Amount = bill.Balance;
             }
         }
 
@@ -111,11 +104,8 @@
             return;
         }
 
-        openBills = await UnitOfWork.VendorBills.Query()
-            .Where(x => x.PartnerId == partnerId && (x.Status == VendorBillStatus.Posted || x.Status == VendorBillStatus.PartiallyPaid))
-            .OrderBy(x => x.BillDate)
-            .Select(x => new OpenBill(x.Id, x.Number, x.Total, x.Total - x.PaidAmount))
-            .ToListAsync();
+        openBills = ((await Lookup.GetOpenVendorBillsAsync(partnerId)).Value ?? [])
+            .Select(x => new OpenBill(x.Id, x.Number, x.Total, x.Balance)).ToList();
 
         if (Guid.TryParse(BillId, out var billId))
         {

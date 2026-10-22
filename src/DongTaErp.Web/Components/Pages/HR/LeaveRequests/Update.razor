@@ -1,11 +1,10 @@
 @page "/hr/leave-requests/update/{Id}"
 @attribute [Authorize(Roles = AppRoles.Hr)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using DongTaErp.Application.Common.Interfaces
 @using DongTaErp.Application.Services.LeaveRequests
-@using Microsoft.EntityFrameworkCore
 @inject ILeaveRequestService Service
-@inject IUnitOfWork UnitOfWork
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
 @inject NavigationManager Navigation
 
 <PageTitle>Cập nhật đơn nghỉ</PageTitle>
@@ -56,8 +55,8 @@ else
     {
         if (!firstRender)
             return;
-        employees = await UnitOfWork.Employees.Query().OrderBy(x => x.Code)
-            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.FullName}")).ToListAsync();
+        employees = ((await Lookup.GetEmployeesAsync()).Value ?? [])
+            .Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
         var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
         if (!result.Succeeded || result.Value is null)
         {

@@ -1,0 +1,104 @@
+@page "/hr/leave-requests/view/{Id}"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.LeaveRequests
+@inject ILeaveRequestService Service
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Đơn nghỉ phép</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="@dto.EmployeeName" />
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+        <DetailItem Label="Loại" Value="@dto.TypeName" />
+        <DetailItem Label="Từ ngày" Value="@dto.FromDate.ToDateString()" />
+        <DetailItem Label="Đến ngày" Value="@dto.ToDate.ToDateString()" />
+        <DetailItem Label="Số ngày" Value="@dto.Days.ToDisplay()" />
+        <DetailItem Label="Lý do" Value="@dto.Reason" />
+        <DetailItem Label="Trạng thái" Value="@dto.StatusName" />
+        <DetailItem Label="Ghi chú duyệt" Value="@dto.ReviewNote" />
+    </FluentStack>
+
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 16px;">
+        @if (dto.Status == LeaveStatus.Pending)
+        {
+            <FluentButton Appearance="ButtonAppearance.Primary" Loading="busy" OnClick="ApproveAsync">Duyệt</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Outline" Loading="busy" OnClick="RejectAsync">Từ chối</FluentButton>
+        }
+        @if (dto.Status == LeaveStatus.Pending)
+        {
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo($"/hr/leave-requests/update/{dto.Id}"))">Sửa</FluentButton>
+        }
+        <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/hr/leave-requests/list"))">Danh sách</FluentButton>
+    </FluentStack>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private LeaveRequestDto? dto;
+    private Alert? alert;
+    private bool busy;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await Service.GetByIdAsync(Id.ToGuid());
+        dto = result.Succeeded ? result.Value : null;
+        if (dto is null)
+            alert?.AddAlertError("Không tìm thấy đơn nghỉ.");
+    }
+
+    private async Task ApproveAsync()
+    {
+        var dialog = await DialogService.ShowConfirmationAsync(
+            "Duyệt đơn nghỉ này?",
+            title: "Duyệt nghỉ phép",
+            primaryButton: "Duyệt",
+            secondaryButton: "Hủy");
+        if (dialog.Cancelled)
+            return;
+
+        busy = true;
+        var result = await Service.ApproveAsync(Id.ToGuid(), null);
+        busy = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không duyệt được.");
+            return;
+        }
+        await LoadAsync();
+    }
+
+    private async Task RejectAsync()
+    {
+        var dialog = await DialogService.ShowConfirmationAsync(
+            "Từ chối đơn nghỉ này?",
+            title: "Từ chối",
+            primaryButton: "Từ chối",
+            secondaryButton: "Hủy");
+        if (dialog.Cancelled)
+            return;
+
+        busy = true;
+        var result = await Service.RejectAsync(Id.ToGuid(), null);
+        busy = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không từ chối được.");
+            return;
+        }
+        await LoadAsync();
+    }
+}
