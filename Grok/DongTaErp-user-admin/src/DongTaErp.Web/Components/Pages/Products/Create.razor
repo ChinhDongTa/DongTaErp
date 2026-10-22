@@ -1,0 +1,70 @@
+@page "/products/create"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Common.Interfaces
+@using DongTaErp.Application.Services.Products
+@using Microsoft.EntityFrameworkCore
+@inject IProductService Service
+@inject IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+<PageTitle>Tạo sản phẩm</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Tạo sản phẩm" />
+
+<EditForm Model="dto" OnSubmit="SaveAsync" Style="@(isSaving ? "opacity:.6; pointer-events:none;" : null)">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" HorizontalAlignment="HorizontalAlignment.Left" Style="margin:10px auto;">
+        <FluentTextInput @bind-Value="dto.Sku" Label="Mã sản phẩm" Required="true" MaxLength="40" />
+        <FluentTextInput @bind-Value="dto.Name" Label="Tên sản phẩm" Required="true" MaxLength="200" />
+        <FluentSelect TValue="string" TOption="CategoryOption" Items="categories" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                      @bind-Value="categoryId" Label="Danh mục" />
+        <FluentTextInput @bind-Value="dto.Unit" Label="Đơn vị tính" Required="true" MaxLength="20" />
+        <FluentNumberInput @bind-Value="dto.CostPrice" Label="Giá vốn" Min="0" TValue="decimal" />
+        <FluentNumberInput @bind-Value="dto.SalePrice" Label="Giá bán" Min="0" TValue="decimal" />
+        <FluentNumberInput @bind-Value="dto.MinStock" Label="Tồn tối thiểu" Min="0" TValue="decimal" />
+        <FluentCheckbox @bind-Value="dto.IsActive" Label="Đang kinh doanh" />
+        <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/products/list" />
+    </FluentStack>
+</EditForm>
+
+@code {
+    private Alert? alert;
+    private readonly CreateProductDto dto = new() { Sku = "", Name = "", Unit = "Cái" };
+    private string categoryId = "";
+    private List<CategoryOption> categories = [new("", "Không chọn")];
+    private bool isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var items = await UnitOfWork.Categories.Query()
+            .OrderBy(x => x.Name)
+            .Select(x => new CategoryOption(x.Id.ToString(), x.Name))
+            .ToListAsync();
+        categories.AddRange(items);
+    }
+
+    private async Task SaveAsync()
+    {
+        dto.CategoryId = Guid.TryParse(categoryId, out var id) ? id : null;
+        isSaving = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var result = await Service.CreateAsync(dto);
+            if (!result.Succeeded || string.IsNullOrEmpty(result.Value))
+            {
+                alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Tạo sản phẩm thất bại.");
+                return;
+            }
+
+            Navigation.NavigateTo($"/products/view/{result.Value}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private sealed record CategoryOption(string Id, string Name);
+}

@@ -1,4 +1,6 @@
 ﻿@page "/hr/departments/update/{Id}"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+
 @using DongTaErp.Application.Services.Departments
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject IDepartmentService DepartmentService
@@ -46,7 +48,6 @@ else
         {
             dto = result.Value;
             //alertComponent?.AddAlert("Lấy dữ liệu thành công");
-            await InvokeAsync(StateHasChanged);
         }
         else
         {

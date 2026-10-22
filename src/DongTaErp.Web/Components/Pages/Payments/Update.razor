@@ -1,4 +1,5 @@
 @page "/payments/update/{Id}"
+@attribute [Authorize(Roles = AppRoles.SalesArea)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Services.Payments
 @inject IPaymentService Service

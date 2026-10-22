@@ -1,0 +1,61 @@
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+﻿@page "/partners/list"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Partners
+@inject NavigationManager Navigation
+@inject IPartnerService Service
+<ActionTitle Text="Danh sách đối tác" />
+<FluentButton IconStart="@(new Icons.Regular.Size20.Add())" Appearance="ButtonAppearance.Primary" Label="Tạo mới" @onclick="@(() => Navigation.NavigateTo("/partners/create"))" />
+<PaginatedTable TItem="PartnerDto" Data="paginatedList" PageSize="pageSize" GridTemplateColumns="2fr 1fr 1fr 3fr 1fr" OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
+    <PropertyColumn TGridItem="PartnerDto" TProp="string" Title="Name" Property="@(c => c!.Name)" Align="DataGridCellAlignment.Start" />
+    <PropertyColumn TGridItem="PartnerDto" TProp="string" Title="Code" Property="@(c => c!.Code)" Align="DataGridCellAlignment.Center" />
+    <PropertyColumn TGridItem="PartnerDto" TProp="string" Title="Email" Property="@(c => c!.Email)" Align="DataGridCellAlignment.Start" />
+    <PropertyColumn TGridItem="PartnerDto" TProp="string" Title="Type" Property="@(c => c!.TypeName)" Align="DataGridCellAlignment.Start" />
+    <PropertyColumn TGridItem="PartnerDto" TProp="string" Title="Address" Property="@(c => c!.Address)" Align="DataGridCellAlignment.Start" />
+    
+    <TemplateColumn TGridItem="PartnerDto" Context="item" Title="Actions" Class="col-actions">
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem" @onclick="@(() => ViewHandler(item.Id))" />
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Edit())" Appearance="ButtonAppearance.Primary" Title="Sửa" @onclick="@(() => EditHandler(item.Id))" />
+    </TemplateColumn>
+</PaginatedTable>
+@code {
+    private PaginatedList<PartnerDto>? paginatedList;
+    private readonly int pageSize = Models.Constants.PageSize;
+    private int currentPage = 1;
+    private bool isLoading;
+    private int requestVersion;
+
+    protected override async Task OnInitializedAsync() => await LoadData(currentPage);
+
+    private Task LoadPageAsync(int page)
+    {
+        currentPage = page;
+        return LoadData(page);
+    }
+
+    private async Task LoadData(int page)
+    {
+        var version = ++requestVersion;
+        isLoading = true;
+       
+
+        try
+        {
+            var result = await Service.GetAllAsync(page, pageSize);
+            if (version != requestVersion)
+                return;
+
+            if (result.Succeeded && result.Value is not null)
+                paginatedList = result.Value;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ViewHandler(Guid id) => Navigation.NavigateTo($"/partners/view/{id}");
+    private void EditHandler(Guid id) => Navigation.NavigateTo($"/partners/update/{id}");
+}

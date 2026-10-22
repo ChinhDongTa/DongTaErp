@@ -1,0 +1,202 @@
+@page "/disbursements/create"
+@attribute [Authorize(Roles = AppRoles.PurchaseArea)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Common.Interfaces
+@using DongTaErp.Application.Services.Disbursements
+@using Microsoft.EntityFrameworkCore
+@inject IDisbursementService Service
+@inject IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+<PageTitle>Tạo phiếu chi</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Tạo phiếu chi" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Phân bổ vào hóa đơn mua đã ghi sổ còn nợ. Ghi sổ mới giảm công nợ.
+</FluentMessageBar>
+
+<EditForm Model="dto" OnSubmit="SaveDraftAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10">
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" VerticalAlignment="VerticalAlignment.Top">
+            <FluentTextInput @bind-Value="dto.Number" Label="Số phiếu" Required="true" />
+            <FluentSelect TOption="OptionItem" TValue="string" Items="suppliers" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                          Value="supplierId" ValueChanged="OnSupplierChanged" Label="Nhà cung cấp" />
+            <FluentSelect TOption="MethodOption" TValue="PaymentMethod" Items="methods" OptionText="@(x => x.Name)" OptionValue="@(x => x.Value)"
+                          @bind-Value="dto.Method" Label="Hình thức" />
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+            <FluentDatePicker @bind-Value="paidAt" Label="Ngày chi" />
+            <DecimalInput @bind-Value="dto.Amount" Label="Số tiền chi" Min="0" TValue="decimal" Unit="đ" />
+            <FluentTextInput @bind-Value="dto.ReferenceNumber" Label="Số tham chiếu" />
+            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" Style="width: 280px;" />
+        </FluentStack>
+
+        <h4>Phân bổ hóa đơn mua</h4>
+        <FluentDataGrid Items="@openBills.AsQueryable()">
+            <PropertyColumn Title="Số HĐ" Property="@(c => c.Number)" />
+            <PropertyColumn Title="Tổng" Property="@(c => c.Total.ToCurrency())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Còn nợ" Property="@(c => c.Balance.ToCurrency())" Align="DataGridCellAlignment.End" />
+            <TemplateColumn Title="Phân bổ" Context="line">
+                <DecimalInput @bind-Value="line.Allocate" Min="0" TValue="decimal" Unit="đ" />
+            </TemplateColumn>
+        </FluentDataGrid>
+
+        <div>Đã phân bổ: @Allocated.ToCurrency() — Chưa phân bổ: @Unallocated.ToCurrency()</div>
+
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+            <FluentButton Appearance="ButtonAppearance.Outline" Type="ButtonType.Submit" Loading="isSaving">Lưu nháp</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary" Loading="isSaving" OnClick="SaveAndPostAsync">Lưu và ghi sổ</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/disbursements/list"))">Hủy</FluentButton>
+        </FluentStack>
+    </FluentStack>
+</EditForm>
+
+@code {
+    [SupplyParameterFromQuery] public string? BillId { get; set; }
+
+    private Alert? alert;
+    private readonly CreateDisbursementDto dto = new() { Number = "PC".GetRandomCode() };
+    private DateTime? paidAt = DateTime.Today;
+    private string supplierId = "";
+    private bool isSaving;
+    private List<OptionItem> suppliers = [];
+    private List<OpenBill> openBills = [];
+    private decimal Allocated => openBills.Sum(x => x.Allocate);
+    private decimal Unallocated => dto.Amount - Allocated;
+    private readonly List<MethodOption> methods =
+    [
+        new(PaymentMethod.Cash, "Tiền mặt"),
+        new(PaymentMethod.BankTransfer, "Chuyển khoản"),
+        new(PaymentMethod.Card, "Thẻ"),
+        new(PaymentMethod.Other, "Khác")
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        suppliers = await UnitOfWork.Partners.Query()
+            .Where(x => x.IsActive && (x.Type == PartnerType.Supplier || x.Type == PartnerType.Both))
+            .OrderBy(x => x.Code)
+            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.Name}"))
+            .ToListAsync();
+
+        if (Guid.TryParse(BillId, out var billId))
+        {
+            var bill = await UnitOfWork.VendorBills.Query()
+                .Where(x => x.Id == billId)
+                .Select(x => new { x.PartnerId, x.Total, x.PaidAmount })
+                .FirstOrDefaultAsync();
+            if (bill is not null)
+            {
+                supplierId = bill.PartnerId.ToString();
+                dto.Amount = Math.Max(0, bill.Total - bill.PaidAmount);
+            }
+        }
+
+        supplierId = string.IsNullOrEmpty(supplierId) ? suppliers.FirstOrDefault()?.Id ?? "" : supplierId;
+        await LoadBillsAsync();
+    }
+
+    private async Task OnSupplierChanged(string value)
+    {
+        supplierId = value;
+        await LoadBillsAsync();
+    }
+
+    private async Task LoadBillsAsync()
+    {
+        if (!Guid.TryParse(supplierId, out var partnerId))
+        {
+            openBills = [];
+            return;
+        }
+
+        openBills = await UnitOfWork.VendorBills.Query()
+            .Where(x => x.PartnerId == partnerId && (x.Status == VendorBillStatus.Posted || x.Status == VendorBillStatus.PartiallyPaid))
+            .OrderBy(x => x.BillDate)
+            .Select(x => new OpenBill(x.Id, x.Number, x.Total, x.Total - x.PaidAmount))
+            .ToListAsync();
+
+        if (Guid.TryParse(BillId, out var billId))
+        {
+            var selected = openBills.FirstOrDefault(x => x.Id == billId);
+            if (selected is not null)
+                selected.Allocate = Math.Min(dto.Amount, selected.Balance);
+        }
+    }
+
+    private Task SaveDraftAsync() => SaveAsync(post: false);
+
+    private Task SaveAndPostAsync() => SaveAsync(post: true);
+
+    private async Task SaveAsync(bool post)
+    {
+        if (!Guid.TryParse(supplierId, out var partnerId))
+        {
+            alert?.AddAlertError("Chọn nhà cung cấp.");
+            return;
+        }
+        if (dto.Amount <= 0)
+        {
+            alert?.AddAlertError("Số tiền chi phải lớn hơn 0.");
+            return;
+        }
+        if (Allocated > dto.Amount)
+        {
+            alert?.AddAlertError("Tổng phân bổ vượt số tiền chi.");
+            return;
+        }
+        if (openBills.Any(x => x.Allocate > x.Balance))
+        {
+            alert?.AddAlertError("Phân bổ vượt số còn nợ của hóa đơn.");
+            return;
+        }
+
+        dto.PartnerId = partnerId;
+        dto.PaidAt = paidAt ?? DateTime.Today;
+        dto.Allocations = openBills.Where(x => x.Allocate > 0)
+            .Select(x => new CreateDisbursementAllocationDto { VendorBillId = x.Id, Amount = x.Allocate })
+            .ToList();
+
+        isSaving = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var created = await Service.CreateAsync(dto);
+            if (!created.Succeeded || string.IsNullOrEmpty(created.Value))
+            {
+                alert?.AddAlertError(created.Errors?.FirstOrDefault() ?? "Không tạo được phiếu chi.");
+                return;
+            }
+
+            if (post && Guid.TryParse(created.Value, out var id))
+            {
+                var posted = await Service.PostAsync(id);
+                if (!posted.Succeeded)
+                {
+                    alert?.AddAlertError(posted.Errors?.FirstOrDefault() ?? "Đã lưu nháp nhưng chưa ghi sổ.");
+                    Navigation.NavigateTo($"/disbursements/view/{created.Value}");
+                    return;
+                }
+            }
+
+            Navigation.NavigateTo($"/disbursements/view/{created.Value}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private sealed record OptionItem(string Id, string Name);
+    private sealed record MethodOption(PaymentMethod Value, string Name);
+    private sealed class OpenBill(Guid id, string number, decimal total, decimal balance)
+    {
+        public Guid Id { get; } = id;
+        public string Number { get; } = number;
+        public decimal Total { get; } = total;
+        public decimal Balance { get; } = balance;
+        public decimal Allocate { get; set; }
+    }
+}

@@ -1,0 +1,60 @@
+@page "/admin/users/list"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Authorize(Roles = AppRoles.Manage)]
+@using DongTaErp.Domain.Entities
+@inject UserManager<AppUser> UserManager
+@inject NavigationManager Navigation
+
+<PageTitle>Người dùng</PageTitle>
+<ActionTitle Text="Quản trị người dùng" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Bán hàng chỉ vào phần bán. Mua hàng vào phần mua. Kế toán vào thu chi. Ban Giám đốc xem toàn bộ. Quản trị hệ thống quản lý tài khoản.
+</FluentMessageBar>
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-bottom: 12px;">
+    <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/users/create"))">Tạo người dùng</FluentButton>
+</FluentStack>
+
+@if (!loaded)
+{
+    <PageLoading />
+}
+else
+{
+    <FluentDataGrid Items="@users.AsQueryable()">
+        <PropertyColumn Title="Tên đăng nhập" Property="@(c => c.UserName)" />
+        <PropertyColumn Title="Tên hiển thị" Property="@(c => c.DisplayName)" />
+        <PropertyColumn Title="Email" Property="@(c => c.Email)" />
+        <PropertyColumn Title="Vai trò" Property="@(c => c.RoleName)" />
+        <TemplateColumn Title="Trạng thái">
+            <FluentBadge Appearance="BadgeAppearance.Filled">@(context.IsActive ? "Đang dùng" : "Khóa")</FluentBadge>
+        </TemplateColumn>
+        <TemplateColumn Title="Thao tác" Context="item">
+            <FluentButton IconStart="@(new Icons.Regular.Size20.Edit())" Appearance="ButtonAppearance.Primary" Title="Sửa"
+                          @onclick="@(() => Navigation.NavigateTo($"/admin/users/update/{item.Id}"))" />
+        </TemplateColumn>
+    </FluentDataGrid>
+}
+
+@code {
+    private bool loaded;
+    private List<UserRow> users = [];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        var all = UserManager.Users.OrderBy(x => x.UserName).ToList();
+        users = [];
+        foreach (var user in all)
+        {
+            var roles = await UserManager.GetRolesAsync(user);
+            users.Add(new UserRow(user.Id, user.UserName ?? "", user.DisplayName, user.Email ?? "", string.Join(", ", roles.Select(AppRoles.Display)), user.IsActive));
+        }
+        loaded = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private sealed record UserRow(string Id, string UserName, string DisplayName, string Email, string RoleName, bool IsActive);
+}

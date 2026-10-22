@@ -1,4 +1,6 @@
 ﻿@page "/partners/list"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Services.Partners
 @inject NavigationManager Navigation

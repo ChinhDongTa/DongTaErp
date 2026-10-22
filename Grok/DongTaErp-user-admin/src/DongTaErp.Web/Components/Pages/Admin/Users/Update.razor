@@ -1,0 +1,99 @@
+@page "/admin/users/update/{Id}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Authorize(Roles = AppRoles.Manage)]
+@using DongTaErp.Domain.Entities
+@inject UserManager<AppUser> UserManager
+@inject NavigationManager Navigation
+
+<PageTitle>Cập nhật người dùng</PageTitle>
+<Alert @ref="alert" />
+
+@if (user is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="@user.UserName" />
+    <EditForm Model="user" OnSubmit="SaveAsync">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 480px;">
+            <FluentTextInput @bind-Value="displayName" Label="Tên hiển thị" />
+            <FluentTextInput @bind-Value="email" Label="Email" />
+            <FluentSelect TOption="RoleOption" TValue="string" Items="roles" OptionText="@(x => x.Name)" OptionValue="@(x => x.Value)"
+                          @bind-Value="role" Label="Vai trò" />
+            <FluentCheckbox @bind-Value="isActive" Label="Đang dùng" Style="margin-top: 34px;" />
+            <FluentTextInput @bind-Value="newPassword" Label="Mật khẩu mới" Placeholder="Để trống nếu không đổi" />
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/admin/users/list" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private AppUser? user;
+    private string displayName = "";
+    private string email = "";
+    private string role = "";
+    private bool isActive = true;
+    private string? newPassword;
+    private bool isSaving;
+    private readonly List<RoleOption> roles = AppRoles.AllRoles.Select(x => new RoleOption(x, AppRoles.Display(x))).ToList();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        user = await UserManager.FindByIdAsync(Id);
+        if (user is null)
+        {
+            alert?.AddAlertError("Không tìm thấy người dùng.");
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+        displayName = user.DisplayName;
+        email = user.Email ?? "";
+        isActive = user.IsActive;
+        role = (await UserManager.GetRolesAsync(user)).FirstOrDefault() ?? "";
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (user is null)
+            return;
+        user.DisplayName = displayName;
+        user.Email = email;
+        user.IsActive = isActive;
+        isSaving = true;
+        var updated = await UserManager.UpdateAsync(user);
+        if (!updated.Succeeded)
+        {
+            isSaving = false;
+            alert?.AddAlertError(updated.Errors.FirstOrDefault()?.Description ?? "Không cập nhật được.");
+            return;
+        }
+
+        var current = await UserManager.GetRolesAsync(user);
+        if (current.Any())
+            await UserManager.RemoveFromRolesAsync(user, current);
+        if (!string.IsNullOrWhiteSpace(role))
+            await UserManager.AddToRoleAsync(user, role);
+
+        if (!string.IsNullOrWhiteSpace(newPassword))
+        {
+            var token = await UserManager.GeneratePasswordResetTokenAsync(user);
+            var reset = await UserManager.ResetPasswordAsync(user, token, newPassword);
+            if (!reset.Succeeded)
+            {
+                isSaving = false;
+                alert?.AddAlertError(reset.Errors.FirstOrDefault()?.Description ?? "Không đổi được mật khẩu.");
+                return;
+            }
+        }
+
+        Navigation.NavigateTo("/admin/users/list");
+    }
+
+    private sealed record RoleOption(string Value, string Name);
+}

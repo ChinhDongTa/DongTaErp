@@ -1,0 +1,196 @@
+@page "/vendor-bills/create"
+@attribute [Authorize(Roles = AppRoles.PurchaseArea)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Common.Interfaces
+@using DongTaErp.Application.Services.VendorBills
+@using Microsoft.EntityFrameworkCore
+@inject IVendorBillService Service
+@inject IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+<PageTitle>Tạo hóa đơn mua</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Tạo hóa đơn mua" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Chỉ ghi nhận số đã nhập kho còn lại. Còn ghi nhận = Đã nhập − Đã ghi HĐ.
+</FluentMessageBar>
+
+<EditForm Model="dto" OnSubmit="SaveDraftAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10">
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" VerticalAlignment="VerticalAlignment.Top">
+            <FluentTextInput @bind-Value="dto.Number" Label="Số hóa đơn" Required="true" />
+            <FluentSelect TOption="OrderOption" TValue="string" Items="orders" OptionText="@(x => x.Label)" OptionValue="@(x => x.Id)"
+                          Value="orderId" ValueChanged="OnOrderChanged" Label="Đơn mua đã xác nhận" />
+            <FluentDatePicker @bind-Value="billDate" Label="Ngày hóa đơn" />
+            <FluentDatePicker @bind-Value="dueDate" Label="Hạn thanh toán" />
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+            <FluentTextInput @bind-Value="dto.SupplierNumber" Label="Số chứng từ NCC" />
+            <DecimalInput @bind-Value="dto.TaxRate" Label="Thuế suất" Min="0" Max="1" TValue="decimal" />
+            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" Style="width: 360px;" />
+        </FluentStack>
+
+        <h4>Dòng hóa đơn</h4>
+        <FluentDataGrid Items="@lines.AsQueryable()">
+            <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductLabel)" />
+            <PropertyColumn Title="Đặt" Property="@(c => c.Ordered.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đã nhập" Property="@(c => c.Received.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đã ghi HĐ" Property="@(c => c.Billed.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Còn ghi nhận" Property="@(c => c.Remaining.ToDisplay())" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đơn giá" Property="@(c => c.UnitPrice.ToCurrency())" Align="DataGridCellAlignment.End" />
+            <TemplateColumn Title="Ghi nhận lần này" Context="line">
+                <DecimalInput @bind-Value="line.Qty"  Min="0" TValue="decimal" />
+            </TemplateColumn>
+            <TemplateColumn Title="Thành tiền lần này" Context="line" Align="DataGridCellAlignment.End">
+                @line.ThisTotal.ToCurrency()
+            </TemplateColumn>
+        </FluentDataGrid>
+
+        <div>Tạm tính: @SubTotal.ToCurrency() — Thuế: @Tax.ToCurrency() — Tổng: @Total.ToCurrency()</div>
+
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+            <FluentButton Appearance="ButtonAppearance.Outline" Type="ButtonType.Submit" Loading="isSaving">Lưu nháp</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary" Loading="isSaving" OnClick="SaveAndPostAsync">Lưu và ghi sổ</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Navigation.NavigateTo("/vendor-bills/list"))">Hủy</FluentButton>
+        </FluentStack>
+    </FluentStack>
+</EditForm>
+
+@code {
+    private Alert? alert;
+    private readonly CreateVendorBillDto dto = new() { Number = "VB".GetRandomCode(), TaxRate = 0.08m };
+    private DateTime? billDate = DateTime.Today;
+    private DateTime? dueDate = DateTime.Today.AddDays(30);
+    private string orderId = "";
+    private bool isSaving;
+    private List<OrderOption> orders = [];
+    private List<BillLine> lines = [];
+    private decimal SubTotal => lines.Sum(x => x.ThisTotal);
+    private decimal Tax => Math.Round(SubTotal * dto.TaxRate, 0);
+    private decimal Total => SubTotal + Tax;
+
+    protected override async Task OnInitializedAsync()
+    {
+        orders = await UnitOfWork.PurchaseOrders.Query()
+            .Where(x => x.Status == PurchaseOrderStatus.Confirmed)
+            .OrderByDescending(x => x.OrderDate)
+            .Select(x => new OrderOption(x.Id.ToString(), $"{x.Number} - {x.Partner.Name}"))
+            .ToListAsync();
+        if (orders.Count > 0)
+            await OnOrderChanged(orders[0].Id);
+    }
+
+    private async Task OnOrderChanged(string value)
+    {
+        orderId = value;
+        if (!Guid.TryParse(value, out var id))
+            return;
+
+        var orderLines = await UnitOfWork.PurchaseOrderLines.Query()
+            .Where(x => x.PurchaseOrderId == id)
+            .Select(x => new { x.Id, x.Product.Sku, x.Product.Name, x.Qty, x.UnitPrice })
+            .ToListAsync();
+        var lineIds = orderLines.Select(x => x.Id).ToList();
+        var received = await UnitOfWork.GoodsReceiptLines.Query()
+            .Where(x => lineIds.Contains(x.PurchaseOrderLineId) && x.GoodsReceipt.Status == GoodsReceiptStatus.Posted)
+            .GroupBy(x => x.PurchaseOrderLineId)
+            .Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Quantity) })
+            .ToListAsync();
+        var billed = await UnitOfWork.VendorBillLines.Query()
+            .Where(x => lineIds.Contains(x.PurchaseOrderLineId) && x.VendorBill.Status != VendorBillStatus.Draft && x.VendorBill.Status != VendorBillStatus.Cancelled)
+            .GroupBy(x => x.PurchaseOrderLineId)
+            .Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Qty) })
+            .ToListAsync();
+
+        lines = orderLines.Select(x =>
+        {
+            var receivedQty = received.FirstOrDefault(s => s.LineId == x.Id)?.Qty ?? 0;
+            var billedQty = billed.FirstOrDefault(s => s.LineId == x.Id)?.Qty ?? 0;
+            return new BillLine(x.Id, $"{x.Sku} - {x.Name}", x.Qty, receivedQty, billedQty, x.UnitPrice)
+            {
+                Qty = Math.Max(0, receivedQty - billedQty)
+            };
+        }).ToList();
+    }
+
+    private Task SaveDraftAsync() => SaveAsync(post: false);
+
+    private Task SaveAndPostAsync() => SaveAsync(post: true);
+
+    private async Task SaveAsync(bool post)
+    {
+        if (!Guid.TryParse(orderId, out var purchaseOrderId))
+        {
+            alert?.AddAlertError("Chọn đơn mua.");
+            return;
+        }
+
+        var selected = lines.Where(x => x.Qty > 0).ToList();
+        if (selected.Count == 0)
+        {
+            alert?.AddAlertError("Nhập số lượng ít nhất một dòng.");
+            return;
+        }
+        var over = selected.FirstOrDefault(x => x.Qty > x.Remaining);
+        if (over is not null)
+        {
+            alert?.AddAlertError($"{over.ProductLabel}: còn ghi nhận {over.Remaining} (đã nhập {over.Received}, đã ghi HĐ {over.Billed}).");
+            return;
+        }
+
+        dto.PurchaseOrderId = purchaseOrderId;
+        dto.BillDate = billDate ?? DateTime.Today;
+        dto.DueDate = dueDate;
+        dto.Lines = selected.Select(x => new CreateVendorBillLineDto
+        {
+            PurchaseOrderLineId = x.PurchaseOrderLineId,
+            Qty = x.Qty,
+            UnitPrice = x.UnitPrice
+        }).ToList();
+
+        isSaving = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var created = await Service.CreateAsync(dto);
+            if (!created.Succeeded || string.IsNullOrEmpty(created.Value))
+            {
+                alert?.AddAlertError(created.Errors?.FirstOrDefault() ?? "Không tạo được hóa đơn mua.");
+                return;
+            }
+
+            if (post && Guid.TryParse(created.Value, out var id))
+            {
+                var posted = await Service.PostAsync(id);
+                if (!posted.Succeeded)
+                {
+                    alert?.AddAlertError(posted.Errors?.FirstOrDefault() ?? "Đã lưu nháp nhưng chưa ghi sổ.");
+                    Navigation.NavigateTo($"/vendor-bills/view/{created.Value}");
+                    return;
+                }
+            }
+
+            Navigation.NavigateTo($"/vendor-bills/view/{created.Value}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private sealed record OrderOption(string Id, string Label);
+    private sealed class BillLine(Guid purchaseOrderLineId, string productLabel, decimal ordered, decimal received, decimal billed, decimal unitPrice)
+    {
+        public Guid PurchaseOrderLineId { get; } = purchaseOrderLineId;
+        public string ProductLabel { get; } = productLabel;
+        public decimal Ordered { get; } = ordered;
+        public decimal Received { get; } = received;
+        public decimal Billed { get; } = billed;
+        public decimal Remaining => Math.Max(0, received - billed);
+        public decimal UnitPrice { get; } = unitPrice;
+        public decimal Qty { get; set; }
+        public decimal ThisTotal => Qty * UnitPrice;
+    }
+}

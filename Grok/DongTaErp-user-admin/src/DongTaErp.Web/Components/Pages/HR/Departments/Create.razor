@@ -1,0 +1,48 @@
+@attribute [Authorize(Roles = AppRoles.Hr)]
+﻿@page "/hr/departments/create"
+@using DongTaErp.Application.Services.Departments
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject IDepartmentService DepartmentService
+@inject NavigationManager Navigation
+
+<PageTitle>Tạo mới phòng ban</PageTitle>
+<Alert @ref="alertComponent" />
+<ActionTitle Text="Tạo mới phòng ban" />
+
+<EditForm Model="dto" OnSubmit="SaveAsync" Style="@(isSaving ? "opacity:.6; pointer-events:none;" : null)">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10"  HorizontalAlignment="HorizontalAlignment.Left" Style="margin:10px auto;">
+        <FluentTextInput @bind-Value="dto.Code" Label="Mã phòng ban" Placeholder="Nhập mã phòng ban" Required="true" MaxLength="40" />
+        <FluentTextInput @bind-Value="dto.Name" Label="Tên phòng ban" Placeholder="Nhập tên phòng ban" Required="true" MaxLength="200" class="text200" />
+        <FluentTextInput @bind-Value="dto.Note" Label="Điện thoại" class="text200" />
+        <FluentCheckbox @bind-Value="dto.IsActive" Label="Kích hoạt" />
+        <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/hr/departments/list" />
+    </FluentStack>
+</EditForm>
+@code {
+    private Alert? alertComponent;
+    private readonly CreateDepartmentDto dto = new() { Code="dep-", Name="Phòng..."};
+    private bool isSaving;
+
+    private async Task SaveAsync()
+    {
+        isSaving = true;
+        StateHasChanged();
+        await Task.Yield();
+
+        try
+        {
+            var result = await DepartmentService.CreateAsync(dto);
+            if (!result.Succeeded || string.IsNullOrEmpty(result.Value))
+            {
+                alertComponent?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Tạo phòng ban thất bại.");
+                return;
+            }
+
+            Navigation.NavigateTo($"/hr/departments/view/{result.Value}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

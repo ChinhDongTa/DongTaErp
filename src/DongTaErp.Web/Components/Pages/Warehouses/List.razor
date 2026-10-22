@@ -1,4 +1,5 @@
 @page "/warehouses/list"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Services.Warehouses
 @inject NavigationManager Navigation

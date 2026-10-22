@@ -1,4 +1,6 @@
 ﻿@page "/partners/update/{Id}"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Services.Partners
 
@@ -51,7 +53,6 @@ else
         if (result.Succeeded && result.Value != null)
         {
             dto = result.Value;
-            await InvokeAsync(StateHasChanged);
         }
         else
         {

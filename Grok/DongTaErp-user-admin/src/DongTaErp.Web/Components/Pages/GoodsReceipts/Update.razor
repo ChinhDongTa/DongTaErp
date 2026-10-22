@@ -1,0 +1,83 @@
+@page "/goods-receipts/update/{Id}"
+@attribute [Authorize(Roles = AppRoles.PurchaseArea)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Common.Interfaces
+@using DongTaErp.Application.Services.GoodsReceipts
+@using Microsoft.EntityFrameworkCore
+@inject IGoodsReceiptService Service
+@inject IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+<PageTitle>Cập nhật phiếu nhập</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="Cập nhật phiếu nhập" />
+    <FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+        Chỉ sửa được phiếu đang nháp. Dòng hàng không đổi ở màn này.
+    </FluentMessageBar>
+    <EditForm Model="dto" OnSubmit="SaveAsync">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 560px;">
+            <FluentTextInput @bind-Value="dto.Code" Label="Mã phiếu" />
+            <FluentSelect TOption="OptionItem" TValue="string" Items="warehouses" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                          @bind-Value="warehouseId" Label="Kho nhập" />
+            <FluentDatePicker @bind-Value="receiptDate" Label="Ngày nhập" />
+            <FluentTextInput @bind-Value="dto.SupplierRef" Label="Số chứng từ NCC" />
+            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" />
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/goods-receipts/list" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private UpdateGoodsReceiptDto? dto;
+    private string warehouseId = "";
+    private DateTime? receiptDate;
+    private bool isSaving;
+    private List<OptionItem> warehouses = [];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        warehouses = await UnitOfWork.Warehouses.Query().Where(x => x.IsActive).OrderBy(x => x.Code)
+            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.Name}")).ToListAsync();
+        var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
+        if (!result.Succeeded || result.Value is null)
+        {
+            alert?.AddAlertError("Không tìm thấy phiếu nhập.");
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+        dto = result.Value;
+        warehouseId = dto.WarehouseId?.ToString() ?? "";
+        receiptDate = dto.ReceiptDate;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (dto is null)
+            return;
+        dto.WarehouseId = Guid.TryParse(warehouseId, out var id) ? id : null;
+        dto.ReceiptDate = receiptDate;
+        isSaving = true;
+        var result = await Service.UpdateAsync(Id.ToGuid(), dto);
+        isSaving = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không cập nhật được. Chỉ sửa phiếu nháp.");
+            return;
+        }
+        Navigation.NavigateTo($"/goods-receipts/view/{Id}");
+    }
+
+    private sealed record OptionItem(string Id, string Name);
+}

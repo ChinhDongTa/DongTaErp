@@ -1,4 +1,6 @@
 ﻿@page "/partners/create"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Services.Partners
 @using DongTaErp.Domain.Enums

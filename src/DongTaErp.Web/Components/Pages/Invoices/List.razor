@@ -1,4 +1,5 @@
 @page "/invoices/list"
+@attribute [Authorize(Roles = AppRoles.SalesArea)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Services.Invoices
 @inject NavigationManager Navigation

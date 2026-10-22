@@ -1,4 +1,5 @@
 @page "/invoices/create"
+@attribute [Authorize(Roles = AppRoles.SalesArea)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Common.Interfaces
 @using DongTaErp.Application.Services.Invoices

@@ -1,4 +1,6 @@
 ﻿@page "/hr/departments/list"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Services.Departments
 @inject IDepartmentService DepartmentService

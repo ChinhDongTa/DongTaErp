@@ -1,4 +1,5 @@
 @page "/hr/payrolls/update/{Id}"
+@attribute [Authorize(Roles = AppRoles.Hr)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Common.Interfaces
 @using DongTaErp.Application.Services.Payrolls

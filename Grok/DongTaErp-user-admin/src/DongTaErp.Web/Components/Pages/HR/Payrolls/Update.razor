@@ -1,0 +1,105 @@
+@page "/hr/payrolls/update/{Id}"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Common.Interfaces
+@using DongTaErp.Application.Services.Payrolls
+@using Microsoft.EntityFrameworkCore
+@inject IPayrollService Service
+@inject IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+<PageTitle>Cập nhật bảng lương</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="Cập nhật bảng lương" />
+    <EditForm Model="dto" OnSubmit="SaveAsync">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 640px;">
+            <FluentSelect TOption="OptionItem" TValue="string" Items="employees" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                          @bind-Value="employeeId" Label="Nhân viên" />
+            <FluentDatePicker @bind-Value="startDate" Label="Từ ngày" />
+            <FluentDatePicker @bind-Value="endDate" Label="Đến ngày" />
+            <DecimalInput @bind-Value="baseSalary" Label="Lương cơ bản" Min="0" TValue="decimal" Unit="đ" />
+            <DecimalInput @bind-Value="daysWorked" Label="Ngày công" Min="0" TValue="decimal" />
+            <DecimalInput @bind-Value="overtimeAmount" Label="Tăng ca" Min="0" TValue="decimal" Unit="đ" />
+            <DecimalInput @bind-Value="bonusAmount" Label="Thưởng" Min="0" TValue="decimal" Unit="đ" />
+            <DecimalInput @bind-Value="deductions" Label="Khấu trừ" Min="0" TValue="decimal" Unit="đ" />
+            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" />
+            <div><strong>Thực lãnh:</strong> @Net.ToCurrency()</div>
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/hr/payrolls/list" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private UpdatePayrollDto? dto;
+    private string employeeId = "";
+    private DateTime? startDate;
+    private DateTime? endDate;
+    private decimal baseSalary;
+    private decimal daysWorked;
+    private decimal overtimeAmount;
+    private decimal bonusAmount;
+    private decimal deductions;
+    private bool isSaving;
+    private List<OptionItem> employees = [];
+    private decimal Net => baseSalary + overtimeAmount + bonusAmount - deductions;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        employees = await UnitOfWork.Employees.Query().OrderBy(x => x.Code)
+            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.FullName}")).ToListAsync();
+        var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
+        if (!result.Succeeded || result.Value is null)
+        {
+            alert?.AddAlertError("Không tìm thấy bảng lương.");
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+        dto = result.Value;
+        employeeId = dto.EmployeeId?.ToString() ?? "";
+        startDate = dto.PeriodStartDate?.ToDateTime(TimeOnly.MinValue);
+        endDate = dto.PeriodEndDate?.ToDateTime(TimeOnly.MinValue);
+        baseSalary = dto.BaseSalary ?? 0;
+        daysWorked = dto.DaysWorked ?? 0;
+        overtimeAmount = dto.OvertimeAmount ?? 0;
+        bonusAmount = dto.BonusAmount ?? 0;
+        deductions = dto.Deductions ?? 0;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (dto is null)
+            return;
+        dto.EmployeeId = Guid.TryParse(employeeId, out var id) ? id : null;
+        dto.PeriodStartDate = startDate is null ? null : DateOnly.FromDateTime(startDate.Value);
+        dto.PeriodEndDate = endDate is null ? null : DateOnly.FromDateTime(endDate.Value);
+        dto.BaseSalary = baseSalary;
+        dto.DaysWorked = daysWorked;
+        dto.OvertimeAmount = overtimeAmount;
+        dto.BonusAmount = bonusAmount;
+        dto.Deductions = deductions;
+        dto.NetAmount = Net;
+        isSaving = true;
+        var result = await Service.UpdateAsync(Id.ToGuid(), dto);
+        isSaving = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không cập nhật được.");
+            return;
+        }
+        Navigation.NavigateTo($"/hr/payrolls/view/{Id}");
+    }
+
+    private sealed record OptionItem(string Id, string Name);
+}

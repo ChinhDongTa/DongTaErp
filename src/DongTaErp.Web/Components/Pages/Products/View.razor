@@ -1,4 +1,5 @@
 @page "/products/view/{Id}"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Common.Interfaces
 @using DongTaErp.Application.Services.Products

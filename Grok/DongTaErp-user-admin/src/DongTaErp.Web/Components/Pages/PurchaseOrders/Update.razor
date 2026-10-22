@@ -1,0 +1,73 @@
+@page "/purchase-orders/update/{Id}"
+@attribute [Authorize(Roles = AppRoles.PurchaseArea)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.PurchaseOrders
+@inject IPurchaseOrderService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Cập nhật đơn mua</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="Cập nhật đơn mua" />
+    <FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+        Chỉ sửa được đơn đang nháp. Dòng hàng không đổi ở màn này.
+    </FluentMessageBar>
+    <EditForm Model="dto" OnSubmit="SaveAsync">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 520px;">
+            <FluentTextInput @bind-Value="dto.Number" Label="Số đơn" />
+            <FluentDatePicker @bind-Value="orderDate" Label="Ngày đơn" />
+            <DecimalInput @bind-Value="taxRate" Label="Thuế suất" Min="0" Max="1" TValue="decimal" />
+            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" />
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/purchase-orders/list" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private UpdatePurchaseOrderDto? dto;
+    private DateTime? orderDate;
+    private decimal taxRate;
+    private bool isSaving;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
+        if (!result.Succeeded || result.Value is null)
+        {
+            alert?.AddAlertError("Không tìm thấy đơn mua.");
+            StateHasChanged();
+            return;
+        }
+        dto = result.Value;
+        orderDate = dto.OrderDate;
+        taxRate = dto.TaxRate ?? 0;
+        StateHasChanged();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (dto is null)
+            return;
+        dto.OrderDate = orderDate;
+        dto.TaxRate = taxRate;
+        isSaving = true;
+        var result = await Service.UpdateAsync(Id.ToGuid(), dto);
+        isSaving = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không cập nhật được. Chỉ sửa đơn nháp.");
+            return;
+        }
+        Navigation.NavigateTo($"/purchase-orders/view/{Id}");
+    }
+}

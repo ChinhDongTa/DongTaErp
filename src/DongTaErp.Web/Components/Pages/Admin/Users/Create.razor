@@ -1,0 +1,73 @@
+@page "/admin/users/create"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Authorize(Roles = AppRoles.Manage)]
+@using DongTaErp.Domain.Entities
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<AppUser> UserManager
+@inject NavigationManager Navigation
+
+<PageTitle>Tạo người dùng</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Tạo người dùng" />
+
+<EditForm Model="form" OnSubmit="SaveAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 480px;">
+        <FluentTextInput @bind-Value="form.UserName" Label="Tên đăng nhập" Required="true" />
+        <FluentTextInput @bind-Value="form.DisplayName" Label="Tên hiển thị" Required="true" />
+        <FluentTextInput @bind-Value="form.Email" Label="Email" Required="true" />
+        <FluentTextInput @bind-Value="form.Password" Label="Mật khẩu" Type="password" Required="true" />
+        <FluentSelect TOption="RoleOption" TValue="string" Items="roles" OptionText="@(x => x.Name)" OptionValue="@(x => x.Value)"
+                      @bind-Value="form.Role" Label="Vai trò" />
+        <FormActionButtons IsSaving="@isSaving" SaveText="Tạo" CancelUrl="/admin/users/list" />
+    </FluentStack>
+</EditForm>
+
+@code {
+    private Alert? alert;
+    private readonly UserForm form = new() { Role = AppRoles.Sales };
+    private bool isSaving;
+    private readonly List<RoleOption> roles = AppRoles.AllRoles.Select(x => new RoleOption(x, AppRoles.Display(x))).ToList();
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(form.UserName) || string.IsNullOrWhiteSpace(form.Password))
+        {
+            alert?.AddAlertError("Nhập tên đăng nhập và mật khẩu.");
+            return;
+        }
+
+        var user = new AppUser
+        {
+            UserName = form.UserName.Trim(),
+            Email = form.Email.Trim(),
+            DisplayName = form.DisplayName.Trim(),
+            EmailConfirmed = true,
+            IsActive = true
+        };
+
+        isSaving = true;
+        var created = await UserManager.CreateAsync(user, form.Password);
+        if (!created.Succeeded)
+        {
+            isSaving = false;
+            alert?.AddAlertError(created.Errors.FirstOrDefault()?.Description ?? "Không tạo được người dùng.");
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(form.Role))
+            await UserManager.AddToRoleAsync(user, form.Role);
+
+        Navigation.NavigateTo("/admin/users/list");
+    }
+
+    private sealed class UserForm
+    {
+        public string UserName { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Password { get; set; } = "";
+        public string Role { get; set; } = AppRoles.Sales;
+    }
+
+    private sealed record RoleOption(string Value, string Name);
+}
