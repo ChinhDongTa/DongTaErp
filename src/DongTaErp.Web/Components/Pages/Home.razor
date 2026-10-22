@@ -74,11 +74,11 @@ else
         <div style="flex: 1; min-width: 420px; background: #f4f8f7; border: 1px solid #e0eee9; border-radius: 8px; padding: 12px;">
             <h3 style="margin: 0 0 8px; color: #3f7a6e;">Đề xuất bổ sung</h3>
             <FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 8px;">
-                Tồn dưới mức tối thiểu. Ưu tiên điều chuyển từ kho thừa, không đủ thì đề xuất mua mới.
+                Mức an toàn = 2 lần tồn tối thiểu. Chỉ điều chuyển phần dư trên mức an toàn. Tất cả kho an toàn thì không cân bằng.
             </FluentMessageBar>
             @if (replenish.Count == 0)
             {
-                <p>Không có sản phẩm dưới tồn tối thiểu.</p>
+                <p>Các kho đang ở mức an toàn, không cần điều chuyển.</p>
             }
             else
             {
@@ -183,10 +183,7 @@ else
             .Select(x => new StockRow(x.Warehouse, x.Product, x.Qty, x.MinQty, x.Qty / x.MinQty))
             .ToList();
 
-        replenish = balances.Where(x => x.Qty < x.MinQty)
-            .Select(x => Suggest(x, balances))
-            .OrderByDescending(x => x.Shortage)
-            .ToList();
+        replenish = BuildBalance(balances);
 
         var receivableRows = await UnitOfWork.Invoices.Query()
             .Where(x => openInvoice.Contains(x.Status) && x.DueDate != null && x.DueDate <= dueLimit && x.Total > x.PaidAmount)
@@ -232,7 +229,48 @@ else
             return new ReplenishRow(row.Warehouse, row.Product, row.Qty, shortage, "Điều chuyển + mua", $"Chuyển {excess.ToDisplay()} từ {source.Warehouse}, mua thêm {(shortage - excess).ToDisplay()}");
         return new ReplenishRow(row.Warehouse, row.Product, row.Qty, shortage, "Mua mới", $"Không có kho thừa. Mua {shortage.ToDisplay()}");
     }
+    private static List<ReplenishRow> BuildBalance(List<BalanceRow> all)
+    {
+        var result = new List<ReplenishRow>();
+        foreach (var group in all.GroupBy(x => x.ProductId))
+        {
+            var rows = group.ToList();
+            if (rows.All(x => x.Qty >= x.MinQty * 2))
+                continue;
 
+            var surplus = rows
+                .Select(x => new { Row = x, Extra = x.Qty - x.MinQty * 2 })
+                .Where(x => x.Extra > 0)
+                .OrderByDescending(x => x.Extra)
+                .ToList();
+
+            foreach (var target in rows.Where(x => x.Qty < x.MinQty * 2).OrderBy(x => x.Qty / x.MinQty))
+            {
+                var safe = target.MinQty * 2;
+                var need = safe - target.Qty;
+                var source = surplus.FirstOrDefault(x => x.Row.WarehouseId != target.WarehouseId && x.Extra > 0);
+
+                if (source is not null)
+                {
+                    var move = Math.Min(need, source.Extra);
+                    var remain = need - move;
+                    var action = remain == 0 ? "Cân bằng" : target.Qty < target.MinQty ? "Cân bằng + mua" : "Cân bằng";
+                    var detail = remain == 0
+                        ? $"Chuyển {move.ToDisplay()} từ {source.Row.Warehouse} để đạt mức an toàn"
+                        : target.Qty < target.MinQty
+                            ? $"Chuyển {move.ToDisplay()} từ {source.Row.Warehouse}, mua thêm {remain.ToDisplay()}"
+                            : $"Chuyển {move.ToDisplay()} từ {source.Row.Warehouse}";
+                    result.Add(new ReplenishRow(target.Warehouse, target.Product, target.Qty, need, action, detail));
+                    surplus[surplus.IndexOf(source)] = source with { Extra = source.Extra - move };
+                    continue;
+                }
+
+                if (target.Qty < target.MinQty)
+                    result.Add(new ReplenishRow(target.Warehouse, target.Product, target.Qty, target.MinQty - target.Qty, "Mua mới", $"Không có kho dư trên mức an toàn. Mua {(target.MinQty - target.Qty).ToDisplay()}"));
+            }
+        }
+        return result.OrderByDescending(x => x.Shortage).ToList();
+    }
     private sealed record BalanceRow(Guid ProductId, string Product, Guid WarehouseId, string Warehouse, decimal Qty, decimal MinQty);
     private sealed record StockRow(string Warehouse, string Product, decimal Qty, decimal MinQty, decimal Ratio);
     private sealed record ReplenishRow(string Warehouse, string Product, decimal Qty, decimal Shortage, string Action, string Detail);

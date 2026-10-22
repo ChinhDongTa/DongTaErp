@@ -1,0 +1,146 @@
+@page "/stock-transfers/create"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Common.Interfaces
+@using Microsoft.EntityFrameworkCore
+@inject IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+<PageTitle>Điều chuyển kho</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Điều chuyển kho" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Chuyển tồn từ kho nguồn sang kho đích. Kho nguồn không được xuống dưới 0.
+</FluentMessageBar>
+
+<EditForm Model="form" OnSubmit="SaveAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 560px;">
+        <FluentSelect TOption="OptionItem" TValue="string" Items="products" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                      @bind-Value="form.ProductId" Label="Sản phẩm" />
+        <FluentSelect TOption="OptionItem" TValue="string" Items="warehouses" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                      @bind-Value="form.FromWarehouseId" Label="Kho nguồn" />
+        <FluentSelect TOption="OptionItem" TValue="string" Items="warehouses" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                      @bind-Value="form.ToWarehouseId" Label="Kho đích" />
+        <DecimalInput @bind-Value="form.Qty" Label="Số lượng" Min="0" TValue="decimal" />
+        <FluentTextInput @bind-Value="form.Notes" Label="Ghi chú" />
+        <FormActionButtons IsSaving="@isSaving" SaveText="Chuyển" CancelUrl="/" />
+    </FluentStack>
+</EditForm>
+
+@code {
+    [SupplyParameterFromQuery] public string? ProductId { get; set; }
+    [SupplyParameterFromQuery] public string? From { get; set; }
+    [SupplyParameterFromQuery] public string? To { get; set; }
+    [SupplyParameterFromQuery] public decimal? Qty { get; set; }
+
+    private Alert? alert;
+    private readonly TransferForm form = new();
+    private bool isSaving;
+    private List<OptionItem> products = [];
+    private List<OptionItem> warehouses = [];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        products = await UnitOfWork.Products.Query().Where(x => x.IsActive).OrderBy(x => x.Sku)
+            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Sku} - {x.Name}")).ToListAsync();
+        warehouses = await UnitOfWork.Warehouses.Query().Where(x => x.IsActive).OrderBy(x => x.Code)
+            .Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.Name}")).ToListAsync();
+        form.ProductId = ProductId ?? "";
+        form.FromWarehouseId = From ?? "";
+        form.ToWarehouseId = To ?? "";
+        form.Qty = Qty ?? 0;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!Guid.TryParse(form.ProductId, out var productId) ||
+            !Guid.TryParse(form.FromWarehouseId, out var fromId) ||
+            !Guid.TryParse(form.ToWarehouseId, out var toId) ||
+            form.Qty <= 0)
+        {
+            alert?.AddAlertError("Chọn đủ sản phẩm, hai kho và số lượng.");
+            return;
+        }
+        if (fromId == toId)
+        {
+            alert?.AddAlertError("Kho nguồn và kho đích phải khác nhau.");
+            return;
+        }
+
+        isSaving = true;
+        await UnitOfWork.BeginTransactionAsync();
+        try
+        {
+            var source = await UnitOfWork.StockBalances.Query()
+                .FirstOrDefaultAsync(x => x.ProductId == productId && x.WarehouseId == fromId);
+            if (source is null || source.Qty < form.Qty)
+            {
+                await UnitOfWork.RollbackTransactionAsync();
+                alert?.AddAlertError("Kho nguồn không đủ tồn.");
+                return;
+            }
+
+            source.Qty -= form.Qty;
+            var target = await UnitOfWork.StockBalances.Query()
+                .FirstOrDefaultAsync(x => x.ProductId == productId && x.WarehouseId == toId);
+            if (target is null)
+            {
+                target = new StockBalance { ProductId = productId, WarehouseId = toId, Qty = form.Qty, MinQty = source.MinQty };
+                await UnitOfWork.StockBalances.AddAsync(target);
+            }
+            else
+            {
+                target.Qty += form.Qty;
+            }
+
+            var code = "CK".GetRandomCode();
+            await UnitOfWork.InventoryTxns.AddAsync(new InventoryTxn
+            {
+                ProductId = productId,
+                WarehouseId = fromId,
+                ContraWarehouseId = toId,
+                Type = InventoryTxnType.Transfer,
+                QtyChange = -form.Qty,
+                Reference = code,
+                Note = form.Notes
+            });
+            await UnitOfWork.InventoryTxns.AddAsync(new InventoryTxn
+            {
+                ProductId = productId,
+                WarehouseId = toId,
+                ContraWarehouseId = fromId,
+                Type = InventoryTxnType.Transfer,
+                QtyChange = form.Qty,
+                Reference = code,
+                Note = form.Notes
+            });
+            await UnitOfWork.SaveChangesAsync();
+            await UnitOfWork.CommitTransactionAsync();
+            Navigation.NavigateTo("/warehouses/stock");
+        }
+        catch
+        {
+            await UnitOfWork.RollbackTransactionAsync();
+            alert?.AddAlertError("Không điều chuyển được.");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private sealed class TransferForm
+    {
+        public string ProductId { get; set; } = "";
+        public string FromWarehouseId { get; set; } = "";
+        public string ToWarehouseId { get; set; } = "";
+        public decimal Qty { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    private sealed record OptionItem(string Id, string Name);
+}

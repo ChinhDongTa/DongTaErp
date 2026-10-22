@@ -1,0 +1,79 @@
+@page "/stock-transfers/create"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.StockTransfers
+@inject IStockTransferService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Điều chuyển kho</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Điều chuyển kho" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Chuyển tồn từ kho nguồn sang kho đích. Kho nguồn không được xuống dưới 0.
+</FluentMessageBar>
+
+@if (!loaded)
+{
+    <PageLoading />
+}
+else
+{
+    <EditForm Model="form" OnSubmit="SaveAsync">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 560px;">
+            <FluentSelect TOption="StockTransferOptionDto" TValue="Guid" Items="products" OptionText="@(x => x.Label)" OptionValue="@(x => x.Id)"
+                          @bind-Value="form.ProductId" Label="Sản phẩm" />
+            <FluentSelect TOption="StockTransferOptionDto" TValue="Guid" Items="warehouses" OptionText="@(x => x.Label)" OptionValue="@(x => x.Id)"
+                          @bind-Value="form.FromWarehouseId" Label="Kho nguồn" />
+            <FluentSelect TOption="StockTransferOptionDto" TValue="Guid" Items="warehouses" OptionText="@(x => x.Label)" OptionValue="@(x => x.Id)"
+                          @bind-Value="form.ToWarehouseId" Label="Kho đích" />
+            <DecimalInput @bind-Value="form.Qty" Label="Số lượng" Min="0" TValue="decimal" />
+            <FluentTextInput @bind-Value="form.Notes" Label="Ghi chú" />
+            <FormActionButtons IsSaving="@isSaving" SaveText="Chuyển" CancelUrl="/" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [SupplyParameterFromQuery] public string? ProductId { get; set; }
+    [SupplyParameterFromQuery] public string? From { get; set; }
+    [SupplyParameterFromQuery] public string? To { get; set; }
+    [SupplyParameterFromQuery] public decimal? Qty { get; set; }
+
+    private Alert? alert;
+    private readonly CreateStockTransferDto form = new();
+    private bool loaded;
+    private bool isSaving;
+    private List<StockTransferOptionDto> products = [];
+    private List<StockTransferOptionDto> warehouses = [];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        var productResult = await Service.GetProductsAsync();
+        var warehouseResult = await Service.GetWarehousesAsync();
+        products = productResult.Value ?? [];
+        warehouses = warehouseResult.Value ?? [];
+        form.ProductId = Guid.TryParse(ProductId, out var productId) ? productId : Guid.Empty;
+        form.FromWarehouseId = Guid.TryParse(From, out var fromId) ? fromId : Guid.Empty;
+        form.ToWarehouseId = Guid.TryParse(To, out var toId) ? toId : Guid.Empty;
+        form.Qty = Qty ?? 0;
+        loaded = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        isSaving = true;
+        var result = await Service.TransferAsync(form);
+        isSaving = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không điều chuyển được.");
+            return;
+        }
+        Navigation.NavigateTo("/warehouses/stock");
+    }
+}

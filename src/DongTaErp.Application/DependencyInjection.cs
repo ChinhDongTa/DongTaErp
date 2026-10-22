@@ -16,9 +16,10 @@ using DongTaErp.Application.Services.Products;
 using DongTaErp.Application.Services.PurchaseOrders;
 using DongTaErp.Application.Services.SalesOrders;
 using DongTaErp.Application.Services.VendorBills;
-using DongTaErp.Application.Services.Warehouses;
+using DongTaErp.Application.Services.StockTransfers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using DongTaErp.Application.Services.Warehouses;
 
 namespace DongTaErp.Application;
 
@@ -33,21 +34,21 @@ public static class DependencyInjection
         builder.Services.AddScoped<ICompanyProfileService, CompanyProfileService>();
         builder.Services.AddScoped<IProductService, ProductService>();
         builder.Services.AddScoped<IWarehouseService, WarehouseService>();
+        builder.Services.AddScoped<IStockTransferService, StockTransferService>();
         builder.Services.AddScoped<IDepartmentService, DepartmentService>();
-        builder.Services.AddScoped<IInventoryTxnService, InventoryTxnService>();
         builder.Services.AddScoped<IJobPositionService, JobPositionService>();
         builder.Services.AddScoped<IEmployeeService, EmployeeService>();
         builder.Services.AddScoped<IPayrollService, PayrollService>();
         builder.Services.AddScoped<ILeaveRequestService, LeaveRequestService>();
         builder.Services.AddScoped<IInventoryTxnService, InventoryTxnService>();
         builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+        builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
         builder.Services.AddScoped<IGoodsReceiptService, GoodsReceiptService>();
+        builder.Services.AddScoped<IGoodsIssueService, GoodsIssueService>();
         builder.Services.AddScoped<IVendorBillService, VendorBillService>();
         builder.Services.AddScoped<IDisbursementService, DisbursementService>();
         builder.Services.AddScoped<IInvoiceService, InvoiceService>();
         builder.Services.AddScoped<IPaymentService, PaymentService>();
-        builder.Services.AddScoped<IGoodsIssueService, GoodsIssueService>();
-        builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
 
         builder.Services.AddValidatorsFromAssemblies([typeof(DependencyInjection).Assembly],includeInternalTypes: true);
     }
