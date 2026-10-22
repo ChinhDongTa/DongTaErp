@@ -46,6 +46,7 @@ else
         {
             dto = result.Value;
             //alertComponent?.AddAlert("Lấy dữ liệu thành công");
+            await InvokeAsync(StateHasChanged);
         }
         else
         {

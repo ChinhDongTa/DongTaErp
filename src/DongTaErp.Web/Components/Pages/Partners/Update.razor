@@ -51,6 +51,7 @@ else
         if (result.Succeeded && result.Value != null)
         {
             dto = result.Value;
+            await InvokeAsync(StateHasChanged);
         }
         else
         {
