@@ -61,11 +61,32 @@ public class DashboardReplenishDto
     public string Detail { get; set; } = "";
     public Guid ProductId { get; set; }
     public Guid? FromWarehouseId { get; set; }
+    public string? FromWarehouse { get; set; }
     public Guid ToWarehouseId { get; set; }
     public decimal TransferQty { get; set; }
     public decimal BuyQty { get; set; }
     public bool CanTransfer => FromWarehouseId is not null && TransferQty > 0;
     public bool CanBuy => BuyQty > 0;
+}
+
+public class TransferReviewDto
+{
+    public Guid WarehouseId { get; set; }
+    public string Warehouse { get; set; } = "";
+    public decimal TotalShortage { get; set; }
+    public List<TransferReviewLineDto> Lines { get; set; } = [];
+}
+
+public class TransferReviewLineDto
+{
+    public Guid ProductId { get; set; }
+    public string Product { get; set; } = "";
+    public decimal Qty { get; set; }
+    public decimal Shortage { get; set; }
+    public Guid FromWarehouseId { get; set; }
+    public string FromWarehouse { get; set; } = "";
+    public decimal SuggestedQty { get; set; }
+    public decimal BuyQty { get; set; }
 }
 
 public class DashboardDueDto

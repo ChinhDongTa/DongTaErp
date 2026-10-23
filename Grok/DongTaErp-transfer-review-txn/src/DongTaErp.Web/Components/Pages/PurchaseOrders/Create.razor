@@ -1,0 +1,180 @@
+@page "/purchase-orders/create"
+@attribute [Authorize(Roles = AppRoles.PurchaseArea)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.PurchaseOrders
+@inject IPurchaseOrderService Service
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
+@using DongTaErp.Application.Services.Dashboard
+@inject IDashboardService Dashboard
+
+<PageTitle>Tạo đơn mua</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Tạo đơn mua" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Kho trên đơn chỉ là kho đề xuất. Tồn chưa đổi. Phiếu nhập sau này mới chọn kho nhập thật.
+</FluentMessageBar>
+
+<EditForm Model="dto" OnSubmit="SaveAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 960px;">
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+            <FluentTextInput @bind-Value="dto.Number" Label="Số đơn" Required="true" Style="width: 180px;" />
+            <FluentSelect TOption="OptionItem" TValue="string" Items="suppliers" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                          @bind-Value="supplierId" Label="Nhà cung cấp" Style="min-width: 280px;" />
+            <FluentSelect TOption="OptionItem" TValue="string" Items="warehouses" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                          @bind-Value="warehouseId" Label="Kho đề xuất" Style="min-width: 240px;" />
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+            <FluentDatePicker @bind-Value="orderDate" Label="Ngày đơn" />
+            <DecimalInput @bind-Value="dto.TaxRate" Label="Thuế suất" Min="0" Max="1" TValue="decimal" Style="width: 140px;" />
+            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" Style="width: 360px;" />
+        </FluentStack>
+
+        <h4>Dòng hàng</h4>
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+            <FluentSelect TOption="ProductOption" TValue="string" Items="products" OptionText="@(x => x.Label)" OptionValue="@(x => x.Id)"
+                          @bind-Value="selectedProductId" Label="Sản phẩm" Style="min-width: 320px;" />
+            <DecimalInput @bind-Value="newQty" Label="Số lượng" Min="0" TValue="decimal" Style="width: 120px;" />
+            <DecimalInput @bind-Value="newPrice" Label="Đơn giá" Unit="đ" Min="0" TValue="decimal" Style="width: 160px;" />
+            <FluentButton Appearance="ButtonAppearance.Outline" Style="align-self: end;" OnClick="AddLine">Thêm dòng</FluentButton>
+        </FluentStack>
+
+        <FluentDataGrid Items="@lines.AsQueryable()" Style="width: 100%;">
+            <PropertyColumn Title="Sản phẩm" Property="@(c => c.Label)" />
+            <PropertyColumn Title="Số lượng" Property="@(c => c.Qty)" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Đơn giá" Property="@(c => c.UnitPrice)" Format="#,##0.##" Align="DataGridCellAlignment.End" />
+            <PropertyColumn Title="Thành tiền" Property="@(c => c.LineTotal)" Format="#,##0.##" Align="DataGridCellAlignment.End" />
+            <TemplateColumn Title="" Context="line">
+                <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => lines.Remove(line))">Xóa</FluentButton>
+            </TemplateColumn>
+        </FluentDataGrid>
+
+        <div><strong>Tạm tính gồm thuế:</strong> @Total.ToDisplay()</div>
+        <FormActionButtons IsSaving="@isSaving" SaveText="Lưu nháp" CancelUrl="/purchase-orders/list" />
+    </FluentStack>
+</EditForm>
+
+@code {
+    [SupplyParameterFromQuery(Name = "suggest")] public string? Suggest { get; set; }
+    private Alert? alert;
+    private readonly CreatePurchaseOrderDto dto = new() { Number = "PO".GetRandomCode(), TaxRate = 0.08m };
+    private DateTime? orderDate = DateTime.Today;
+    private string supplierId = "";
+    private string warehouseId = "";
+    private string selectedProductId = "";
+    private decimal newQty = 1;
+    private decimal newPrice;
+    private bool isSaving;
+    private List<OptionItem> suppliers = [];
+    private List<OptionItem> warehouses = [];
+    private List<ProductOption> products = [];
+    private List<LineItem> lines = [];
+    private decimal Total => lines.Sum(x => x.LineTotal) * (1 + dto.TaxRate);
+
+    protected override async Task OnInitializedAsync()
+    {
+        suppliers = ((await Lookup.GetSuppliersAsync()).Value ?? [])
+            .Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
+        warehouses = ((await Lookup.GetWarehousesAsync()).Value ?? [])
+            .Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
+        products = ((await Lookup.GetProductsAsync(salePrice: false)).Value ?? [])
+            .Select(x => new ProductOption(x.Id.ToString(), x.Label, x.Price)).ToList();
+
+        supplierId = suppliers.FirstOrDefault()?.Id ?? "";
+        warehouseId = warehouses.FirstOrDefault()?.Id ?? "";
+        selectedProductId = products.FirstOrDefault()?.Id ?? "";
+        newPrice = products.FirstOrDefault()?.CostPrice ?? 0;
+        if (Suggest == "1")
+            await PrefillSuggestionsAsync();
+    }
+
+    private async Task PrefillSuggestionsAsync()
+    {
+        foreach (var item in (await Dashboard.GetBuySuggestionsAsync()).Value ?? [])
+        {
+            var product = products.FirstOrDefault(x => x.Id == item.ProductId.ToString());
+            if (product is not null)
+                lines.Add(new LineItem(item.ProductId, product.Label, item.Qty, product.CostPrice));
+        }
+    }
+
+    private void AddLine()
+    {
+        var product = products.FirstOrDefault(x => x.Id == selectedProductId);
+        if (product is null || !Guid.TryParse(product.Id, out var productId))
+        {
+            alert?.AddAlertError("Chọn sản phẩm.");
+            return;
+        }
+        if (newQty <= 0)
+        {
+            alert?.AddAlertError("Số lượng phải lớn hơn 0.");
+            return;
+        }
+
+        var existing = lines.FirstOrDefault(x => x.ProductId == productId);
+        if (existing is not null)
+        {
+            existing.Qty += newQty;
+            existing.UnitPrice = newPrice;
+            return;
+        }
+
+        lines.Add(new LineItem(productId, product.Label, newQty, newPrice));
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!Guid.TryParse(supplierId, out var partnerId) || !Guid.TryParse(warehouseId, out var whId))
+        {
+            alert?.AddAlertError("Chọn nhà cung cấp và kho đề xuất.");
+            return;
+        }
+        if (lines.Count == 0)
+        {
+            alert?.AddAlertError("Đơn chưa có dòng hàng.");
+            return;
+        }
+
+        dto.PartnerId = partnerId;
+        dto.WarehouseId = whId;
+        dto.OrderDate = orderDate ?? DateTime.Today;
+        dto.Lines = lines.Select(x => new CreatePurchaseOrderLineDto
+        {
+            ProductId = x.ProductId,
+            Qty = x.Qty,
+            UnitPrice = x.UnitPrice
+        }).ToList();
+
+        isSaving = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var result = await Service.CreateAsync(dto);
+            if (!result.Succeeded || string.IsNullOrEmpty(result.Value))
+            {
+                alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không tạo được đơn mua.");
+                return;
+            }
+
+            Navigation.NavigateTo($"/purchase-orders/view/{result.Value}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private sealed record OptionItem(string Id, string Name);
+    private sealed record ProductOption(string Id, string Label, decimal CostPrice);
+    private sealed class LineItem(Guid productId, string label, decimal qty, decimal unitPrice)
+    {
+        public Guid ProductId { get; } = productId;
+        public string Label { get; } = label;
+        public decimal Qty { get; set; } = qty;
+        public decimal UnitPrice { get; set; } = unitPrice;
+        public decimal LineTotal => Qty * UnitPrice;
+    }
+}

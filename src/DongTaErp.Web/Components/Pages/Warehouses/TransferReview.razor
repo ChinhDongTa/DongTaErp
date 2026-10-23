@@ -1,0 +1,104 @@
+@page "/stock-transfers/review"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Dashboard
+@using DongTaErp.Application.Services.StockTransfers
+@inject IDashboardService Dashboard
+@inject IStockTransferService TransferService
+@inject NavigationManager Navigation
+
+<PageTitle>Duyệt điều chuyển</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Duyệt điều chuyển" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Mỗi lần duyệt một kho thiếu nhất. Chỉ đề xuất phần dư trên mức an toàn. Sau khi duyệt, trang này hiện kho tiếp theo.
+</FluentMessageBar>
+
+@if (!loaded)
+{
+    <PageLoading />
+}
+else if (review is null)
+{
+    <FluentMessageBar Intent="MessageBarIntent.Success">Không còn kho thiếu cần điều chuyển.</FluentMessageBar>
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo("/"))">Về trang chủ</FluentButton>
+}
+else
+{
+    <FluentCard Style="margin-bottom: 12px; background: #f4f8f7;">
+        <h3 style="margin: 0;">@review.Warehouse</h3>
+        <div>Tổng thiếu: @review.TotalShortage.ToDisplay()</div>
+    </FluentCard>
+
+    <FluentDataGrid Items="@review.Lines.AsQueryable()" GridTemplateColumns="2fr 1fr 1fr 1.5fr 1fr 1fr">
+        <PropertyColumn Title="Sản phẩm" Property="@(c => c.Product)" />
+        <PropertyColumn Title="Tồn" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Thiếu" Property="@(c => c.Shortage.ToDisplay())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Lấy từ" Property="@(c => c.FromWarehouse)" />
+        <TemplateColumn Title="Số chuyển">
+            <DecimalInput @bind-Value="context.SuggestedQty" Min="0" TValue="decimal" />
+        </TemplateColumn>
+        <PropertyColumn Title="Còn phải mua" Property="@(c => c.BuyQty.ToDisplay())" Align="DataGridCellAlignment.End" />
+    </FluentDataGrid>
+
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 16px;">
+        <FluentButton Appearance="ButtonAppearance.Primary" Style="margin-top: 0;" OnClick="ApproveAsync" Disabled="@saving">Duyệt và điều chuyển</FluentButton>
+        <FluentButton Appearance="ButtonAppearance.Outline" Style="margin-top: 0;" OnClick="@(() => Navigation.NavigateTo("/"))">Để sau</FluentButton>
+    </FluentStack>
+}
+
+@code {
+    private Alert? alert;
+    private bool loaded;
+    private bool saving;
+    private TransferReviewDto? review;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        await LoadAsync();
+        loaded = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadAsync()
+    {
+        review = (await Dashboard.GetNextTransferReviewAsync()).Value;
+    }
+
+    private async Task ApproveAsync()
+    {
+        if (review is null)
+            return;
+        var selected = review.Lines.Where(x => x.SuggestedQty > 0).ToList();
+        if (selected.Count == 0)
+        {
+            alert?.AddAlertError("Nhập số lượng điều chuyển.");
+            return;
+        }
+
+        saving = true;
+        foreach (var line in selected)
+        {
+            var result = await TransferService.TransferAsync(new CreateStockTransferDto
+            {
+                ProductId = line.ProductId,
+                FromWarehouseId = line.FromWarehouseId,
+                ToWarehouseId = review.WarehouseId,
+                Qty = line.SuggestedQty,
+                Notes = "Duyệt điều chuyển từ trang chủ"
+            });
+            if (!result.Succeeded)
+            {
+                alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? $"Không chuyển được {line.Product}.");
+                saving = false;
+                return;
+            }
+        }
+        saving = false;
+        alert?.AddAlert($"Đã điều chuyển {selected.Count} dòng cho {review.Warehouse}.");
+        await LoadAsync();
+    }
+}

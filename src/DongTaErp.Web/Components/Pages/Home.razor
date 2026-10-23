@@ -72,6 +72,14 @@ else
         </div>
         <div style="flex: 1; min-width: 420px; background: #f4f8f7; border: 1px solid #e0eee9; border-radius: 8px; padding: 12px;">
             <h3 style="margin: 0 0 8px; color: #3f7a6e;">Đề xuất bổ sung</h3>
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-bottom: 8px;">
+                <FluentButton Appearance="ButtonAppearance.Primary" Style="margin-top: 0;"
+                              OnClick="@(() => Navigation.NavigateTo("/stock-transfers/review"))"
+                              Disabled="@(!replenish.Any(x => x.CanTransfer))">Duyệt điều chuyển</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Outline" Style="margin-top: 0;"
+                              OnClick="@(() => Navigation.NavigateTo("/purchase-orders/create?suggest=1"))"
+                              Disabled="@(!replenish.Any(x => x.CanBuy))">Đề xuất mua sắm</FluentButton>
+            </FluentStack>
             <FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 8px;">
                 Mức an toàn = 2 lần tồn tối thiểu. Chỉ điều chuyển phần dư trên mức an toàn. Tất cả kho an toàn thì không cân bằng.
             </FluentMessageBar>

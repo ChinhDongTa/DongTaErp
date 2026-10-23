@@ -1,0 +1,76 @@
+@page "/inventory-txns/update/{Id}"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.InventoryTxns
+@inject IInventoryTxnService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Sửa sổ kho</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="@($"Sửa {dto.Reference}")" />
+    <FluentMessageBar Intent="MessageBarIntent.Warning" Style="margin-bottom: 12px;">
+        Sổ kho đã ghi nhận tồn. Chỉ sửa chứng từ và ghi chú. Không sửa số lượng, kho hoặc loại.
+    </FluentMessageBar>
+    <EditForm Model="form" OnSubmit="SaveAsync">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 520px;">
+            <DetailItem Label="Sản phẩm" Value="@($"{dto.ProductSku} - {dto.ProductName}")" />
+            <DetailItem Label="Kho" Value="@dto.WarehouseName" />
+            <DetailItem Label="Loại" Value="@dto.TypeName" />
+            <DetailItem Label="Thay đổi" Value="@dto.QtyChange.ToDisplay()" />
+            <FluentTextInput @bind-Value="form.Reference" Label="Chứng từ" MaxLength="80" />
+            <FluentTextInput @bind-Value="form.Note" Label="Ghi chú" MaxLength="300" />
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="@($"/inventory-txns/view/{Id}")" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private InventoryTxnDto? dto;
+    private readonly UpdateInventoryTxnDto form = new();
+    private bool isSaving;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        if (!Guid.TryParse(Id, out var id))
+            return;
+        var result = await Service.GetByIdAsync(id);
+        dto = result.Value;
+        if (dto is null)
+        {
+            alert?.AddAlertError("Không tìm thấy bút toán.");
+        }
+        else
+        {
+            form.Id = dto.Id;
+            form.Reference = dto.Reference;
+            form.Note = dto.Note;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!Guid.TryParse(Id, out var id))
+            return;
+        isSaving = true;
+        var result = await Service.UpdateAsync(id, form);
+        isSaving = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không cập nhật được.");
+            return;
+        }
+        Navigation.NavigateTo($"/inventory-txns/view/{Id}");
+    }
+}

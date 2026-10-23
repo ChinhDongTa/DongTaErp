@@ -1,0 +1,177 @@
+@page "/"
+@attribute [Authorize(Roles = AppRoles.All)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Dashboard
+@inject IDashboardService Dashboard
+@inject NavigationManager Navigation
+
+<PageTitle>Dashboard</PageTitle>
+<ActionTitle Text="Dashboard" />
+
+@if (!loaded)
+{
+    <PageLoading />
+}
+else
+{
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" Style="margin-bottom: 16px; flex-wrap: wrap;">
+    <FluentCard Style="min-width: 200px; flex: 1; background: #f3f8fc; border-left: 4px solid #8eb4d4;">
+        <FluentLabelInfo InfoText="Hóa đơn đã phát hành trong tuần này."
+                         InfoActionLink="/invoices/list?range=week"
+                         InfoActionText="Xem danh sách"
+                         InfoActionTarget="LinkTarget.Self">Bán trong tuần</FluentLabelInfo>
+        <div style="font-size: 1.4rem; font-weight: 600; color: #4d7ea3;">@salesWeek.ToCurrency()</div>
+        <FluentLink Href="/invoices/list?range=week">Xem danh sách</FluentLink>
+    </FluentCard>
+    <FluentCard Style="min-width: 200px; flex: 1; background: #f2f8f6; border-left: 4px solid #8fbfb3;">
+        <FluentLabelInfo InfoText="Hóa đơn đã phát hành trong tháng này."
+                         InfoActionLink="/invoices/list?range=month"
+                         InfoActionText="Xem danh sách"
+                         InfoActionTarget="LinkTarget.Self">Bán trong tháng</FluentLabelInfo>
+        <div style="font-size: 1.4rem; font-weight: 600; color: #4f8a7d;">@salesMonth.ToCurrency()</div>
+            <FluentLink Href="/invoices/list?range=month">Xem danh sách</FluentLink>
+    </FluentCard>
+    <FluentCard Style="min-width: 200px; flex: 1; background: #f6f5fb; border-left: 4px solid #b3a8d4;">
+        <FluentLabelInfo InfoText="Phải thu quá hạn hoặc tới hạn trong 7 ngày."
+                         InfoActionLink="/invoices/list?due=1"
+                         InfoActionText="Xem danh sách"
+                         InfoActionTarget="LinkTarget.Self">Phải thu tới hạn</FluentLabelInfo>
+        <div style="font-size: 1.4rem; font-weight: 600; color: #6f6494;">@receivableDue.ToCurrency()</div>
+            <FluentLink Href="/invoices/list?due=1">Xem danh sách</FluentLink>
+    </FluentCard>
+    <FluentCard Style="min-width: 200px; flex: 1; background: #f7f4f8; border-left: 4px solid #c9a8c4;">
+        <FluentLabelInfo InfoText="Phải trả quá hạn hoặc tới hạn trong 7 ngày."
+                         InfoActionLink="/vendor-bills/list?due=1"
+                         InfoActionText="Xem danh sách"
+                         InfoActionTarget="LinkTarget.Self">Phải trả tới hạn</FluentLabelInfo>
+        <div style="font-size: 1.4rem; font-weight: 600; color: #8a6784;">@payableDue.ToCurrency()</div>
+            <FluentLink Href="/vendor-bills/list?due=1">Xem danh sách</FluentLink>
+    </FluentCard>
+</FluentStack>
+
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" Style="margin-bottom: 16px; flex-wrap: wrap; align-items: stretch;">
+        <div style="flex: 1; min-width: 420px; background: #f7fafc; border: 1px solid #e3edf4; border-radius: 8px; padding: 12px;">
+            <h3 style="margin: 0 0 8px; color: #3d6f90;">Tồn cao</h3>
+            <FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 8px;">
+                Kho có tồn từ 5 lần tồn tối thiểu trở lên được xem là tồn cao.
+            </FluentMessageBar>
+            @if (highStock.Count == 0)
+            {
+                <p>Không có kho nào tồn cao.</p>
+            }
+            else
+            {
+                <FluentDataGrid Items="@highStock.AsQueryable()" GridTemplateColumns="1fr 1fr 0.3fr 0.5fr 0.7fr">
+                    <PropertyColumn Title="Kho" Property="@(c => c.Warehouse)" />
+                    <PropertyColumn Title="Sản phẩm" Property="@(c => c.Product)" />
+                    <PropertyColumn Title="Tồn" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+                    <PropertyColumn Title="Tồn tối thiểu" Property="@(c => c.MinQty.ToDisplay())" Align="DataGridCellAlignment.End" />
+                    <PropertyColumn Title="Vượt" Property="@(c => c.Ratio.ToString("0.#") + " lần")" Align="DataGridCellAlignment.End" />
+                </FluentDataGrid>
+            }
+        </div>
+        <div style="flex: 1; min-width: 420px; background: #f4f8f7; border: 1px solid #e0eee9; border-radius: 8px; padding: 12px;">
+            <h3 style="margin: 0 0 8px; color: #3f7a6e;">Đề xuất bổ sung</h3>
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-bottom: 8px;">
+                <FluentButton Appearance="ButtonAppearance.Primary" Style="margin-top: 0;"
+                              OnClick="@(() => Navigation.NavigateTo("/stock-transfers/review"))"
+                              Disabled="@(!replenish.Any(x => x.CanTransfer))">Duyệt điều chuyển</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Outline" Style="margin-top: 0;"
+                              OnClick="@(() => Navigation.NavigateTo("/purchase-orders/create?suggest=1"))"
+                              Disabled="@(!replenish.Any(x => x.CanBuy))">Đề xuất mua sắm</FluentButton>
+            </FluentStack>
+            <FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 8px;">
+                Mức an toàn = 2 lần tồn tối thiểu. Chỉ điều chuyển phần dư trên mức an toàn. Tất cả kho an toàn thì không cân bằng.
+            </FluentMessageBar>
+            @if (replenish.Count == 0)
+            {
+                <p>Các kho đang ở mức an toàn, không cần điều chuyển.</p>
+            }
+            else
+            {
+                <FluentDataGrid Items="@replenish.AsQueryable()" GridTemplateColumns="1fr 1fr 0.3fr 0.3fr 2fr">
+                    <PropertyColumn Title="Kho thiếu" Property="@(c => c.Warehouse)" />
+                    <PropertyColumn Title="Sản phẩm" Property="@(c => c.Product)" />
+                    <PropertyColumn Title="Tồn" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+                    <PropertyColumn Title="Thiếu" Property="@(c => c.Shortage.ToDisplay())" Align="DataGridCellAlignment.End" />
+                    <TemplateColumn Title="Đề xuất">
+                        <FluentBadge Appearance="BadgeAppearance.Filled">@context.Action</FluentBadge>
+                        <span style="margin-left: 8px;">@context.Detail</span>
+                    </TemplateColumn>
+                </FluentDataGrid>
+            }
+        </div>
+    </FluentStack>
+
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" Style="margin-bottom: 16px; flex-wrap: wrap; align-items: stretch;">
+        <div style="flex: 1; min-width: 420px; background: #f6f6fb; border: 1px solid #e6e4f2; border-radius: 8px; padding: 12px;">
+            <h3 style="margin: 0 0 8px; color: #5d5680;">Công nợ tới hạn</h3>
+            @if (dues.Count == 0)
+            {
+                <p>Tháng này chưa có công nợ tới hạn.</p>
+            }
+            else
+            {
+                <FluentDataGrid Items="@dues.AsQueryable()">
+                    <PropertyColumn Title="Loại" Property="@(c => c.Kind)" />
+                    <PropertyColumn Title="Số chứng từ" Property="@(c => c.Number)" />
+                    <PropertyColumn Title="Đối tác" Property="@(c => c.Partner)" />
+                    <PropertyColumn Title="Hạn" Property="@(c => c.DueDate.ToDateString())" />
+                    <PropertyColumn Title="Còn nợ" Property="@(c => c.Balance.ToCurrency())" Align="DataGridCellAlignment.End" />
+                    <TemplateColumn Title="Trạng thái">
+                        <FluentBadge Appearance="BadgeAppearance.Filled">@context.State</FluentBadge>
+                    </TemplateColumn>
+                </FluentDataGrid>
+            }
+        </div>
+        <div style="flex: 1; min-width: 420px; background: #f5f7fa; border: 1px solid #e4e8ee; border-radius: 8px; padding: 12px;">
+            <h3 style="margin: 0 0 8px; color: #4e6278;">Top sản phẩm bán chạy trong tháng</h3>
+            @if (topProducts.Count == 0)
+            {
+                <p>Tháng này chưa có hóa đơn đã phát hành.</p>
+            }
+            else
+            {
+                <FluentDataGrid Items="@topProducts.AsQueryable()" GridTemplateColumns="2fr 2fr 0.5fr 1fr">
+                    <PropertyColumn Title="Mã" Property="@(c => c.Sku)" />
+                    <PropertyColumn Title="Sản phẩm" Property="@(c => c.Name)" />
+                    <PropertyColumn Title="Số lượng" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+                    <PropertyColumn Title="Doanh số" Property="@(c => c.Amount.ToCurrency())" Align="DataGridCellAlignment.End" />
+                </FluentDataGrid>
+            }
+        </div>
+    </FluentStack>
+}
+
+@code {
+    private bool loaded;
+    private decimal salesWeek;
+    private decimal salesMonth;
+    private decimal receivableDue;
+    private decimal payableDue;
+    private List<DashboardStockDto> highStock = [];
+    private List<DashboardReplenishDto> replenish = [];
+    private List<DashboardDueDto> dues = [];
+    private List<DashboardTopProductDto> topProducts = [];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        var result = await Dashboard.GetAsync();
+        var data = result.Value;
+        if (data is not null)
+        {
+            salesWeek = data.SalesWeek;
+            salesMonth = data.SalesMonth;
+            receivableDue = data.ReceivableDue;
+            payableDue = data.PayableDue;
+            highStock = data.HighStock;
+            replenish = data.Replenish;
+            dues = data.Dues;
+            topProducts = data.TopProducts;
+        }
+        loaded = true;
+        await InvokeAsync(StateHasChanged);
+    }
+}

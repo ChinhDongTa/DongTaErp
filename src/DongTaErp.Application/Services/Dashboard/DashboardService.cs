@@ -44,6 +44,45 @@ public class DashboardService(IUnitOfWork unitOfWork) : IDashboardService
         return Result<DashboardDto>.Success(dto);
     }
 
+    public async Task<Result<TransferReviewDto?>> GetNextTransferReviewAsync(CancellationToken ct = default)
+    {
+        var dashboard = await GetAsync(ct);
+        var rows = (dashboard.Value?.Replenish ?? []).Where(x => x.CanTransfer).ToList();
+        var group = rows.GroupBy(x => new { x.ToWarehouseId, x.Warehouse })
+            .OrderByDescending(g => g.Sum(x => x.Shortage))
+            .FirstOrDefault();
+        if (group is null)
+            return Result<TransferReviewDto?>.Success(null);
+
+        return Result<TransferReviewDto?>.Success(new TransferReviewDto
+        {
+            WarehouseId = group.Key.ToWarehouseId,
+            Warehouse = group.Key.Warehouse,
+            TotalShortage = group.Sum(x => x.Shortage),
+            Lines = group.Select(x => new TransferReviewLineDto
+            {
+                ProductId = x.ProductId,
+                Product = x.Product,
+                Qty = x.Qty,
+                Shortage = x.Shortage,
+                FromWarehouseId = x.FromWarehouseId!.Value,
+                FromWarehouse = x.FromWarehouse ?? "",
+                SuggestedQty = x.TransferQty,
+                BuyQty = x.BuyQty
+            }).ToList()
+        });
+    }
+
+    public async Task<Result<List<BuySuggestionDto>>> GetBuySuggestionsAsync(CancellationToken ct = default)
+    {
+        var dashboard = await GetAsync(ct);
+        var rows = (dashboard.Value?.Replenish ?? []).Where(x => x.BuyQty > 0)
+            .GroupBy(x => new { x.ProductId, x.Product })
+            .Select(g => new BuySuggestionDto { ProductId = g.Key.ProductId, Product = g.Key.Product, Qty = g.Sum(x => x.BuyQty) })
+            .ToList();
+        return Result<List<BuySuggestionDto>>.Success(rows);
+    }
+
     private static List<DashboardReplenishDto> BuildBalance(List<BalanceRow> all)
     {
         var result = new List<DashboardReplenishDto>();
@@ -65,7 +104,7 @@ public class DashboardService(IUnitOfWork unitOfWork) : IDashboardService
                         Warehouse = target.Warehouse, Product = target.Product, Qty = target.Qty, Shortage = need,
                         Action = remain == 0 ? "Cân bằng" : target.Qty < target.MinQty ? "Cân bằng + mua" : "Cân bằng",
                         Detail = remain == 0 ? $"Chuyển {move.ToDisplay()} từ {source.Row.Warehouse}" : $"Chuyển {move.ToDisplay()} từ {source.Row.Warehouse}, mua thêm {remain.ToDisplay()}",
-                        ProductId = target.ProductId, FromWarehouseId = source.Row.WarehouseId, ToWarehouseId = target.WarehouseId, TransferQty = move, BuyQty = remain
+                        ProductId = target.ProductId, FromWarehouseId = source.Row.WarehouseId, FromWarehouse = source.Row.Warehouse, ToWarehouseId = target.WarehouseId, TransferQty = move, BuyQty = remain
                     });
                     source.Extra -= move;
                     continue;

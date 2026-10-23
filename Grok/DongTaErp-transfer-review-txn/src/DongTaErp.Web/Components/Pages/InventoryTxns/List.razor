@@ -1,0 +1,78 @@
+@page "/inventory-txns/list"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.InventoryTxns
+@inject NavigationManager Navigation
+@inject IInventoryTxnService Service
+
+<PageTitle>Sổ kho</PageTitle>
+<ActionTitle Text="Sổ kho" />
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
+    <FluentTextInput @bind-Value="searchTerm" Placeholder="Sản phẩm, kho, chứng từ" Style="width: 300px;" @onkeypress="OnSearchKey" />
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="SearchAsync">Tìm</FluentButton>
+</FluentStack>
+
+<PaginatedTable TItem="InventoryTxnDto" Data="page" PageSize="pageSize"
+                GridTemplateColumns="1fr 1.4fr 1fr 1fr 0.8fr 0.7fr 1fr .8fr"
+                OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
+    <PropertyColumn TGridItem="InventoryTxnDto" TProp="string" Title="Sản phẩm" Property="@(c => c!.ProductSku + " - " + c.ProductName)" />
+    <PropertyColumn TGridItem="InventoryTxnDto" TProp="string" Title="Kho" Property="@(c => c!.WarehouseName)" />
+    <PropertyColumn TGridItem="InventoryTxnDto" TProp="string" Title="Kho đối ứng" Property="@(c => c!.ContraWarehouseName)" />
+    <PropertyColumn TGridItem="InventoryTxnDto" TProp="string" Title="Loại" Property="@(c => c!.TypeName)" />
+    <PropertyColumn TGridItem="InventoryTxnDto" TProp="string" Title="Thay đổi" Property="@(c => c!.QtyChange.ToDisplay())" Align="DataGridCellAlignment.End" />
+    <PropertyColumn TGridItem="InventoryTxnDto" TProp="string" Title="Chứng từ" Property="@(c => c!.Reference)" />
+    <TemplateColumn TGridItem="InventoryTxnDto" Title="Thao tác" Context="item">
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem"
+                      @onclick="@(() => Navigation.NavigateTo($"/inventory-txns/view/{item.Id}"))" />
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Edit())" Appearance="ButtonAppearance.Primary" Title="Sửa"
+                      @onclick="@(() => Navigation.NavigateTo($"/inventory-txns/update/{item.Id}"))" />
+    </TemplateColumn>
+</PaginatedTable>
+
+@code {
+    private PaginatedList<InventoryTxnDto>? page;
+    private readonly int pageSize = Models.Constants.PageSize;
+    private int currentPage = 1;
+    private bool isLoading;
+    private int requestVersion;
+    private string? searchTerm;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadData(1);
+    }
+
+    private Task LoadPageAsync(int pageNumber)
+    {
+        currentPage = pageNumber;
+        return LoadData(pageNumber);
+    }
+
+    private Task SearchAsync()
+    {
+        currentPage = 1;
+        return LoadData(1);
+    }
+
+    private Task OnSearchKey(KeyboardEventArgs e) => e.Key == "Enter" ? SearchAsync() : Task.CompletedTask;
+
+    private async Task LoadData(int pageNumber)
+    {
+        var version = ++requestVersion;
+        isLoading = true;
+        try
+        {
+            var result = await Service.SearchAsync(searchTerm, pageNumber, pageSize);
+            if (version == requestVersion && result.Succeeded)
+                page = result.Value;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}

@@ -5,6 +5,8 @@
 @inject IPurchaseOrderService Service
 @using DongTaErp.Application.Services.Lookups
 @inject ILookupService Lookup
+@using DongTaErp.Application.Services.Dashboard
+@inject IDashboardService Dashboard
 @inject NavigationManager Navigation
 
 <PageTitle>Tạo đơn mua</PageTitle>
@@ -55,6 +57,7 @@
 </EditForm>
 
 @code {
+    [SupplyParameterFromQuery(Name = "suggest")] public string? Suggest { get; set; }
     private Alert? alert;
     private readonly CreatePurchaseOrderDto dto = new() { Number = "PO".GetRandomCode(), TaxRate = 0.08m };
     private DateTime? orderDate = DateTime.Today;
@@ -83,6 +86,18 @@
         warehouseId = warehouses.FirstOrDefault()?.Id ?? "";
         selectedProductId = products.FirstOrDefault()?.Id ?? "";
         newPrice = products.FirstOrDefault()?.CostPrice ?? 0;
+        if (Suggest == "1")
+            await PrefillSuggestionsAsync();
+    }
+
+    private async Task PrefillSuggestionsAsync()
+    {
+        foreach (var item in (await Dashboard.GetBuySuggestionsAsync()).Value ?? [])
+        {
+            var product = products.FirstOrDefault(x => x.Id == item.ProductId.ToString());
+            if (product is not null)
+                lines.Add(new LineItem(item.ProductId, product.Label, item.Qty, product.CostPrice));
+        }
     }
 
     private void AddLine()
