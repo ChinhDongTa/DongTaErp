@@ -277,6 +277,33 @@ public class GoodsIssueService
         }
     }
 
+    public async Task<Result<List<DocumentLineLookupDto>>> GetGoodsIssueLinesAsync(Guid salesOrderId, Guid? warehouseId = null, CancellationToken ct = default)
+    {
+        var orderLines = await _unitOfWork.SalesOrderLines.Query().Where(x => x.SalesOrderId == salesOrderId)
+            .Select(x => new { x.Id, x.ProductId, x.Product.Sku, x.Product.Name, x.Qty }).ToListAsync(ct);
+        var ids = orderLines.Select(x => x.Id).ToList();
+        var issued = await _unitOfWork.GoodsIssueLines.Query()
+            .Where(x => ids.Contains(x.SalesOrderLineId) && x.GoodsIssue.Status == GoodsIssueStatus.Posted)
+            .GroupBy(x => x.SalesOrderLineId).Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Quantity) }).ToListAsync(ct);
+        var stocks = warehouseId is null ? [] : await _unitOfWork.StockBalances.Query()
+            .Where(x => x.WarehouseId == warehouseId && orderLines.Select(l => l.ProductId).Contains(x.ProductId))
+            .Select(x => new { x.ProductId, x.Qty }).ToListAsync(ct);
+        var lines = orderLines.Select(x =>
+        {
+            var done = issued.FirstOrDefault(r => r.LineId == x.Id)?.Qty ?? 0;
+            return new DocumentLineLookupDto
+            {
+                LineId = x.Id,
+                ProductId = x.ProductId,
+                Label = $"{x.Sku} - {x.Name}",
+                OrderedQty = x.Qty,
+                DoneQty = done,
+                RemainingQty = Math.Max(0, x.Qty - done),
+                StockQty = stocks.FirstOrDefault(s => s.ProductId == x.ProductId)?.Qty ?? 0
+            };
+        }).ToList();
+        return Result<List<DocumentLineLookupDto>>.Success(lines);
+    }
     protected override Expression<Func<GoodsIssue, GoodsIssueDto>> ToDto() => Extensions.ExpressionToDto();
 
     protected override GoodsIssue CreateEntity(CreateGoodsIssueDto dto)

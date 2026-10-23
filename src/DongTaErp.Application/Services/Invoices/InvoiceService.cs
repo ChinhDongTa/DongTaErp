@@ -132,6 +132,45 @@ public class InvoiceService
         return Result.Success(ResultStatus.NoContent);
     }
 
+    public async Task<Result<List<DocumentLineLookupDto>>> GetInvoiceLinesAsync(Guid salesOrderId, CancellationToken ct = default)
+    {
+        var orderLines = await _unitOfWork.SalesOrderLines.Query().Where(x => x.SalesOrderId == salesOrderId)
+            .Select(x => new { x.Id, x.Product.Sku, x.Product.Name, x.Qty, x.UnitPrice }).ToListAsync(ct);
+        var ids = orderLines.Select(x => x.Id).ToList();
+        var shipped = await _unitOfWork.GoodsIssueLines.Query()
+            .Where(x => ids.Contains(x.SalesOrderLineId) && x.GoodsIssue.Status == GoodsIssueStatus.Posted)
+            .GroupBy(x => x.SalesOrderLineId).Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Quantity) }).ToListAsync(ct);
+        var invoiced = await _unitOfWork.InvoiceLines.Query()
+            .Where(x => ids.Contains(x.SalesOrderLineId) && x.Invoice.Status != InvoiceStatus.Draft && x.Invoice.Status != InvoiceStatus.Cancelled)
+            .GroupBy(x => x.SalesOrderLineId).Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Qty) }).ToListAsync(ct);
+        var lines = orderLines.Select(x =>
+        {
+            var done = shipped.FirstOrDefault(s => s.LineId == x.Id)?.Qty ?? 0;
+            var billed = invoiced.FirstOrDefault(s => s.LineId == x.Id)?.Qty ?? 0;
+            return new DocumentLineLookupDto
+            {
+                LineId = x.Id,
+                Label = $"{x.Sku} - {x.Name}",
+                OrderedQty = x.Qty,
+                DoneQty = done,
+                RelatedQty = billed,
+                RemainingQty = Math.Max(0, done - billed),
+                UnitPrice = x.UnitPrice
+            };
+        }).ToList();
+        return Result<List<DocumentLineLookupDto>>.Success(lines);
+    }
+
+    public async Task<Result<List<OpenDocumentDto>>> GetOpenInvoicesAsync(Guid partnerId, CancellationToken ct = default)
+       => Result<List<OpenDocumentDto>>.Success(await _unitOfWork.Invoices.Query()
+           .Where(x => x.PartnerId == partnerId && (x.Status == InvoiceStatus.Issued || x.Status == InvoiceStatus.PartiallyPaid))
+           .OrderBy(x => x.IssueDate)
+           .Select(x => new OpenDocumentDto { Id = x.Id, PartnerId = x.PartnerId, Number = x.Number, Total = x.Total, Balance = x.Total - x.PaidAmount })
+           .ToListAsync(ct));
+    public async Task<Result<OpenDocumentDto?>> GetInvoiceAsync(Guid id, CancellationToken ct = default)
+      => Result<OpenDocumentDto?>.Success(await _unitOfWork.Invoices.Query().Where(x => x.Id == id)
+          .Select(x => new OpenDocumentDto { Id = x.Id, PartnerId = x.PartnerId, Number = x.Number, Total = x.Total, Balance = x.Total - x.PaidAmount })
+          .FirstOrDefaultAsync(ct));
     protected override Expression<Func<Invoice, InvoiceDto>> ToDto() => Extensions.ExpressionToDto();
 
     protected override Invoice CreateEntity(CreateInvoiceDto dto)

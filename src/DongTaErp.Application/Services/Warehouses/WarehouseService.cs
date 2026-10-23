@@ -51,6 +51,29 @@ public class WarehouseService : Base.GenericCrudService<Warehouse, WarehouseDto,
         }
     }
 
+    public async Task<Result<List<StockBalanceDto>>> GetStockAsync(Guid? warehouseId = null, bool lowOnly = false, Guid? productId = null, CancellationToken ct = default)
+    {
+        var query = unitOfWork.StockBalances.Query();
+        if (warehouseId is not null)
+            query = query.Where(x => x.WarehouseId == warehouseId);
+        if (productId is not null)
+            query = query.Where(x => x.ProductId == productId);
+        if (lowOnly)
+            query = query.Where(x => x.Qty <= x.MinQty);
+        var rows = await query.OrderBy(x => x.Warehouse.Code).ThenBy(x => x.Product.Sku)
+            .Select(x => new StockBalanceDto
+            {
+                Id = x.Id,
+                ProductSku = x.Product.Sku,
+                ProductName = x.Product.Name,
+                WarehouseName = x.Warehouse.Name,
+                Qty = x.Qty,
+                MinQty = x.MinQty,
+                CreatedAt = x.Created
+            }).ToListAsync(ct);
+        return Result<List<StockBalanceDto>>.Success(rows);
+    }
+
     protected override Expression<Func<Warehouse, WarehouseDto>> ToDto() => Extensions.ExpressionToDto();
 
     protected override Warehouse CreateEntity(CreateWarehouseDto dto) => new()

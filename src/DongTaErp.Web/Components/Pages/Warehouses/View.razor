@@ -85,7 +85,7 @@ else if (dto is not null)
         if (result.Succeeded && result.Value is not null)
         {
             dto = result.Value;
-            stocks = ((await Lookup.GetStockAsync(id)).Value ?? []).AsQueryable();
+            stocks = ((await Service.GetStockAsync(id)).Value ?? []).AsQueryable();
         }
         else
         {

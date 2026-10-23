@@ -5,4 +5,5 @@ public interface IGoodsReceiptService : ICrudService<GoodsReceiptDto, CreateGood
     Task<Result<PaginatedList<GoodsReceiptDto>>> SearchAsync(SimpleSearch search, CancellationToken ct = default);
     Task<Result> PostAsync(Guid id, CancellationToken ct = default);
     Task<Result> CancelAsync(Guid id, CancellationToken ct = default);
+    Task<Result<List<DocumentLineLookupDto>>> GetGoodsReceiptLinesAsync(Guid purchaseOrderId, CancellationToken ct = default);
 }

@@ -91,7 +91,7 @@
         if (!Guid.TryParse(orderId, out var id))
             return;
 
-        var result = await Lookup.GetGoodsIssueLinesAsync(id, Guid.TryParse(warehouseId, out var whId) ? whId : null);
+        var result = await Service.GetGoodsIssueLinesAsync(id, Guid.TryParse(warehouseId, out var whId) ? whId : null);
         lines = (result.Value ?? []).Select(x => new IssueLine(x.LineId, x.ProductId, x.Label, x.OrderedQty, x.DoneQty, x.RemainingQty)
         {
             Stock = x.StockQty
@@ -102,7 +102,7 @@
     {
         if (!Guid.TryParse(warehouseId, out var whId) || !Guid.TryParse(orderId, out var id))
             return;
-        var result = await Lookup.GetGoodsIssueLinesAsync(id, whId);
+        var result = await Service.GetGoodsIssueLinesAsync(id, whId);
         foreach (var line in lines)
             line.Stock = result.Value?.FirstOrDefault(x => x.LineId == line.SalesOrderLineId)?.StockQty ?? 0;
     }

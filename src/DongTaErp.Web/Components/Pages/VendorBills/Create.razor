@@ -83,7 +83,7 @@
         if (!Guid.TryParse(value, out var id))
             return;
 
-        var result = await Lookup.GetVendorBillLinesAsync(id);
+        var result = await Service.GetVendorBillLinesAsync(id);
         lines = (result.Value ?? []).Select(x => new BillLine(x.LineId, x.Label, x.OrderedQty, x.DoneQty, x.RelatedQty, x.UnitPrice)
         {
             Qty = x.RemainingQty

@@ -81,7 +81,7 @@
         if (!Guid.TryParse(value, out var id))
             return;
 
-        var result = await Lookup.GetInvoiceLinesAsync(id);
+        var result = await Service.GetInvoiceLinesAsync(id);
         lines = (result.Value ?? []).Select(x => new InvoiceLine(x.LineId, x.Label, x.OrderedQty, x.DoneQty, x.RelatedQty, x.UnitPrice)).ToList();
     }
 

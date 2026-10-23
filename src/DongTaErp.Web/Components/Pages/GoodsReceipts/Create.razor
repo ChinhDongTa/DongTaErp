@@ -81,7 +81,7 @@
         if (!Guid.TryParse(value, out var id))
             return;
 
-        var result = await Lookup.GetGoodsReceiptLinesAsync(id);
+        var result = await Service.GetGoodsReceiptLinesAsync(id);
         lines = (result.Value ?? []).Select(x => new ReceiptLine(x.LineId, x.ProductId, x.Label, x.OrderedQty, x.DoneQty, x.RemainingQty)).ToList();
     }
 

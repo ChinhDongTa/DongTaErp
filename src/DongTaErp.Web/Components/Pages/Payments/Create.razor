@@ -1,8 +1,10 @@
 @page "/payments/create"
 @attribute [Authorize(Roles = AppRoles.SalesArea)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Invoices
 @using DongTaErp.Application.Services.Payments
 @inject IPaymentService Service
+@inject IInvoiceService InvoiceService
 @using DongTaErp.Application.Services.Lookups
 @inject ILookupService Lookup
 @inject NavigationManager Navigation
@@ -78,7 +80,7 @@
 
         if (Guid.TryParse(InvoiceId, out var invoiceId))
         {
-            var invoice = (await Lookup.GetInvoiceAsync(invoiceId)).Value;
+            var invoice = (await InvoiceService.GetInvoiceAsync(invoiceId)).Value;
             if (invoice is not null)
             {
                 customerId = invoice.PartnerId.ToString();
@@ -104,7 +106,7 @@
             return;
         }
 
-        openInvoices = ((await Lookup.GetOpenInvoicesAsync(partnerId)).Value ?? [])
+        openInvoices = ((await InvoiceService.GetOpenInvoicesAsync(partnerId)).Value ?? [])
             .Select(x => new OpenInvoice(x.Id, x.Number, x.Total, x.Balance)).ToList();
 
         if (Guid.TryParse(InvoiceId, out var invoiceId))

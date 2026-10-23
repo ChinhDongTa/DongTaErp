@@ -112,6 +112,48 @@ public class VendorBillService
         await _unitOfWork.SaveChangesAsync(ct);
         return Result.Success(ResultStatus.NoContent);
     }
+    public async Task<Result<List<DocumentLineLookupDto>>> GetVendorBillLinesAsync(Guid purchaseOrderId, CancellationToken ct = default)
+    {
+        var orderLines = await _unitOfWork.PurchaseOrderLines.Query().Where(x => x.PurchaseOrderId == purchaseOrderId)
+            .Select(x => new { x.Id, x.Product.Sku, x.Product.Name, x.Qty, x.UnitPrice }).ToListAsync(ct);
+        var ids = orderLines.Select(x => x.Id).ToList();
+        var received = await _unitOfWork.GoodsReceiptLines.Query()
+            .Where(x => ids.Contains(x.PurchaseOrderLineId) && x.GoodsReceipt.Status == GoodsReceiptStatus.Posted)
+            .GroupBy(x => x.PurchaseOrderLineId).Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Quantity) }).ToListAsync(ct);
+        var billed = await _unitOfWork.VendorBillLines.Query()
+            .Where(x => ids.Contains(x.PurchaseOrderLineId) && x.VendorBill.Status != VendorBillStatus.Draft && x.VendorBill.Status != VendorBillStatus.Cancelled)
+            .GroupBy(x => x.PurchaseOrderLineId).Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Qty) }).ToListAsync(ct);
+        var lines = orderLines.Select(x =>
+        {
+            var done = received.FirstOrDefault(s => s.LineId == x.Id)?.Qty ?? 0;
+            var billedQty = billed.FirstOrDefault(s => s.LineId == x.Id)?.Qty ?? 0;
+            return new DocumentLineLookupDto
+            {
+                LineId = x.Id,
+                Label = $"{x.Sku} - {x.Name}",
+                OrderedQty = x.Qty,
+                DoneQty = done,
+                RelatedQty = billedQty,
+                RemainingQty = Math.Max(0, done - billedQty),
+                UnitPrice = x.UnitPrice
+            };
+        }).ToList();
+        return Result<List<DocumentLineLookupDto>>.Success(lines);
+    }
+
+    public async Task<Result<List<OpenDocumentDto>>> GetOpenVendorBillsAsync(Guid partnerId, CancellationToken ct = default)
+       => Result<List<OpenDocumentDto>>.Success(await _unitOfWork.VendorBills.Query()
+           .Where(x => x.PartnerId == partnerId && (x.Status == VendorBillStatus.Posted || x.Status == VendorBillStatus.PartiallyPaid))
+           .OrderBy(x => x.BillDate)
+           .Select(x => new OpenDocumentDto { Id = x.Id, PartnerId = x.PartnerId, Number = x.Number, Total = x.Total, Balance = x.Total - x.PaidAmount })
+           .ToListAsync(ct));
+
+
+
+    public async Task<Result<OpenDocumentDto?>> GetVendorBillAsync(Guid id, CancellationToken ct = default)
+        => Result<OpenDocumentDto?>.Success(await _unitOfWork.VendorBills.Query().Where(x => x.Id == id)
+            .Select(x => new OpenDocumentDto { Id = x.Id, PartnerId = x.PartnerId, Number = x.Number, Total = x.Total, Balance = x.Total - x.PaidAmount })
+            .FirstOrDefaultAsync(ct));
 
     protected override Expression<Func<VendorBill, VendorBillDto>> ToDto() => Extensions.ExpressionToDto();
 

@@ -129,7 +129,7 @@ public class PaymentService
         await _unitOfWork.SaveChangesAsync(ct);
         return Result.Success(ResultStatus.NoContent);
     }
-
+    
     protected override Expression<Func<Payment, PaymentDto>> ToDto() => Extensions.ExpressionToDto();
 
     protected override Payment CreateEntity(CreatePaymentDto dto)

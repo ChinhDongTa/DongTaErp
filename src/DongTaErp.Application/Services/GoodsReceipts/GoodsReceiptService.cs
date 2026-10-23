@@ -196,6 +196,31 @@ public class GoodsReceiptService
         }
     }
 
+    public async Task<Result<List<DocumentLineLookupDto>>> GetGoodsReceiptLinesAsync(Guid purchaseOrderId, CancellationToken ct = default)
+    {
+        var orderLines = await _unitOfWork.PurchaseOrderLines.Query().Where(x => x.PurchaseOrderId == purchaseOrderId)
+            .Select(x => new { x.Id, x.ProductId, x.Product.Sku, x.Product.Name, x.Qty, x.UnitPrice }).ToListAsync(ct);
+        var ids = orderLines.Select(x => x.Id).ToList();
+        var received = await _unitOfWork.GoodsReceiptLines.Query()
+            .Where(x => ids.Contains(x.PurchaseOrderLineId) && x.GoodsReceipt.Status == GoodsReceiptStatus.Posted)
+            .GroupBy(x => x.PurchaseOrderLineId).Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Quantity) }).ToListAsync(ct);
+        var lines = orderLines.Select(x =>
+        {
+            var done = received.FirstOrDefault(r => r.LineId == x.Id)?.Qty ?? 0;
+            return new DocumentLineLookupDto
+            {
+                LineId = x.Id,
+                ProductId = x.ProductId,
+                Label = $"{x.Sku} - {x.Name}",
+                OrderedQty = x.Qty,
+                DoneQty = done,
+                RemainingQty = Math.Max(0, x.Qty - done),
+                UnitPrice = x.UnitPrice
+            };
+        }).ToList();
+        return Result<List<DocumentLineLookupDto>>.Success(lines);
+    }
+
     protected override Expression<Func<GoodsReceipt, GoodsReceiptDto>> ToDto() => Extensions.ExpressionToDto();
 
     protected override GoodsReceipt CreateEntity(CreateGoodsReceiptDto dto)

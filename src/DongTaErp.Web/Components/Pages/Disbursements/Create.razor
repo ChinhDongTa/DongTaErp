@@ -2,7 +2,9 @@
 @attribute [Authorize(Roles = AppRoles.PurchaseArea)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Services.Disbursements
+@using DongTaErp.Application.Services.VendorBills
 @inject IDisbursementService Service
+@inject IVendorBillService VendorBillService
 @using DongTaErp.Application.Services.Lookups
 @inject ILookupService Lookup
 @inject NavigationManager Navigation
@@ -78,7 +80,7 @@
 
         if (Guid.TryParse(BillId, out var billId))
         {
-            var bill = (await Lookup.GetVendorBillAsync(billId)).Value;
+            var bill = (await VendorBillService.GetVendorBillAsync(billId)).Value;
             if (bill is not null)
             {
                 supplierId = bill.PartnerId.ToString();
@@ -104,7 +106,7 @@
             return;
         }
 
-        openBills = ((await Lookup.GetOpenVendorBillsAsync(partnerId)).Value ?? [])
+        openBills = ((await VendorBillService.GetOpenVendorBillsAsync(partnerId)).Value ?? [])
             .Select(x => new OpenBill(x.Id, x.Number, x.Total, x.Balance)).ToList();
 
         if (Guid.TryParse(BillId, out var billId))

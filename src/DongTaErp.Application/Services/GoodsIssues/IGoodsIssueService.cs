@@ -6,4 +6,5 @@ public interface IGoodsIssueService : ICrudService<GoodsIssueDto, CreateGoodsIss
     Task<Result<string>> CreateAndPostAsync(CreateGoodsIssueDto dto, CancellationToken ct = default);
     Task<Result> PostAsync(Guid id, CancellationToken ct = default);
     Task<Result> CancelAsync(Guid id, CancellationToken ct = default);
+    Task<Result<List<DocumentLineLookupDto>>> GetGoodsIssueLinesAsync(Guid salesOrderId, Guid? warehouseId = null, CancellationToken ct = default);
 }

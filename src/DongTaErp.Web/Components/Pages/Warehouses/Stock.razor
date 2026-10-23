@@ -2,6 +2,8 @@
 @attribute [Authorize(Roles = AppRoles.Catalog)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Services.Lookups
+@using DongTaErp.Application.Services.Warehouses
+@inject IWarehouseService WarehouseService
 @inject ILookupService Lookup
 @inject NavigationManager Navigation
 
@@ -45,7 +47,7 @@
     private async Task LoadAsync()
     {
         Guid? id = Guid.TryParse(warehouseId, out var parsed) ? parsed : null;
-        rows = ((await Lookup.GetStockAsync(id, lowOnly)).Value ?? []).AsQueryable();
+        rows = ((await WarehouseService.GetStockAsync(id, lowOnly)).Value ?? []).AsQueryable();
     }
 
     private sealed record WarehouseOption(string Id, string Name);
