@@ -53,6 +53,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<IDisbursementService, DisbursementService>();
         builder.Services.AddScoped<IInvoiceService, InvoiceService>();
         builder.Services.AddScoped<IPaymentService, PaymentService>();
+        
 
         builder.Services.AddValidatorsFromAssemblies([typeof(DependencyInjection).Assembly],includeInternalTypes: true);
     }

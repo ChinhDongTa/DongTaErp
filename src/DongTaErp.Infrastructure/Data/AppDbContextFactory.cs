@@ -1,6 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore.Design;
-using System.Diagnostics.Metrics;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 namespace DongTaErp.Infrastructure.Data;
 
 public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>

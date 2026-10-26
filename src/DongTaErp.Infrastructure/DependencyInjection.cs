@@ -25,6 +25,6 @@ public static class DependencyInjection
 
         // Register UnitOfWork and Repositories
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-
+        //builder.Services.AddTransient<IIdentityService, IdentityService>();
     }
 }

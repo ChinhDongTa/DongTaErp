@@ -1,0 +1,107 @@
+﻿@page "/admin/roles/list"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using DongTaErp.Application.Extensions
+@inject RoleManager<IdentityRole> roleManager
+<Alert @ref="alertComponent" />
+@if (roles.Count==0)
+{
+    <PageLoading />
+}
+else
+{
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="20" HorizontalAlignment="HorizontalAlignment.Stretch" Style="flex-wrap: wrap; align-items: stretch;">
+        <div style="flex: 1; min-width: 220px; background: #f7fafc; border: 1px solid #e3edf4; border-radius: 8px; padding: 12px;">
+            <h3>Danh sách Role</h3>
+            <FluentListbox Items="roles" TValue="RoleDto"
+                           TOption="RoleDto"
+                           OptionText="@(i => i.Name)"
+                           OptionValueToString="@(i => i.Id)"
+                           @bind-Value="@selectedRole" />
+           @*  <label>Selected role: @selectedRole?.Name</label>
+            <label>Selected ID: @selectedRole?.Id</label> *@
+        </div>
+        <div style="flex: 1; min-width: 220px; background: #f4f8f7; border: 1px solid #e0eee9; border-radius: 8px; padding: 12px;">
+            @if (selectedRole != null)
+            {
+                <h3>Cập nhật Role</h3>
+                <FluentTextInput Label="Tên" @bind-Value="@selectedRole.Name" />
+                <FluentButton Appearance="ButtonAppearance.Primary" OnClick="HandleUpdateRole" Disabled="@IsSaving" style="margin-top:54px" Loading="@IsSaving">
+                    Lưu
+                </FluentButton>
+            }
+      </div>
+        <div style="flex: 1; min-width: 220px; background: #f6f6fb; border: 1px solid #e6e4f2; border-radius: 8px; padding: 12px;">
+            <h3>Tạo mới Role</h3>
+            <FluentTextInput Label="Tên" @bind-Value="@newRoleModel.Name" />
+            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="HandleAddRole" Disabled="@IsSaving" style="margin-top:54px" Loading="@IsSaving">
+                Lưu
+            </FluentButton>
+      </div>
+    </FluentStack>
+}
+
+@code {
+    Alert? alertComponent;
+    List<RoleDto> roles=[];
+    RoleDto? selectedRole;
+    RoleDto newRoleModel=new RoleDto();
+    bool IsSaving=false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+      
+        if (!firstRender)
+            return;
+        roles = await roleManager.Roles.Select(r => new RoleDto() { Id= r.Id, Name= r.Name! }).ToListAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+   
+
+    private async Task HandleUpdateRole()
+    {
+        IsSaving = true;
+        if (selectedRole != null)
+        {
+            var result = await roleManager.UpdateAsync(new IdentityRole() { Id = selectedRole.Id, Name = selectedRole.Name });
+            if (result.Succeeded)
+            {
+                alertComponent?.AddAlert("");
+            }
+            else
+            {
+                alertComponent?.AddAlertError(result.Errors.Select(e=>e.Description).ToLine("--"));
+            }
+        }
+        else
+        {
+            alertComponent?.AddAlert("Không có Role nào được chọn để cập nhật", Alert.AlertType.Error, 5000);
+        }
+        IsSaving = false;
+    }
+
+    private async Task HandleAddRole()
+    {
+        IsSaving = true;
+        if (newRoleModel != null)
+        {
+            var result = await roleManager.CreateAsync(new IdentityRole { Name = newRoleModel.Name });
+            if (result.Succeeded)
+            {
+                alertComponent?.AddAlert("Tạo role thành công");
+                newRoleModel = new ();
+            }
+            else
+            {
+                alertComponent?.AddAlertError(result.Errors.Select(e => e.Description).ToLine("--"));
+            }
+        }
+        else
+        {
+            alertComponent?.AddAlertError("Model tạo mới Role không hợp lệ",  5000);
+        }
+        IsSaving = false;
+    }
+}
