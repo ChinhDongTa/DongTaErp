@@ -1,3 +1,6 @@
+using System.Data;
+using System.Text.RegularExpressions;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace DongTaErp.Infrastructure.Repositories;
@@ -36,6 +39,7 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<VendorBillLine>? _vendorBillLines;
     private IRepository<Disbursement>? _disbursements;
     private IRepository<DisbursementAllocation>? _disbursementAllocations;
+    private IRepository<SalaryComponent>? _salaryComponent;
     public UnitOfWork(IAppDbContext context)
     {
         _context = context;
@@ -111,7 +115,9 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<Disbursement> Disbursements =>
         _disbursements ??= new GenericRepository<Disbursement>(_context);
     public IRepository<DisbursementAllocation> DisbursementAllocations =>
-        _disbursementAllocations ??= new GenericRepository<DisbursementAllocation>(_context);   
+        _disbursementAllocations ??= new GenericRepository<DisbursementAllocation>(_context);
+
+    public IRepository<SalaryComponent> SalaryComponents => _salaryComponent ??= new GenericRepository<SalaryComponent>(_context);
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         return await ((DbContext)_context).SaveChangesAsync(cancellationToken);
@@ -177,5 +183,78 @@ public class UnitOfWork : IUnitOfWork
         {
             await disposable.DisposeAsync();
         }
+    }
+
+    public Task<List<T>> QuerySqlAsync<T>(FormattableString sql, CancellationToken ct = default) where T : class
+        => Db.Database.SqlQuery<T>(sql).ToListAsync(ct);
+
+    public Task<List<T>> QuerySqlRawAsync<T>(string sql, IEnumerable<SqlArg>? args = null, CancellationToken ct = default) where T : class
+        => Db.Database.SqlQueryRaw<T>(sql, ToParameters(args)).ToListAsync(ct);
+
+    public async Task<T?> ExecuteScalarAsync<T>(FormattableString sql, CancellationToken ct = default)
+        => await Db.Database.SqlQuery<T>(sql).FirstOrDefaultAsync(ct);
+
+    public Task<int> ExecuteSqlAsync(FormattableString sql, CancellationToken ct = default)
+        => Db.Database.ExecuteSqlAsync(sql, ct);
+
+    public Task<List<T>> ExecuteProcedureAsync<T>(string procedureName, IEnumerable<SqlArg>? args = null, CancellationToken ct = default) where T : class
+    {
+        var name = SafeName(procedureName);
+        var parameters = ToParameters(args);
+        var call = parameters.Length == 0
+            ? $"EXEC {name}"
+            : $"EXEC {name} {string.Join(", ", parameters.Select(p => p.ParameterName))}";
+        return Db.Database.SqlQueryRaw<T>(call, parameters).ToListAsync(ct);
+    }
+
+    public async Task<int> ExecuteProcedureAsync(string procedureName, IEnumerable<SqlArg>? args = null, CancellationToken ct = default)
+    {
+        var name = SafeName(procedureName);
+        await using var command = Db.Database.GetDbConnection().CreateCommand();
+        command.CommandText = name;
+        command.CommandType = CommandType.StoredProcedure;
+        command.Transaction = Db.Database.CurrentTransaction?.GetDbTransaction();
+        foreach (var parameter in ToParameters(args))
+            command.Parameters.Add(parameter);
+
+        if (command.Connection!.State != ConnectionState.Open)
+            await command.Connection.OpenAsync(ct);
+
+        var affected = await command.ExecuteNonQueryAsync(ct);
+        foreach (SqlParameter parameter in command.Parameters)
+        {
+            var source = args?.FirstOrDefault(x => Normalize(x.Name) == parameter.ParameterName);
+            if (source is { Direction: SqlArgDirection.Output or SqlArgDirection.InputOutput })
+                source.SetValue(parameter.Value is DBNull ? null : parameter.Value);
+        }
+        return affected;
+    }
+
+    private DbContext Db => (DbContext)_context;
+
+    private static SqlParameter[] ToParameters(IEnumerable<SqlArg>? args)
+        => (args ?? []).Select(x =>
+        {
+            var parameter = new SqlParameter(Normalize(x.Name), x.Value ?? DBNull.Value)
+            {
+                Direction = x.Direction switch
+                {
+                    SqlArgDirection.Output => ParameterDirection.Output,
+                    SqlArgDirection.InputOutput => ParameterDirection.InputOutput,
+                    _ => ParameterDirection.Input
+                }
+            };
+            if (x.Size is not null)
+                parameter.Size = x.Size.Value;
+            return parameter;
+        }).ToArray();
+
+    private static string Normalize(string name) => name.StartsWith('@') ? name : "@" + name;
+
+    private static string SafeName(string name)
+    {
+        if (!Regex.IsMatch(name, @"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$"))
+            throw new ArgumentException("Tên function hoặc procedure không hợp lệ.");
+        return name;
     }
 }

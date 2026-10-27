@@ -12,8 +12,8 @@ public interface IRepository<TEntity> where TEntity : BaseEntity
     // Read
     Task<TEntity?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<IList<TEntity>> GetAllAsync(CancellationToken ct = default);
-    Task<TEntity?> FirstOrDefaultAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default);
-    Task<IList<TEntity>> GetListAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>>? predicate = null, CancellationToken ct = default);
+    Task<TEntity?> FirstOrDefaultAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default);
+    Task<IList<TEntity>> GetListAsync(Expression<Func<TEntity, bool>>? predicate = null, CancellationToken ct = default);
     IQueryable<TEntity> Query();
 
     // Update
@@ -26,8 +26,8 @@ public interface IRepository<TEntity> where TEntity : BaseEntity
     void SoftDelete(TEntity entity);
 
     // Count
-    Task<int> CountAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>>? predicate = null, CancellationToken ct = default);
+    Task<int> CountAsync(Expression<Func<TEntity, bool>>? predicate = null, CancellationToken ct = default);
 
     // Exists
-    Task<bool> ExistsAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default);
+    Task<bool> ExistsAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default);
 }

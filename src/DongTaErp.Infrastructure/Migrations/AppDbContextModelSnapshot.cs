@@ -17,7 +17,7 @@ namespace DongTaErp.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -476,6 +476,56 @@ namespace DongTaErp.Infrastructure.Migrations
                         .HasFilter("[UserId] IS NOT NULL");
 
                     b.ToTable("Employees", (string)null);
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.EmployeeCompensation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateOnly>("EffectiveFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("EffectiveTo")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<Guid>("SalaryComponentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SalaryComponentId");
+
+                    b.HasIndex("EmployeeId", "SalaryComponentId", "EffectiveFrom");
+
+                    b.ToTable("EmployeeCompensations", (string)null);
                 });
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.GoodsIssue", b =>
@@ -1181,30 +1231,22 @@ namespace DongTaErp.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<decimal>("BaseSalary")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("BonusAmount")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<DateTimeOffset>("Created")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<decimal>("DaysWorked")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("DeductionDetails")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<decimal?>("Deductions")
+                    b.Property<decimal>("DeductionAmount")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<Guid>("EmployeeId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("GrossAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -1216,17 +1258,12 @@ namespace DongTaErp.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("NetAmount")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
-
-                    b.Property<decimal?>("OvertimeAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("OvertimeHours")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTimeOffset?>("PaymentDate")
                         .HasColumnType("datetimeoffset");
@@ -1250,17 +1287,62 @@ namespace DongTaErp.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmployeeId");
-
-                    b.HasIndex("PaymentStatus");
-
-                    b.HasIndex("PeriodEndDate");
-
-                    b.HasIndex("PeriodStartDate");
-
-                    b.HasIndex("EmployeeId", "PeriodStartDate", "PeriodEndDate");
+                    b.HasIndex("EmployeeId", "PeriodStartDate", "PeriodEndDate")
+                        .IsUnique();
 
                     b.ToTable("Payrolls", (string)null);
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.PayrollLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<Guid>("PayrollId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("SalaryComponentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PayrollId");
+
+                    b.HasIndex("SalaryComponentId");
+
+                    b.ToTable("PayrollLines", (string)null);
                 });
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.Product", b =>
@@ -1453,6 +1535,61 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.HasIndex("PurchaseOrderId");
 
                     b.ToTable("PurchaseOrderLines", (string)null);
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.SalaryComponent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsFixed")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsTaxable")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("SalaryComponents", (string)null);
                 });
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.SalesOrder", b =>
@@ -2045,6 +2182,25 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DongTaErp.Domain.Entities.EmployeeCompensation", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.Employee", "Employee")
+                        .WithMany("Compensations")
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DongTaErp.Domain.Entities.SalaryComponent", "SalaryComponent")
+                        .WithMany()
+                        .HasForeignKey("SalaryComponentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("SalaryComponent");
+                });
+
             modelBuilder.Entity("DongTaErp.Domain.Entities.GoodsIssue", b =>
                 {
                     b.HasOne("DongTaErp.Domain.Entities.SalesOrder", "SalesOrder")
@@ -2255,10 +2411,29 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.HasOne("DongTaErp.Domain.Entities.Employee", "Employee")
                         .WithMany("PayrollRecords")
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.PayrollLine", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.Payroll", "Payroll")
+                        .WithMany("Lines")
+                        .HasForeignKey("PayrollId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DongTaErp.Domain.Entities.SalaryComponent", "SalaryComponent")
+                        .WithMany()
+                        .HasForeignKey("SalaryComponentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Payroll");
+
+                    b.Navigation("SalaryComponent");
                 });
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.Product", b =>
@@ -2489,6 +2664,8 @@ namespace DongTaErp.Infrastructure.Migrations
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.Employee", b =>
                 {
+                    b.Navigation("Compensations");
+
                     b.Navigation("LeaveRequests");
 
                     b.Navigation("PayrollRecords");
@@ -2534,6 +2711,11 @@ namespace DongTaErp.Infrastructure.Migrations
             modelBuilder.Entity("DongTaErp.Domain.Entities.Payment", b =>
                 {
                     b.Navigation("Allocations");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.Payroll", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.Product", b =>

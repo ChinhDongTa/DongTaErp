@@ -1,0 +1,84 @@
+@page "/hr/payrolls/create"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Payrolls
+@inject IPayrollService Service
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
+@inject NavigationManager Navigation
+
+<PageTitle>Tạo bảng lương</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Tạo bảng lương" />
+
+<EditForm Model="dto" OnSubmit="SaveAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 760px;">
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+            <FluentSelect TOption="OptionItem" TValue="string" Items="employees" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                          @bind-Value="employeeId" Label="Nhân viên" />
+            <FluentDatePicker @bind-Value="startDate" Label="Từ ngày" />
+            <FluentDatePicker @bind-Value="endDate" Label="Đến ngày" />
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" Style="width: 360px;" />
+        </FluentStack>
+        <FluentMessageBar Intent="MessageBarIntent.Info">
+            Các khoản lương nằm ở dòng phiếu. Khoản cố định lấy từ hợp đồng lương của nhân viên.
+        </FluentMessageBar>
+        <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/hr/payrolls/list" />
+    </FluentStack>
+</EditForm>
+
+@code {
+    private Alert? alert;
+    private readonly CreatePayrollDto dto = new();
+    private DateTime? startDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime? endDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month));
+    private string employeeId = "";
+    private decimal overtimeAmount;
+    private decimal bonusAmount;
+    private decimal deductions;
+    private bool isSaving;
+    private List<OptionItem> employees = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        employees = ((await Lookup.GetEmployeesAsync()).Value ?? [])
+            .Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
+        employeeId = employees.FirstOrDefault()?.Id ?? "";
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!Guid.TryParse(employeeId, out var empId))
+        {
+            alert?.AddAlertError("Chọn nhân viên.");
+            return;
+        }
+
+        dto.EmployeeId = empId;
+        dto.PeriodStartDate = DateOnly.FromDateTime(startDate ?? DateTime.Today);
+        dto.PeriodEndDate = DateOnly.FromDateTime(endDate ?? DateTime.Today);
+        dto.PaymentStatus = PayrollStatus.Pending;
+
+        isSaving = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var result = await Service.CreateAsync(dto);
+            if (!result.Succeeded || string.IsNullOrEmpty(result.Value))
+            {
+                alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không tạo được bảng lương.");
+                return;
+            }
+            Navigation.NavigateTo($"/hr/payrolls/view/{result.Value}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private sealed record OptionItem(string Id, string Name);
+}

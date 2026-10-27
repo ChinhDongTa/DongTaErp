@@ -20,7 +20,8 @@
                 OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
     <PropertyColumn TGridItem="PayrollDto" TProp="string" Title="Nhân viên" Property="@(c => c!.EmployeeName)" />
     <PropertyColumn TGridItem="PayrollDto" TProp="string" Title="Kỳ" Property="@(c => $"{c!.PeriodStartDate:dd/MM} - {c.PeriodEndDate:dd/MM/yyyy}")" />
-    <PropertyColumn TGridItem="PayrollDto" TProp="string" Title="Lương cơ bản" Property="@(c => c!.BaseSalary.ToCurrency())" Align="DataGridCellAlignment.End" />
+    <PropertyColumn TGridItem="PayrollDto" TProp="string" Title="Thu nhập" Property="@(c => c!.GrossAmount.ToCurrency())" Align="DataGridCellAlignment.End" />
+    <PropertyColumn TGridItem="PayrollDto" TProp="string" Title="Khấu trừ" Property="@(c => c!.DeductionAmount.ToCurrency())" Align="DataGridCellAlignment.End" />
     <PropertyColumn TGridItem="PayrollDto" TProp="string" Title="Thực lãnh" Property="@(c => c!.NetAmount.ToCurrency())" Align="DataGridCellAlignment.End" />
     <TemplateColumn TGridItem="PayrollDto" Title="Trạng thái">
         <FluentBadge Appearance="BadgeAppearance.Filled">@context.PaymentStatusName</FluentBadge>

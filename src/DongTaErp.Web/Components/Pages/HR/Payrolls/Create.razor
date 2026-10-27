@@ -20,23 +20,18 @@
             <FluentDatePicker @bind-Value="endDate" Label="Đến ngày" />
         </FluentStack>
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
-            <DecimalInput @bind-Value="dto.BaseSalary" Label="Lương cơ bản" Min="0" TValue="decimal" Unit="đ" />
-            <DecimalInput @bind-Value="dto.DaysWorked" Label="Ngày công" Min="0" TValue="decimal" />
-            <DecimalInput @bind-Value="overtimeAmount" Label="Tăng ca" Min="0" TValue="decimal" Unit="đ" />
+            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" Style="width: 360px;" />
         </FluentStack>
-        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
-            <DecimalInput @bind-Value="bonusAmount" Label="Thưởng" Min="0" TValue="decimal" Unit="đ" />
-            <DecimalInput @bind-Value="deductions" Label="Khấu trừ" Min="0" TValue="decimal" Unit="đ" />
-            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" Style="width: 240px;" />
-        </FluentStack>
-        <div><strong>Thực lãnh:</strong> @Net.ToCurrency()</div>
+        <FluentMessageBar Intent="MessageBarIntent.Info">
+            Các khoản lương nằm ở dòng phiếu. Khoản cố định lấy từ hợp đồng lương của nhân viên.
+        </FluentMessageBar>
         <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/hr/payrolls/list" />
     </FluentStack>
 </EditForm>
 
 @code {
     private Alert? alert;
-    private readonly CreatePayrollDto dto = new() { DaysWorked = 26 };
+    private readonly CreatePayrollDto dto = new();
     private DateTime? startDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
     private DateTime? endDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month));
     private string employeeId = "";
@@ -45,7 +40,6 @@
     private decimal deductions;
     private bool isSaving;
     private List<OptionItem> employees = [];
-    private decimal Net => dto.BaseSalary + overtimeAmount + bonusAmount - deductions;
 
     protected override async Task OnInitializedAsync()
     {
@@ -65,10 +59,6 @@
         dto.EmployeeId = empId;
         dto.PeriodStartDate = DateOnly.FromDateTime(startDate ?? DateTime.Today);
         dto.PeriodEndDate = DateOnly.FromDateTime(endDate ?? DateTime.Today);
-        dto.OvertimeAmount = overtimeAmount;
-        dto.BonusAmount = bonusAmount;
-        dto.Deductions = deductions;
-        dto.NetAmount = Net;
         dto.PaymentStatus = PayrollStatus.Pending;
 
         isSaving = true;

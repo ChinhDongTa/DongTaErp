@@ -1,5 +1,4 @@
 ﻿using DongTaErp.Application.Common.DTOs;
-using DongTaErp.Application.Common.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
@@ -15,6 +14,7 @@ public class IdentityService(UserManager<AppUser> userManager,
                              RoleManager<IdentityRole> roleManager,
                              IUserClaimsPrincipalFactory<AppUser> userClaimsPrincipalFactory,
                              IAuthorizationService authorizationService,
+                             IUnitOfWork unitOfWork,
                              IConfiguration configuration,
                              ILogger<IdentityService> logger) : IIdentityService
 {
@@ -165,7 +165,28 @@ public class IdentityService(UserManager<AppUser> userManager,
 
     public async Task<Result<List<UserDto>>> GetAllUserDto(CancellationToken ct = default)
     {
-        var list= await userManager.Users.Select(u => new UserDto() { Id = u.Id, PhoneNumber = u.PhoneNumber, UserNameOrEmail = u.Email! }).ToListAsync(ct);
+        var list = await unitOfWork.QuerySqlAsync<UserDto>($"""
+                            SELECT 
+                                u.Id,
+                                ISNULL(u.UserName, '') AS UserNameOrEmail,
+                                u.PhoneNumber,
+                                ISNULL(
+                                    STRING_AGG(r.Name, ','),
+                                    ''
+                                ) AS Roles
+                            FROM AspNetUsers u
+                            LEFT JOIN AspNetUserRoles ur
+                                ON u.Id = ur.UserId
+                            LEFT JOIN AspNetRoles r
+                                ON ur.RoleId = r.Id
+                            GROUP BY
+                                u.Id,
+                                u.UserName,
+                                u.Email,
+                                u.PhoneNumber
+                            ORDER BY
+                                u.UserName;                     
+                            """, ct);
         return Result<List<UserDto>>.Success(list);
     }
 
@@ -258,13 +279,33 @@ public class IdentityService(UserManager<AppUser> userManager,
     private async Task<UserDto?> GetUserDtoByEmailUsingQueryAsync(string email, CancellationToken ct)
     {
         var pattern = $"%{email}%";
-        var user = await userManager.FindByEmailAsync(pattern);
-        if (user != null)
-        {
-            var roles = await userManager.GetRolesAsync(user);
-            return new UserDto() { Id = user.Id, PhoneNumber = user.PhoneNumber, UserNameOrEmail = user.Email!, Roles = [.. roles] };
-        }
-        return null;
+        var query = $"""
+                        SELECT TOP 1
+                u.Id,
+                ISNULL(u.UserName, '') AS UserNameOrEmail,
+                u.PhoneNumber,
+                ISNULL(
+                    STRING_AGG(r.Name, ','),
+                    ''
+                ) AS Roles
+            FROM AspNetUsers u
+            LEFT JOIN AspNetUserRoles ur
+                ON u.Id = ur.UserId
+            LEFT JOIN AspNetRoles r
+                ON ur.RoleId = r.Id
+            WHERE
+                u.Email LIKE @pattern
+                OR u.UserName LIKE @pattern
+            GROUP BY
+                u.Id,
+                u.UserName,
+                u.Email,
+                u.PhoneNumber
+            ORDER BY
+                u.UserName;
+            """;
+        var list = await unitOfWork.QuerySqlRawAsync<UserDto>(query, [SqlArg.In(pattern, $"%{email}%")], ct);
+        return list.Count == 1 ? list[0] : null;
     }
     private static IEnumerable<string> GetIdentityErrors(IdentityResult identityResult)
        => identityResult.Errors.Select(x => x.Description);

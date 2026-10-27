@@ -18,17 +18,19 @@ else
     <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="32">
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
             <DetailItem Label="Kỳ" Value="@($"{dto.PeriodStartDate:dd/MM/yyyy} - {dto.PeriodEndDate:dd/MM/yyyy}")" />
-            <DetailItem Label="Lương cơ bản" Value="@dto.BaseSalary.ToCurrency()" />
-            <DetailItem Label="Ngày công" Value="@dto.DaysWorked.ToDisplay()" />
-            <DetailItem Label="Tăng ca" Value="@((dto.OvertimeAmount ?? 0).ToCurrency())" />
-        </FluentStack>
-        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
-            <DetailItem Label="Thưởng" Value="@((dto.BonusAmount ?? 0).ToCurrency())" />
-            <DetailItem Label="Khấu trừ" Value="@((dto.Deductions ?? 0).ToCurrency())" />
+            <DetailItem Label="Thu nhập" Value="@dto.GrossAmount.ToCurrency()" />
+            <DetailItem Label="Khấu trừ" Value="@dto.DeductionAmount.ToCurrency()" />
             <DetailItem Label="Thực lãnh" Value="@dto.NetAmount.ToCurrency()" />
             <DetailItem Label="Trạng thái" Value="@dto.PaymentStatusName" />
         </FluentStack>
     </FluentStack>
+    <h4 style="margin-top: 16px;">Chi tiết khoản lương</h4>
+    <FluentDataGrid Items="@dto.Lines.AsQueryable()">
+        <PropertyColumn Title="Khoản" Property="@(c => c.ComponentName)" />
+        <PropertyColumn Title="Số lượng" Property="@(c => c.Quantity.ToDisplay())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Đơn giá" Property="@(c => c.Rate.ToCurrency())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Thành tiền" Property="@(c => c.Amount.ToCurrency())" Align="DataGridCellAlignment.End" />
+    </FluentDataGrid>
     <FluentButton Appearance="ButtonAppearance.Subtle" Style="margin-top: 16px;" OnClick="@(() => Navigation.NavigateTo("/hr/payrolls/list"))">Danh sách</FluentButton>
                 <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo($"/hr/payrolls/update/{dto.Id}"))">Sửa</FluentButton>
         

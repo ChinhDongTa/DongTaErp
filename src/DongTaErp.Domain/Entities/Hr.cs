@@ -113,15 +113,21 @@ public class Employee : BaseAuditableEntity
 
     /// <summary>Các kỳ lương.</summary>
     public virtual ICollection<Payroll> PayrollRecords { get; set; } = [];
+
+    /// <summary>Các khoản lương hợp đồng.</summary>
+    public virtual ICollection<EmployeeCompensation> Compensations { get; set; } = [];
 }
 
 /// <summary>
-/// Bảng lương một kỳ của một nhân viên. Không dùng cho công nợ khách hàng.
+/// Phiếu lương một kỳ của một nhân viên. Chỉ giữ tổng và thông tin trả lương.
 /// </summary>
 public class Payroll : BaseAuditableEntity
 {
     /// <summary>Nhân viên.</summary>
     public required Guid EmployeeId { get; set; }
+
+    /// <summary>Nhân viên.</summary>
+    public virtual Employee? Employee { get; set; }
 
     /// <summary>Ngày bắt đầu kỳ lương.</summary>
     public DateOnly PeriodStartDate { get; set; }
@@ -129,27 +135,11 @@ public class Payroll : BaseAuditableEntity
     /// <summary>Ngày kết thúc kỳ lương.</summary>
     public DateOnly PeriodEndDate { get; set; }
 
-    /// <summary>Lương cơ bản.</summary>
-    public decimal BaseSalary { get; set; }
-
-    /// <summary>Số ngày công.</summary>
-    public decimal DaysWorked { get; set; }
-
-    /// <summary>Số giờ làm thêm.</summary>
-    public decimal? OvertimeHours { get; set; }
-
-    /// <summary>Tiền làm thêm.</summary>
-    public decimal? OvertimeAmount { get; set; }
-
-    /// <summary>Thưởng hoặc phụ cấp.</summary>
-    public decimal? BonusAmount { get; set; }
+    /// <summary>Tổng thu nhập.</summary>
+    public decimal GrossAmount { get; set; }
 
     /// <summary>Tổng khấu trừ.</summary>
-    public decimal? Deductions { get; set; }
-
-    /// <summary>Chi tiết các khoản khấu trừ.</summary>
-    [MaxLength(1000)]
-    public string? DeductionDetails { get; set; }
+    public decimal DeductionAmount { get; set; }
 
     /// <summary>Thực lãnh.</summary>
     public decimal NetAmount { get; set; }
@@ -172,8 +162,100 @@ public class Payroll : BaseAuditableEntity
     [MaxLength(500)]
     public string? Notes { get; set; }
 
+    /// <summary>Các khoản lương của kỳ.</summary>
+    public ICollection<PayrollLine> Lines { get; set; } = [];
+}
+
+/// <summary>
+/// Danh mục khoản lương: lương cơ bản, phụ cấp, làm thêm, BHXH, thuế.
+/// </summary>
+public class SalaryComponent : BaseAuditableEntity
+{
+    /// <summary>Mã khoản lương, duy nhất.</summary>
+    [MaxLength(30)]
+    public required string Code { get; set; }
+
+    /// <summary>Tên khoản lương.</summary>
+    [MaxLength(160)]
+    public required string Name { get; set; }
+
+    /// <summary>Thu nhập hoặc khấu trừ.</summary>
+    public SalaryComponentType Type { get; set; }
+
+    /// <summary>Khoản cố định theo hợp đồng hay khoản phát sinh kỳ.</summary>
+    public bool IsFixed { get; set; }
+
+    /// <summary>Có tính thuế thu nhập không.</summary>
+    public bool IsTaxable { get; set; }
+
+    /// <summary>Còn sử dụng hay không.</summary>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>Ghi chú.</summary>
+    [MaxLength(300)]
+    public string? Note { get; set; }
+}
+
+/// <summary>
+/// Khoản lương cố định của nhân viên theo thời gian hiệu lực.
+/// </summary>
+public class EmployeeCompensation : BaseAuditableEntity
+{
     /// <summary>Nhân viên.</summary>
-    public virtual Employee? Employee { get; set; }
+    public Guid EmployeeId { get; set; }
+
+    /// <summary>Nhân viên.</summary>
+    public Employee Employee { get; set; } = null!;
+
+    /// <summary>Khoản lương.</summary>
+    public Guid SalaryComponentId { get; set; }
+
+    /// <summary>Khoản lương.</summary>
+    public SalaryComponent SalaryComponent { get; set; } = null!;
+
+    /// <summary>Số tiền hợp đồng.</summary>
+    public decimal Amount { get; set; }
+
+    /// <summary>Ngày bắt đầu hiệu lực.</summary>
+    public DateOnly EffectiveFrom { get; set; }
+
+    /// <summary>Ngày hết hiệu lực. null nếu còn hiệu lực.</summary>
+    public DateOnly? EffectiveTo { get; set; }
+
+    /// <summary>Ghi chú.</summary>
+    [MaxLength(300)]
+    public string? Note { get; set; }
+}
+
+/// <summary>
+/// Một dòng trên phiếu lương. Snapshot khoản lương tại thời điểm lập kỳ.
+/// </summary>
+public class PayrollLine : BaseAuditableEntity
+{
+    /// <summary>Phiếu lương.</summary>
+    public Guid PayrollId { get; set; }
+
+    /// <summary>Phiếu lương.</summary>
+    public Payroll Payroll { get; set; } = null!;
+
+    /// <summary>Khoản lương.</summary>
+    public Guid SalaryComponentId { get; set; }
+
+    /// <summary>Khoản lương.</summary>
+    public SalaryComponent SalaryComponent { get; set; } = null!;
+
+    /// <summary>Số lượng: ngày công, giờ làm thêm. Mặc định 1.</summary>
+    public decimal Quantity { get; set; } = 1;
+
+    /// <summary>Đơn giá.</summary>
+    public decimal Rate { get; set; }
+
+    /// <summary>Thành tiền.</summary>
+    public decimal Amount { get; set; }
+
+    /// <summary>Ghi chú.</summary>
+    [MaxLength(300)]
+    public string? Note { get; set; }
 }
 
 /// <summary>

@@ -34,7 +34,7 @@ public interface IUnitOfWork : IAsyncDisposable
     IRepository<VendorBillLine> VendorBillLines { get; }
     IRepository<Disbursement> Disbursements { get; }
     IRepository<DisbursementAllocation> DisbursementAllocations { get; }
-
+    IRepository<SalaryComponent> SalaryComponents { get; }
     /// <summary>
     /// Lưu tất cả thay đổi vào database
     /// </summary>
@@ -54,4 +54,22 @@ public interface IUnitOfWork : IAsyncDisposable
     /// Rollback transaction
     /// </summary>
     Task RollbackTransactionAsync(CancellationToken ct = default);
+
+    /// <summary>Chạy SELECT hoặc function trả nhiều dòng. Dùng nội suy để EF tạo parameter.</summary>
+    Task<List<T>> QuerySqlAsync<T>(FormattableString sql, CancellationToken ct = default) where T : class;
+
+    /// <summary>Chạy SQL trả nhiều dòng với parameter thô.</summary>
+    Task<List<T>> QuerySqlRawAsync<T>(string sql, IEnumerable<SqlArg>? args = null, CancellationToken ct = default) where T : class;
+
+    /// <summary>Chạy function hoặc SELECT trả một giá trị.</summary>
+    Task<T?> ExecuteScalarAsync<T>(FormattableString sql, CancellationToken ct = default);
+
+    /// <summary>Chạy lệnh không trả dòng: UPDATE, hoặc procedure không có result set.</summary>
+    Task<int> ExecuteSqlAsync(FormattableString sql, CancellationToken ct = default);
+
+    /// <summary>Gọi stored procedure trả nhiều dòng.</summary>
+    Task<List<T>> ExecuteProcedureAsync<T>(string procedureName, IEnumerable<SqlArg>? args = null, CancellationToken ct = default) where T : class;
+
+    /// <summary>Gọi stored procedure không trả dòng. Hỗ trợ output parameter.</summary>
+    Task<int> ExecuteProcedureAsync(string procedureName, IEnumerable<SqlArg>? args = null, CancellationToken ct = default);
 }

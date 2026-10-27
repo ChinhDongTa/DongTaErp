@@ -1,3 +1,5 @@
+using DongTaErp.Domain.Enums;
+
 namespace DongTaErp.Application.Services.Payrolls;
 
 internal static class Extensions
@@ -11,7 +13,7 @@ internal static class Extensions
         {
             "periodstartdate" => isDescending ? query.OrderByDescending(x => x.PeriodStartDate) : query.OrderBy(x => x.PeriodStartDate),
             "periodenddate" => isDescending ? query.OrderByDescending(x => x.PeriodEndDate) : query.OrderBy(x => x.PeriodEndDate),
-            "basesalary" => isDescending ? query.OrderByDescending(x => x.BaseSalary) : query.OrderBy(x => x.BaseSalary),
+            "grossamount" => isDescending ? query.OrderByDescending(x => x.GrossAmount) : query.OrderBy(x => x.GrossAmount),
             "netamount" => isDescending ? query.OrderByDescending(x => x.NetAmount) : query.OrderBy(x => x.NetAmount),
             "paymentstatus" => isDescending ? query.OrderByDescending(x => x.PaymentStatus) : query.OrderBy(x => x.PaymentStatus),
             "paymentdate" => isDescending ? query.OrderByDescending(x => x.PaymentDate) : query.OrderBy(x => x.PaymentDate),
@@ -29,22 +31,32 @@ internal static class Extensions
         EmployeeName = p.Employee != null ? p.Employee.FullName : string.Empty,
         PeriodStartDate = p.PeriodStartDate,
         PeriodEndDate = p.PeriodEndDate,
-        BaseSalary = p.BaseSalary,
-        DaysWorked = p.DaysWorked,
-        OvertimeHours = p.OvertimeHours,
-        OvertimeAmount = p.OvertimeAmount,
-        BonusAmount = p.BonusAmount,
-        Deductions = p.Deductions,
-        DeductionDetails = p.DeductionDetails,
+        GrossAmount = p.GrossAmount,
+        DeductionAmount = p.DeductionAmount,
         NetAmount = p.NetAmount,
         PaymentStatus = p.PaymentStatus,
         PaymentDate = p.PaymentDate,
         PaymentMethod = p.PaymentMethod,
         ReferenceNumber = p.ReferenceNumber,
         Notes = p.Notes,
-        CreatedAt = p.Created
+        CreatedAt = p.Created,
+        Lines = p.Lines.Select(l => new PayrollLineDto
+        {
+            Id = l.Id,
+            SalaryComponentId = l.SalaryComponentId,
+            ComponentName = l.SalaryComponent.Name,
+            Type = l.SalaryComponent.Type,
+            Quantity = l.Quantity,
+            Rate = l.Rate,
+            Amount = l.Amount,
+            Note = l.Note
+        }).ToList()
     };
 
-    public static decimal CalculateNet(decimal baseSalary, decimal? overtime, decimal? bonus, decimal? deductions) =>
-        baseSalary + (overtime ?? 0) + (bonus ?? 0) - (deductions ?? 0);
+    public static void Recalculate(this Payroll payroll)
+    {
+        payroll.GrossAmount = payroll.Lines.Where(x => x.SalaryComponent.Type == SalaryComponentType.Earning).Sum(x => x.Amount);
+        payroll.DeductionAmount = payroll.Lines.Where(x => x.SalaryComponent.Type == SalaryComponentType.Deduction).Sum(x => x.Amount);
+        payroll.NetAmount = payroll.GrossAmount - payroll.DeductionAmount;
+    }
 }

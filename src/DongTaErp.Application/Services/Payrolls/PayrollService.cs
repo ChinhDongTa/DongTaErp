@@ -4,7 +4,7 @@ namespace DongTaErp.Application.Services.Payrolls;
 /// CRUD + search. Tính thực lãnh đơn giản. Workflow tính lương phức tạp (công thức, thuế, BHXH)
 /// nên tách command MediatR/Wolverine khi có quy tắc nghiệp vụ đầy đủ.
 /// </summary>
-public class PayrollService    : Base.GenericCrudService<Payroll, PayrollDto, CreatePayrollDto, UpdatePayrollDto>,      IPayrollService
+public class PayrollService : Base.GenericCrudService<Payroll, PayrollDto, CreatePayrollDto, UpdatePayrollDto>, IPayrollService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<PayrollService> _logger;
@@ -49,25 +49,47 @@ public class PayrollService    : Base.GenericCrudService<Payroll, PayrollDto, Cr
 
     protected override Expression<Func<Payroll, PayrollDto>> ToDto() => Extensions.ExpressionToDto();
 
-    protected override Payroll CreateEntity(CreatePayrollDto dto) => new()
+    public override async Task<Result<string>> CreateAsync(CreatePayrollDto dto, CancellationToken ct = default)
     {
-        EmployeeId = dto.EmployeeId,
-        PeriodStartDate = dto.PeriodStartDate,
-        PeriodEndDate = dto.PeriodEndDate,
-        BaseSalary = dto.BaseSalary,
-        DaysWorked = dto.DaysWorked,
-        OvertimeHours = dto.OvertimeHours,
-        OvertimeAmount = dto.OvertimeAmount,
-        BonusAmount = dto.BonusAmount,
-        Deductions = dto.Deductions,
-        DeductionDetails = dto.DeductionDetails,
-        NetAmount = dto.NetAmount ?? Extensions.CalculateNet(dto.BaseSalary, dto.OvertimeAmount, dto.BonusAmount, dto.Deductions),
-        PaymentStatus = dto.PaymentStatus,
-        PaymentDate = dto.PaymentDate,
-        PaymentMethod = dto.PaymentMethod,
-        ReferenceNumber = dto.ReferenceNumber,
-        Notes = dto.Notes
-    };
+        var entity = CreateEntity(dto);
+        await FillComponentTypesAsync(entity, ct);
+        entity.Recalculate();
+        await _unitOfWork.Payrolls.AddAsync(entity, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Result<string>.Created(entity.Id.ToString());
+    }
+
+    private async Task FillComponentTypesAsync(Payroll entity, CancellationToken ct)
+    {
+        var ids = entity.Lines.Select(x => x.SalaryComponentId).ToList();
+        var components = await _unitOfWork.SalaryComponents.Query().Where(x => ids.Contains(x.Id)).ToListAsync(ct);
+        foreach (var line in entity.Lines)
+            line.SalaryComponent = components.First(x => x.Id == line.SalaryComponentId);
+    }
+
+    protected override Payroll CreateEntity(CreatePayrollDto dto)
+    {
+        var entity = new Payroll
+        {
+            EmployeeId = dto.EmployeeId,
+            PeriodStartDate = dto.PeriodStartDate,
+            PeriodEndDate = dto.PeriodEndDate,
+            PaymentStatus = dto.PaymentStatus,
+            PaymentDate = dto.PaymentDate,
+            PaymentMethod = dto.PaymentMethod,
+            ReferenceNumber = dto.ReferenceNumber,
+            Notes = dto.Notes,
+            Lines = [.. dto.Lines.Select(x => new PayrollLine
+            {
+                SalaryComponentId = x.SalaryComponentId,
+                Quantity = x.Quantity,
+                Rate = x.Rate,
+                Amount = x.Amount == 0 ? x.Quantity * x.Rate : x.Amount,
+                Note = x.Note
+            })]
+        };
+        return entity;
+    }
 
     protected override Expression<Func<Payroll, UpdatePayrollDto>> ToUpdateDto() => p => new UpdatePayrollDto
     {
@@ -75,14 +97,6 @@ public class PayrollService    : Base.GenericCrudService<Payroll, PayrollDto, Cr
         EmployeeId = p.EmployeeId,
         PeriodStartDate = p.PeriodStartDate,
         PeriodEndDate = p.PeriodEndDate,
-        BaseSalary = p.BaseSalary,
-        DaysWorked = p.DaysWorked,
-        OvertimeHours = p.OvertimeHours,
-        OvertimeAmount = p.OvertimeAmount,
-        BonusAmount = p.BonusAmount,
-        Deductions = p.Deductions,
-        DeductionDetails = p.DeductionDetails,
-        NetAmount = p.NetAmount,
         PaymentStatus = p.PaymentStatus,
         PaymentDate = p.PaymentDate,
         PaymentMethod = p.PaymentMethod,
@@ -94,50 +108,19 @@ public class PayrollService    : Base.GenericCrudService<Payroll, PayrollDto, Cr
     {
         if (dto.EmployeeId.HasValueAndIsDifferentFrom(entity.EmployeeId))
             entity.EmployeeId = dto.EmployeeId!.Value;
-
         if (dto.PeriodStartDate.HasValueAndIsDifferentFrom(entity.PeriodStartDate))
             entity.PeriodStartDate = dto.PeriodStartDate!.Value;
-
         if (dto.PeriodEndDate.HasValueAndIsDifferentFrom(entity.PeriodEndDate))
             entity.PeriodEndDate = dto.PeriodEndDate!.Value;
-
-        if (dto.BaseSalary.HasValueAndIsDifferentFrom(entity.BaseSalary))
-            entity.BaseSalary = dto.BaseSalary!.Value;
-
-        if (dto.DaysWorked.HasValueAndIsDifferentFrom(entity.DaysWorked))
-            entity.DaysWorked = dto.DaysWorked!.Value;
-
-        if (dto.OvertimeHours.IsDifferentFrom(entity.OvertimeHours))
-            entity.OvertimeHours = dto.OvertimeHours;
-
-        if (dto.OvertimeAmount.IsDifferentFrom(entity.OvertimeAmount))
-            entity.OvertimeAmount = dto.OvertimeAmount;
-
-        if (dto.BonusAmount.IsDifferentFrom(entity.BonusAmount))
-            entity.BonusAmount = dto.BonusAmount;
-
-        if (dto.Deductions.IsDifferentFrom(entity.Deductions))
-            entity.Deductions = dto.Deductions;
-
-        if (dto.DeductionDetails.IsDifferentFrom(entity.DeductionDetails))
-            entity.DeductionDetails = dto.DeductionDetails;
-
         if (dto.PaymentStatus.HasValueAndIsDifferentFrom(entity.PaymentStatus))
             entity.PaymentStatus = dto.PaymentStatus!.Value;
-
         if (dto.PaymentDate.IsDifferentFrom(entity.PaymentDate))
             entity.PaymentDate = dto.PaymentDate;
-
         if (dto.PaymentMethod.IsDifferentFrom(entity.PaymentMethod))
             entity.PaymentMethod = dto.PaymentMethod;
-
         if (dto.ReferenceNumber.IsDifferentFrom(entity.ReferenceNumber))
             entity.ReferenceNumber = dto.ReferenceNumber;
-
         if (dto.Notes.IsDifferentFrom(entity.Notes))
             entity.Notes = dto.Notes;
-
-        entity.NetAmount = dto.NetAmount
-            ?? Extensions.CalculateNet(entity.BaseSalary, entity.OvertimeAmount, entity.BonusAmount, entity.Deductions);
     }
 }

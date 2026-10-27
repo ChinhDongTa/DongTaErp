@@ -34,6 +34,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<Disbursement> Disbursements => Set<Disbursement>();
     public DbSet<DisbursementAllocation> DisbursementAllocations => Set<DisbursementAllocation>();
     public DbSet<Payroll> Payrolls => Set<Payroll>();
+    public DbSet<PayrollLine> PayrollLines => Set<PayrollLine>();
+    public DbSet<SalaryComponent> SalaryComponents => Set<SalaryComponent>();
+    public DbSet<EmployeeCompensation> EmployeeCompensations => Set<EmployeeCompensation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -31,4 +31,7 @@ public interface IAppDbContext
     DbSet<Disbursement> Disbursements { get; }
     DbSet<DisbursementAllocation> DisbursementAllocations { get; }
     DbSet<Payroll> Payrolls { get; }
+    DbSet<PayrollLine> PayrollLines { get; }
+    DbSet<SalaryComponent> SalaryComponents { get; }
+    DbSet<EmployeeCompensation> EmployeeCompensations { get; }
 }

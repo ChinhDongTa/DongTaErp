@@ -23,13 +23,7 @@ else
                           @bind-Value="employeeId" Label="Nhân viên" />
             <FluentDatePicker @bind-Value="startDate" Label="Từ ngày" />
             <FluentDatePicker @bind-Value="endDate" Label="Đến ngày" />
-            <DecimalInput @bind-Value="baseSalary" Label="Lương cơ bản" Min="0" TValue="decimal" Unit="đ" />
-            <DecimalInput @bind-Value="daysWorked" Label="Ngày công" Min="0" TValue="decimal" />
-            <DecimalInput @bind-Value="overtimeAmount" Label="Tăng ca" Min="0" TValue="decimal" Unit="đ" />
-            <DecimalInput @bind-Value="bonusAmount" Label="Thưởng" Min="0" TValue="decimal" Unit="đ" />
-            <DecimalInput @bind-Value="deductions" Label="Khấu trừ" Min="0" TValue="decimal" Unit="đ" />
             <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" />
-            <div><strong>Thực lãnh:</strong> @Net.ToCurrency()</div>
             <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/hr/payrolls/list" />
         </FluentStack>
     </EditForm>
@@ -42,14 +36,8 @@ else
     private string employeeId = "";
     private DateTime? startDate;
     private DateTime? endDate;
-    private decimal baseSalary;
-    private decimal daysWorked;
-    private decimal overtimeAmount;
-    private decimal bonusAmount;
-    private decimal deductions;
+    List<OptionItem> employees = [];
     private bool isSaving;
-    private List<OptionItem> employees = [];
-    private decimal Net => baseSalary + overtimeAmount + bonusAmount - deductions;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -68,11 +56,6 @@ else
         employeeId = dto.EmployeeId?.ToString() ?? "";
         startDate = dto.PeriodStartDate?.ToDateTime(TimeOnly.MinValue);
         endDate = dto.PeriodEndDate?.ToDateTime(TimeOnly.MinValue);
-        baseSalary = dto.BaseSalary ?? 0;
-        daysWorked = dto.DaysWorked ?? 0;
-        overtimeAmount = dto.OvertimeAmount ?? 0;
-        bonusAmount = dto.BonusAmount ?? 0;
-        deductions = dto.Deductions ?? 0;
         await InvokeAsync(StateHasChanged);
     }
 
@@ -83,12 +66,6 @@ else
         dto.EmployeeId = Guid.TryParse(employeeId, out var id) ? id : null;
         dto.PeriodStartDate = startDate is null ? null : DateOnly.FromDateTime(startDate.Value);
         dto.PeriodEndDate = endDate is null ? null : DateOnly.FromDateTime(endDate.Value);
-        dto.BaseSalary = baseSalary;
-        dto.DaysWorked = daysWorked;
-        dto.OvertimeAmount = overtimeAmount;
-        dto.BonusAmount = bonusAmount;
-        dto.Deductions = deductions;
-        dto.NetAmount = Net;
         isSaving = true;
         var result = await Service.UpdateAsync(Id.ToGuid(), dto);
         isSaving = false;

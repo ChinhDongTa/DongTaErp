@@ -31,6 +31,17 @@ public enum PayrollStatus
     [Display(Name = "Tạm giữ")]
     OnHold = 5
 }
+
+/// <summary>Loại khoản lương.</summary>
+public enum SalaryComponentType
+{
+    [Display(Name = "Thu nhập")]
+    Earning = 1,
+
+    [Display(Name = "Khấu trừ")]
+    Deduction = 2
+}
+
 public enum SalesOrderStatus
 {
     [Display(Name = "Nháp")]
