@@ -62,6 +62,7 @@
                        IconActive="@(new Icons.Filled.Size20.Settings())">
         <AuthorizeView Roles="@AppRoles.Manage">
             <FluentNavItem Href="/admin/users/list">Người dùng</FluentNavItem>
+            <FluentNavItem Href="/admin/roles/manager">Roles</FluentNavItem>
         </AuthorizeView>
         <AuthorizeView>
             <Authorized>
