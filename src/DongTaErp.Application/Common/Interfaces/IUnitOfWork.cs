@@ -35,6 +35,7 @@ public interface IUnitOfWork : IAsyncDisposable
     IRepository<Disbursement> Disbursements { get; }
     IRepository<DisbursementAllocation> DisbursementAllocations { get; }
     IRepository<SalaryComponent> SalaryComponents { get; }
+    IRepository<EmployeeCompensation> EmployeeCompensations { get; }
     /// <summary>
     /// Lưu tất cả thay đổi vào database
     /// </summary>

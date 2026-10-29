@@ -40,6 +40,7 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<Disbursement>? _disbursements;
     private IRepository<DisbursementAllocation>? _disbursementAllocations;
     private IRepository<SalaryComponent>? _salaryComponent;
+    private IRepository<EmployeeCompensation>? _employeeCompensations;
     public UnitOfWork(IAppDbContext context)
     {
         _context = context;
@@ -118,6 +119,7 @@ public class UnitOfWork : IUnitOfWork
         _disbursementAllocations ??= new GenericRepository<DisbursementAllocation>(_context);
 
     public IRepository<SalaryComponent> SalaryComponents => _salaryComponent ??= new GenericRepository<SalaryComponent>(_context);
+    public IRepository<EmployeeCompensation> EmployeeCompensations => _employeeCompensations ??= new GenericRepository<EmployeeCompensation>(_context);
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         return await ((DbContext)_context).SaveChangesAsync(cancellationToken);

@@ -1,7 +1,9 @@
 ﻿using DongTaErp.Application.Services.Categories;
 using DongTaErp.Application.Services.CompanyProfiles;
+using DongTaErp.Application.Services.Dashboard;
 using DongTaErp.Application.Services.Departments;
 using DongTaErp.Application.Services.Disbursements;
+using DongTaErp.Application.Services.EmployeeCompensations;
 using DongTaErp.Application.Services.Employees;
 using DongTaErp.Application.Services.GoodsIssues;
 using DongTaErp.Application.Services.GoodsReceipts;
@@ -9,19 +11,19 @@ using DongTaErp.Application.Services.InventoryTxns;
 using DongTaErp.Application.Services.Invoices;
 using DongTaErp.Application.Services.JobPositions;
 using DongTaErp.Application.Services.LeaveRequests;
+using DongTaErp.Application.Services.Lookups;
 using DongTaErp.Application.Services.Partners;
 using DongTaErp.Application.Services.Payments;
 using DongTaErp.Application.Services.Payrolls;
 using DongTaErp.Application.Services.Products;
 using DongTaErp.Application.Services.PurchaseOrders;
+using DongTaErp.Application.Services.SalaryComponents;
 using DongTaErp.Application.Services.SalesOrders;
+using DongTaErp.Application.Services.StockTransfers;
 using DongTaErp.Application.Services.VendorBills;
-using DongTaErp.Application.Services.Lookups;
-using DongTaErp.Application.Services.Dashboard;
+using DongTaErp.Application.Services.Warehouses;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using DongTaErp.Application.Services.Warehouses;
-using DongTaErp.Application.Services.StockTransfers;
 
 namespace DongTaErp.Application;
 
@@ -43,6 +45,8 @@ public static class DependencyInjection
         builder.Services.AddScoped<IJobPositionService, JobPositionService>();
         builder.Services.AddScoped<IEmployeeService, EmployeeService>();
         builder.Services.AddScoped<IPayrollService, PayrollService>();
+        builder.Services.AddScoped<ISalaryComponentService, SalaryComponentService>();
+        builder.Services.AddScoped<IEmployeeCompensationService, EmployeeCompensationService>();
         builder.Services.AddScoped<ILeaveRequestService, LeaveRequestService>();
         builder.Services.AddScoped<IInventoryTxnService, InventoryTxnService>();
         builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
