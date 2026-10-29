@@ -7,7 +7,8 @@ public interface IIdentityService
     //=================================User===========================================
     Task<Result> AddToRoleAsync(string userId, string role, CancellationToken ct=default);
     Task<Result<string?>> GetUserNameAsync(string userId, CancellationToken ct = default);
-    Task<Result<List<UserDto>>> GetAllUserDto(CancellationToken ct = default);
+    Task<Result<List<UserDto>>> GetAllUserDtoAsync(int pageNumber, int pageSize, CancellationToken ct = default);
+    Task<Result<List<UserDto>>> SearchAsync(SimpleSearch simpleSearch,CancellationToken ct = default);
 
     Task<Result<bool>> IsInRoleAsync(string userId, string role, CancellationToken ct = default);
 

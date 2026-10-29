@@ -1,4 +1,5 @@
-﻿using DongTaErp.Application.Common.DTOs;
+﻿using Azure.Core;
+using DongTaErp.Application.Common.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
@@ -125,10 +126,14 @@ public class IdentityService(UserManager<AppUser> userManager,
         };
 
         // ✅ Add roles
-        foreach (var role in user.Roles ?? [])
+        if (!string.IsNullOrEmpty(user.Roles))
         {
-            claims.Add(new Claim(ClaimTypes.Role, role));
-        }
+            var listRole = user.Roles.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var role in listRole)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+        } 
 
         var credentials = new SigningCredentials(_key, SecurityAlgorithms.HmacSha256Signature);
         var tokenDescriptor = new SecurityTokenDescriptor
@@ -163,22 +168,17 @@ public class IdentityService(UserManager<AppUser> userManager,
     public async Task<Result<List<RoleDto>>> GetAllRoleDtoAsync(CancellationToken ct = default)
     => Result<List<RoleDto>>.Success((await roleManager.Roles.Select(x => new RoleDto() { Id= x.Id,Name= x.Name! }).ToListAsync(ct)));
 
-    public async Task<Result<List<UserDto>>> GetAllUserDto(CancellationToken ct = default)
+    public async Task<Result<List<UserDto>>> GetAllUserDtoAsync(int pageNumber, int pageSize, CancellationToken ct = default)
     {
         var list = await unitOfWork.QuerySqlAsync<UserDto>($"""
                             SELECT 
                                 u.Id,
                                 ISNULL(u.UserName, '') AS UserNameOrEmail,
                                 u.PhoneNumber,
-                                ISNULL(
-                                    STRING_AGG(r.Name, ','),
-                                    ''
-                                ) AS Roles
+                                ISNULL(STRING_AGG(r.Name, ','), '') AS Roles
                             FROM AspNetUsers u
-                            LEFT JOIN AspNetUserRoles ur
-                                ON u.Id = ur.UserId
-                            LEFT JOIN AspNetRoles r
-                                ON ur.RoleId = r.Id
+                            LEFT JOIN AspNetUserRoles ur ON u.Id = ur.UserId
+                            LEFT JOIN AspNetRoles r ON ur.RoleId = r.Id
                             GROUP BY
                                 u.Id,
                                 u.UserName,
@@ -280,33 +280,67 @@ public class IdentityService(UserManager<AppUser> userManager,
     {
         var pattern = $"%{email}%";
         var query = $"""
-                        SELECT TOP 1
-                u.Id,
-                ISNULL(u.UserName, '') AS UserNameOrEmail,
-                u.PhoneNumber,
-                ISNULL(
-                    STRING_AGG(r.Name, ','),
-                    ''
-                ) AS Roles
-            FROM AspNetUsers u
-            LEFT JOIN AspNetUserRoles ur
-                ON u.Id = ur.UserId
-            LEFT JOIN AspNetRoles r
-                ON ur.RoleId = r.Id
+            SELECT
+              TOP 1 u.Id,
+              ISNULL(u.UserName, '') AS UserNameOrEmail,
+              u.PhoneNumber,
+              ISNULL(STRING_AGG(r.Name, ','), '') AS Roles
+            FROM
+              AspNetUsers u
+              LEFT JOIN AspNetUserRoles ur ON u.Id = ur.UserId
+              LEFT JOIN AspNetRoles r ON ur.RoleId = r.Id
             WHERE
-                u.Email LIKE @pattern
-                OR u.UserName LIKE @pattern
+              u.Email LIKE @ pattern
+              OR u.UserName LIKE @ pattern
             GROUP BY
-                u.Id,
-                u.UserName,
-                u.Email,
-                u.PhoneNumber
+              u.Id,
+              u.UserName,
+              u.Email,
+              u.PhoneNumber
             ORDER BY
-                u.UserName;
+              u.UserName;
             """;
         var list = await unitOfWork.QuerySqlRawAsync<UserDto>(query, [SqlArg.In(pattern, $"%{email}%")], ct);
         return list.Count == 1 ? list[0] : null;
     }
     private static IEnumerable<string> GetIdentityErrors(IdentityResult identityResult)
        => identityResult.Errors.Select(x => x.Description);
+
+    public async Task<Result<List<UserDto>>> SearchAsync(SimpleSearch request, CancellationToken ct = default)
+    {
+        var searchTerm = request.SearchTerm?.Trim() ?? string.Empty;
+        var pattern = $"%{searchTerm}%";
+
+        var offset = (request.PageNumber - 1) * request.PageSize;
+
+        var sql = """
+        SELECT
+            u.Id,
+            ISNULL(u.UserName, '') AS UserNameOrEmail,
+            u.PhoneNumber,
+            ISNULL(STRING_AGG(r.Name, ','), '') AS Roles
+        FROM AspNetUsers u
+        LEFT JOIN AspNetUserRoles ur ON u.Id = ur.UserId
+        LEFT JOIN AspNetRoles r ON ur.RoleId = r.Id
+        WHERE
+            (@pattern = '%%'
+            OR u.Email LIKE @pattern
+            OR u.UserName LIKE @pattern)
+        GROUP BY
+            u.Id,
+            u.UserName,
+            u.Email,
+            u.PhoneNumber
+        ORDER BY
+            u.UserName
+        OFFSET @offset ROWS
+        FETCH NEXT @pageSize ROWS ONLY;
+        """;
+
+        var users = await unitOfWork.QuerySqlRawAsync<UserDto>(sql,
+                                                               [SqlArg.In("pattern", pattern), SqlArg.In("offset", offset), SqlArg.In("pageSize", request.PageSize)],
+                                                               ct);
+
+        return Result<List<UserDto>>.Success(users);
+    }
 }
