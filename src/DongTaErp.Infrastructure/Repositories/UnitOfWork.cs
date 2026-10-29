@@ -25,6 +25,7 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<Employee>? _employees;
     private IRepository<LeaveRequest>? _leaveRequests;
     private IRepository<Payroll>? _payrolls;
+    private IRepository<PayrollLine>? _payrollLines;
     private IRepository<GoodsIssue>? _goodsIssues;
     private IRepository<GoodsIssueLine>? _goodsIssueLines;
     private IRepository<Invoice>? _invoices;
@@ -89,6 +90,8 @@ public class UnitOfWork : IUnitOfWork
         _leaveRequests ??= new GenericRepository<LeaveRequest>(_context);
     public IRepository<Payroll> Payrolls =>
         _payrolls ??= new GenericRepository<Payroll>(_context);
+    public IRepository<PayrollLine> PayrollLines =>
+        _payrollLines ??= new GenericRepository<PayrollLine>(_context);
     public IRepository<GoodsIssue> GoodsIssues =>
         _goodsIssues ??= new GenericRepository<GoodsIssue>(_context);
     public IRepository<GoodsIssueLine> GoodsIssueLines =>

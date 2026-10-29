@@ -31,8 +31,10 @@ else
         <PropertyColumn Title="Đơn giá" Property="@(c => c.Rate.ToCurrency())" Align="DataGridCellAlignment.End" />
         <PropertyColumn Title="Thành tiền" Property="@(c => c.Amount.ToCurrency())" Align="DataGridCellAlignment.End" />
     </FluentDataGrid>
-    <FluentButton Appearance="ButtonAppearance.Subtle" Style="margin-top: 16px;" OnClick="@(() => Navigation.NavigateTo("/hr/payrolls/list"))">Danh sách</FluentButton>
-                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo($"/hr/payrolls/update/{dto.Id}"))">Sửa</FluentButton>
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 16px;">
+        <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo($"/hr/payrolls/update/{dto.Id}"))">Sửa</FluentButton>
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo("/hr/payrolls/list"))">Danh sách</FluentButton>
+    </FluentStack>
         
 }
 

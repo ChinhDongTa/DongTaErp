@@ -1,0 +1,92 @@
+@page "/hr/compensations/update/{Id}"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.EmployeeCompensations
+@using DongTaErp.Application.Services.Lookups
+@using DongTaErp.Application.Services.SalaryComponents
+@inject IEmployeeCompensationService Service
+@inject ILookupService Lookup
+@inject ISalaryComponentService Components
+@inject NavigationManager Navigation
+
+<PageTitle>Sửa hợp đồng lương</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="Sửa hợp đồng lương" />
+    <EditForm Model="dto" OnSubmit="SaveAsync">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 640px;">
+            <FluentSelect TOption="OptionItem" TValue="string" Items="employees" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                          @bind-Value="employeeId" Label="Nhân viên" />
+            <FluentSelect TOption="OptionItem" TValue="string" Items="components" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                          @bind-Value="componentId" Label="Khoản cố định" />
+            <DecimalInput @bind-Value="amount" Label="Số tiền" Min="0" TValue="decimal" Unit="đ" />
+            <FluentDatePicker @bind-Value="fromDate" Label="Từ ngày" />
+            <FluentDatePicker @bind-Value="toDate" Label="Đến ngày" />
+            <FluentTextInput @bind-Value="dto.Note" Label="Ghi chú" MaxLength="300" />
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="@($"/hr/compensations/view/{Id}")" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private UpdateEmployeeCompensationDto? dto;
+    private List<OptionItem> employees = [];
+    private List<OptionItem> components = [];
+    private string employeeId = "";
+    private string componentId = "";
+    private decimal amount;
+    private DateTime? fromDate;
+    private DateTime? toDate;
+    private bool isSaving;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        employees = ((await Lookup.GetEmployeesAsync()).Value ?? []).Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
+        components = ((await Components.GetActiveAsync(true)).Value ?? []).Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.Name}")).ToList();
+        var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
+        dto = result.Value;
+        if (dto is null)
+            alert?.AddAlertError("Không tìm thấy khoản lương.");
+        else
+        {
+            employeeId = dto.EmployeeId?.ToString() ?? "";
+            componentId = dto.SalaryComponentId?.ToString() ?? "";
+            amount = dto.Amount ?? 0;
+            fromDate = dto.EffectiveFrom?.ToDateTime(TimeOnly.MinValue);
+            toDate = dto.EffectiveTo?.ToDateTime(TimeOnly.MinValue);
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (dto is null)
+            return;
+        dto.EmployeeId = Guid.TryParse(employeeId, out var empId) ? empId : null;
+        dto.SalaryComponentId = Guid.TryParse(componentId, out var compId) ? compId : null;
+        dto.Amount = amount;
+        dto.EffectiveFrom = fromDate is null ? null : DateOnly.FromDateTime(fromDate.Value);
+        dto.EffectiveTo = toDate is null ? null : DateOnly.FromDateTime(toDate.Value);
+        isSaving = true;
+        var result = await Service.UpdateAsync(Id.ToGuid(), dto);
+        isSaving = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không cập nhật được.");
+            return;
+        }
+        Navigation.NavigateTo($"/hr/compensations/view/{Id}");
+    }
+
+    private sealed record OptionItem(string Id, string Name);
+}

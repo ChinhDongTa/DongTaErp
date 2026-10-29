@@ -91,6 +91,32 @@ public class PayrollService : Base.GenericCrudService<Payroll, PayrollDto, Creat
         return entity;
     }
 
+    public override async Task<Result> UpdateAsync(Guid id, UpdatePayrollDto dto, CancellationToken ct = default)
+    {
+        var result = await base.UpdateAsync(id, dto, ct);
+        if (!result.Succeeded || dto.Lines is null)
+            return result;
+
+        var payroll = await _unitOfWork.Payrolls.Query().Include(x => x.Lines).FirstAsync(x => x.Id == id, ct);
+        foreach (var line in payroll.Lines.ToList())
+            _unitOfWork.PayrollLines.Delete(line);
+        foreach (var line in dto.Lines)
+        {
+            payroll.Lines.Add(new PayrollLine
+            {
+                SalaryComponentId = line.SalaryComponentId,
+                Quantity = line.Quantity,
+                Rate = line.Rate,
+                Amount = line.Amount == 0 ? line.Quantity * line.Rate : line.Amount,
+                Note = line.Note
+            });
+        }
+        await FillComponentTypesAsync(payroll, ct);
+        payroll.Recalculate();
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Result.Success(ResultStatus.NoContent);
+    }
+
     protected override Expression<Func<Payroll, UpdatePayrollDto>> ToUpdateDto() => p => new UpdatePayrollDto
     {
         Id = p.Id,

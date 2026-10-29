@@ -1,0 +1,45 @@
+@page "/hr/salary-components/create"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.SalaryComponents
+@using DongTaErp.Domain.Enums
+@inject ISalaryComponentService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Tạo khoản lương</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Tạo khoản lương" />
+
+<EditForm Model="dto" OnSubmit="SaveAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 520px;">
+        <FluentTextInput @bind-Value="dto.Code" Label="Mã" Required="true" MaxLength="30" />
+        <FluentTextInput @bind-Value="dto.Name" Label="Tên" Required="true" MaxLength="160" />
+        <FluentSelect TOption="SalaryComponentType" TValue="SalaryComponentType" Items="types"
+                      OptionText="@(x => x.ToDisplayName())" @bind-Value="dto.Type" Label="Loại" />
+        <FluentCheckbox @bind-Value="dto.IsFixed" Label="Khoản cố định theo hợp đồng" Style="margin-top: 34px;" />
+        <FluentCheckbox @bind-Value="dto.IsTaxable" Label="Chịu thuế" />
+        <FluentCheckbox @bind-Value="dto.IsActive" Label="Đang dùng" />
+        <FluentTextInput @bind-Value="dto.Note" Label="Ghi chú" MaxLength="300" />
+        <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/hr/salary-components/list" />
+    </FluentStack>
+</EditForm>
+
+@code {
+    private Alert? alert;
+    private readonly CreateSalaryComponentDto dto = new() { Code = "PC-", Name = "Phụ cấp" };
+    private bool isSaving;
+    private static readonly IReadOnlyList<SalaryComponentType> types = Enum.GetValues<SalaryComponentType>();
+
+    private async Task SaveAsync()
+    {
+        isSaving = true;
+        var result = await Service.CreateAsync(dto);
+        isSaving = false;
+        if (!result.Succeeded || string.IsNullOrEmpty(result.Value))
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không tạo được khoản lương.");
+            return;
+        }
+        Navigation.NavigateTo($"/hr/salary-components/view/{result.Value}");
+    }
+}

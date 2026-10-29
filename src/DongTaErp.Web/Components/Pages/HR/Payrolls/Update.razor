@@ -2,12 +2,14 @@
 @attribute [Authorize(Roles = AppRoles.Hr)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using DongTaErp.Application.Services.Payrolls
-@inject IPayrollService Service
 @using DongTaErp.Application.Services.Lookups
+@using DongTaErp.Application.Services.SalaryComponents
+@inject IPayrollService Service
 @inject ILookupService Lookup
+@inject ISalaryComponentService Components
 @inject NavigationManager Navigation
 
-<PageTitle>Cập nhật bảng lương</PageTitle>
+<PageTitle>Sửa bảng lương</PageTitle>
 <Alert @ref="alert" />
 
 @if (dto is null)
@@ -16,15 +18,35 @@
 }
 else
 {
-    <ActionTitle Text="Cập nhật bảng lương" />
+    <ActionTitle Text="Sửa bảng lương" />
     <EditForm Model="dto" OnSubmit="SaveAsync">
-        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 640px;">
-            <FluentSelect TOption="OptionItem" TValue="string" Items="employees" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
-                          @bind-Value="employeeId" Label="Nhân viên" />
-            <FluentDatePicker @bind-Value="startDate" Label="Từ ngày" />
-            <FluentDatePicker @bind-Value="endDate" Label="Đến ngày" />
-            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" />
-            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/hr/payrolls/list" />
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 980px;">
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+                <FluentSelect TOption="OptionItem" TValue="string" Items="employees" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                              @bind-Value="employeeId" Label="Nhân viên" />
+                <FluentDatePicker @bind-Value="startDate" Label="Từ ngày" />
+                <FluentDatePicker @bind-Value="endDate" Label="Đến ngày" />
+                <FluentSelect TOption="PayrollStatus?" TValue="PayrollStatus?" Items="statuses"
+                              OptionText="@(x => x?.ToDisplayName())" @bind-Value="dto.PaymentStatus" Label="Trạng thái" />
+            </FluentStack>
+            <FluentTextInput @bind-Value="dto.Notes" Label="Ghi chú" Style="width: 420px;" />
+
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+                <FluentSelect TOption="OptionItem" TValue="string" Items="components" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                              @bind-Value="selectedComponentId" Label="Khoản" Style="min-width: 280px;" />
+                <DecimalInput @bind-Value="newQty" Label="Số lượng" Min="0" TValue="decimal" Style="width: 120px;" />
+                <DecimalInput @bind-Value="newRate" Label="Đơn giá" Min="0" TValue="decimal" Unit="đ" Style="width: 160px;" />
+                <FluentButton Appearance="ButtonAppearance.Outline" Style="margin-top: 34px;" OnClick="AddLine">Thêm dòng</FluentButton>
+            </FluentStack>
+            <FluentDataGrid Items="@lines.AsQueryable()" GridTemplateColumns="2fr 1fr 1fr 1fr .6fr">
+                <PropertyColumn Title="Khoản" Property="@(c => c.Name)" />
+                <TemplateColumn Title="Số lượng" Context="line"><DecimalInput @bind-Value="line.Quantity" Min="0" TValue="decimal" /></TemplateColumn>
+                <TemplateColumn Title="Đơn giá" Context="line"><DecimalInput @bind-Value="line.Rate" Min="0" TValue="decimal" Unit="đ" /></TemplateColumn>
+                <PropertyColumn Title="Thành tiền" Property="@(c => c.Amount.ToCurrency())" Align="DataGridCellAlignment.End" />
+                <TemplateColumn Title="" Context="line"><FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => lines.Remove(line))">Xóa</FluentButton></TemplateColumn>
+            </FluentDataGrid>
+            <div><strong>Thực lãnh:</strong> @lines.Sum(x => x.IsEarning ? x.Amount : -x.Amount).ToCurrency()</div>
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="@($"/hr/payrolls/view/{Id}")" />
         </FluentStack>
     </EditForm>
 }
@@ -33,39 +55,64 @@ else
     [Parameter] public required string Id { get; set; }
     private Alert? alert;
     private UpdatePayrollDto? dto;
+    private PayrollDto? current;
+    private List<OptionItem> employees = [];
+    private List<OptionItem> components = [];
+    private List<LineItem> lines = [];
     private string employeeId = "";
+    private string selectedComponentId = "";
+    private decimal newQty = 1;
+    private decimal newRate;
     private DateTime? startDate;
     private DateTime? endDate;
-    List<OptionItem> employees = [];
     private bool isSaving;
+    private static readonly IReadOnlyList<PayrollStatus?> statuses = Enum.GetValues<PayrollStatus>().Cast<PayrollStatus?>().ToList();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)
             return;
-        employees = ((await Lookup.GetEmployeesAsync()).Value ?? [])
-            .Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
-        var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
-        if (!result.Succeeded || result.Value is null)
-        {
+        employees = ((await Lookup.GetEmployeesAsync()).Value ?? []).Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
+        components = ((await Components.GetActiveAsync()).Value ?? []).Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.Name}", x.Type == SalaryComponentType.Earning)).ToList();
+        selectedComponentId = components.FirstOrDefault()?.Id ?? "";
+        var update = await Service.GetUpdateByIdAsync(Id.ToGuid());
+        var detail = await Service.GetByIdAsync(Id.ToGuid());
+        dto = update.Value;
+        current = detail.Value;
+        if (dto is null || current is null)
             alert?.AddAlertError("Không tìm thấy bảng lương.");
-            await InvokeAsync(StateHasChanged);
-            return;
+        else
+        {
+            employeeId = dto.EmployeeId?.ToString() ?? "";
+            startDate = dto.PeriodStartDate?.ToDateTime(TimeOnly.MinValue);
+            endDate = dto.PeriodEndDate?.ToDateTime(TimeOnly.MinValue);
+            lines = current.Lines.Select(x => new LineItem(x.SalaryComponentId, x.ComponentName, x.Quantity, x.Rate, x.Type == SalaryComponentType.Earning)).ToList();
         }
-        dto = result.Value;
-        employeeId = dto.EmployeeId?.ToString() ?? "";
-        startDate = dto.PeriodStartDate?.ToDateTime(TimeOnly.MinValue);
-        endDate = dto.PeriodEndDate?.ToDateTime(TimeOnly.MinValue);
         await InvokeAsync(StateHasChanged);
+    }
+
+    private void AddLine()
+    {
+        var component = components.FirstOrDefault(x => x.Id == selectedComponentId);
+        if (component is null || !Guid.TryParse(component.Id, out var id))
+            return;
+        lines.Add(new LineItem(id, component.Name, newQty, newRate, component.IsEarning));
     }
 
     private async Task SaveAsync()
     {
         if (dto is null)
             return;
-        dto.EmployeeId = Guid.TryParse(employeeId, out var id) ? id : null;
+        dto.EmployeeId = Guid.TryParse(employeeId, out var empId) ? empId : null;
         dto.PeriodStartDate = startDate is null ? null : DateOnly.FromDateTime(startDate.Value);
         dto.PeriodEndDate = endDate is null ? null : DateOnly.FromDateTime(endDate.Value);
+        dto.Lines = lines.Select(x => new CreatePayrollLineDto
+        {
+            SalaryComponentId = x.ComponentId,
+            Quantity = x.Quantity,
+            Rate = x.Rate,
+            Amount = x.Amount
+        }).ToList();
         isSaving = true;
         var result = await Service.UpdateAsync(Id.ToGuid(), dto);
         isSaving = false;
@@ -77,5 +124,14 @@ else
         Navigation.NavigateTo($"/hr/payrolls/view/{Id}");
     }
 
-    private sealed record OptionItem(string Id, string Name);
+    private sealed record OptionItem(string Id, string Name, bool IsEarning = true);
+    private sealed class LineItem(Guid componentId, string name, decimal quantity, decimal rate, bool isEarning)
+    {
+        public Guid ComponentId { get; } = componentId;
+        public string Name { get; } = name;
+        public decimal Quantity { get; set; } = quantity;
+        public decimal Rate { get; set; } = rate;
+        public bool IsEarning { get; } = isEarning;
+        public decimal Amount => Quantity * Rate;
+    }
 }

@@ -1,0 +1,48 @@
+@page "/hr/compensations/view/{Id}"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.EmployeeCompensations
+@inject IEmployeeCompensationService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Hợp đồng lương</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="@dto.EmployeeName" />
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+        <DetailItem Label="Khoản" Value="@($"{dto.ComponentCode} - {dto.ComponentName}")" />
+        <DetailItem Label="Loại" Value="@dto.TypeName" />
+        <DetailItem Label="Số tiền" Value="@dto.Amount.ToCurrency()" />
+        <DetailItem Label="Từ ngày" Value="@dto.EffectiveFrom.ToString("dd/MM/yyyy")" />
+        <DetailItem Label="Đến ngày" Value="@(dto.EffectiveTo?.ToString("dd/MM/yyyy") ?? "Không giới hạn")" />
+        <DetailItem Label="Trạng thái" Value="@(dto.IsActive ? "Hiệu lực" : "Hết hạn")" />
+        <DetailItem Label="Ghi chú" Value="@dto.Note" />
+    </FluentStack>
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 16px;">
+        <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo($"/hr/compensations/update/{Id}"))">Sửa</FluentButton>
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo("/hr/compensations/list"))">Danh sách</FluentButton>
+    </FluentStack>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private EmployeeCompensationDto? dto;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        var result = await Service.GetByIdAsync(Id.ToGuid());
+        dto = result.Value;
+        if (dto is null)
+            alert?.AddAlertError("Không tìm thấy khoản lương.");
+        await InvokeAsync(StateHasChanged);
+    }
+}

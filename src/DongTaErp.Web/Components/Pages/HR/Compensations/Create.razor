@@ -1,0 +1,72 @@
+@page "/hr/compensations/create"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.EmployeeCompensations
+@using DongTaErp.Application.Services.Lookups
+@using DongTaErp.Application.Services.SalaryComponents
+@inject IEmployeeCompensationService Service
+@inject ILookupService Lookup
+@inject ISalaryComponentService Components
+@inject NavigationManager Navigation
+
+<PageTitle>Gán khoản lương</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Gán khoản lương" />
+
+<EditForm Model="dto" OnSubmit="SaveAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 640px;">
+        <FluentSelect TOption="OptionItem" TValue="string" Items="employees" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                      @bind-Value="employeeId" Label="Nhân viên" />
+        <FluentSelect TOption="OptionItem" TValue="string" Items="components" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                      @bind-Value="componentId" Label="Khoản cố định" />
+        <DecimalInput @bind-Value="dto.Amount" Label="Số tiền" Min="0" TValue="decimal" Unit="đ" />
+        <FluentDatePicker @bind-Value="fromDate" Label="Từ ngày" />
+        <FluentDatePicker @bind-Value="toDate" Label="Đến ngày" />
+        <FluentTextInput @bind-Value="dto.Note" Label="Ghi chú" MaxLength="300" />
+        <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/hr/compensations/list" />
+    </FluentStack>
+</EditForm>
+
+@code {
+    private Alert? alert;
+    private readonly CreateEmployeeCompensationDto dto = new();
+    private List<OptionItem> employees = [];
+    private List<OptionItem> components = [];
+    private string employeeId = "";
+    private string componentId = "";
+    private DateTime? fromDate = DateTime.Today;
+    private DateTime? toDate;
+    private bool isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        employees = ((await Lookup.GetEmployeesAsync()).Value ?? []).Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
+        components = ((await Components.GetActiveAsync(true)).Value ?? []).Select(x => new OptionItem(x.Id.ToString(), $"{x.Code} - {x.Name}")).ToList();
+        employeeId = employees.FirstOrDefault()?.Id ?? "";
+        componentId = components.FirstOrDefault()?.Id ?? "";
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!Guid.TryParse(employeeId, out var empId) || !Guid.TryParse(componentId, out var compId))
+        {
+            alert?.AddAlertError("Chọn nhân viên và khoản lương.");
+            return;
+        }
+        dto.EmployeeId = empId;
+        dto.SalaryComponentId = compId;
+        dto.EffectiveFrom = DateOnly.FromDateTime(fromDate ?? DateTime.Today);
+        dto.EffectiveTo = toDate is null ? null : DateOnly.FromDateTime(toDate.Value);
+        isSaving = true;
+        var result = await Service.CreateAsync(dto);
+        isSaving = false;
+        if (!result.Succeeded || string.IsNullOrEmpty(result.Value))
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không gán được khoản lương.");
+            return;
+        }
+        Navigation.NavigateTo($"/hr/compensations/view/{result.Value}");
+    }
+
+    private sealed record OptionItem(string Id, string Name);
+}

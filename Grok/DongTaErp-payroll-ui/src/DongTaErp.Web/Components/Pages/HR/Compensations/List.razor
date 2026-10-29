@@ -1,0 +1,83 @@
+@page "/hr/compensations/list"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.EmployeeCompensations
+@inject NavigationManager Navigation
+@inject IEmployeeCompensationService Service
+
+<PageTitle>Hợp đồng lương</PageTitle>
+<ActionTitle Text="Hợp đồng lương" />
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
+    <FluentTextInput @bind-Value="searchTerm" Placeholder="Nhân viên, khoản lương" Style="width: 280px;" @onkeypress="OnSearchKey" />
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="SearchAsync">Tìm</FluentButton>
+    <FluentButton IconStart="@(new Icons.Regular.Size20.Add())" Appearance="ButtonAppearance.Primary"
+                  OnClick="@(() => Navigation.NavigateTo("/hr/compensations/create"))">Gán khoản</FluentButton>
+</FluentStack>
+
+<PaginatedTable TItem="EmployeeCompensationDto" Data="page" PageSize="pageSize"
+                GridTemplateColumns="1.6fr 1.4fr 1fr 1.2fr .8fr .8fr"
+                OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
+    <PropertyColumn TGridItem="EmployeeCompensationDto" TProp="string" Title="Nhân viên" Property="@(c => c!.EmployeeName)" />
+    <PropertyColumn TGridItem="EmployeeCompensationDto" TProp="string" Title="Khoản" Property="@(c => c!.ComponentCode + " - " + c.ComponentName)" />
+    <PropertyColumn TGridItem="EmployeeCompensationDto" TProp="string" Title="Số tiền" Property="@(c => c!.Amount.ToCurrency())" Align="DataGridCellAlignment.End" />
+    <PropertyColumn TGridItem="EmployeeCompensationDto" TProp="string" Title="Hiệu lực" Property="@(c => FormatPeriod(c!))" />
+    <TemplateColumn TGridItem="EmployeeCompensationDto" Title="Trạng thái">
+        <FluentBadge Appearance="BadgeAppearance.Filled">@(context.IsActive ? "Hiệu lực" : "Hết hạn")</FluentBadge>
+    </TemplateColumn>
+    <TemplateColumn TGridItem="EmployeeCompensationDto" Title="Thao tác" Context="item">
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem"
+                      @onclick="@(() => Navigation.NavigateTo($"/hr/compensations/view/{item.Id}"))" />
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Edit())" Appearance="ButtonAppearance.Primary" Title="Sửa"
+                      @onclick="@(() => Navigation.NavigateTo($"/hr/compensations/update/{item.Id}"))" />
+    </TemplateColumn>
+</PaginatedTable>
+
+@code {
+    private PaginatedList<EmployeeCompensationDto>? page;
+    private readonly int pageSize = Models.Constants.PageSize;
+    private int currentPage = 1;
+    private bool isLoading;
+    private int requestVersion;
+    private string? searchTerm;
+    private static string FormatPeriod(EmployeeCompensationDto item)
+        => $"{item.EffectiveFrom:dd/MM/yyyy} - {(item.EffectiveTo.HasValue ? item.EffectiveTo.Value.ToString("dd/MM/yyyy") : "...")}";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadData(1);
+    }
+
+    private Task LoadPageAsync(int pageNumber)
+    {
+        currentPage = pageNumber;
+        return LoadData(pageNumber);
+    }
+
+    private Task SearchAsync()
+    {
+        currentPage = 1;
+        return LoadData(1);
+    }
+
+    private Task OnSearchKey(KeyboardEventArgs e) => e.Key == "Enter" ? SearchAsync() : Task.CompletedTask;
+
+    private async Task LoadData(int pageNumber)
+    {
+        var version = ++requestVersion;
+        isLoading = true;
+        try
+        {
+            var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize));
+            if (version == requestVersion && result.Succeeded)
+                page = result.Value;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}

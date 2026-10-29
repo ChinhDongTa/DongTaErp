@@ -1,0 +1,47 @@
+@page "/hr/salary-components/view/{Id}"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.SalaryComponents
+@inject ISalaryComponentService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Khoản lương</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="@dto.Name" />
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+        <DetailItem Label="Mã" Value="@dto.Code" />
+        <DetailItem Label="Loại" Value="@dto.TypeName" />
+        <DetailItem Label="Cố định" Value="@(dto.IsFixed ? "Có" : "Không")" />
+        <DetailItem Label="Chịu thuế" Value="@(dto.IsTaxable ? "Có" : "Không")" />
+        <DetailItem Label="Trạng thái" Value="@(dto.IsActive ? "Đang dùng" : "Ngưng")" />
+        <DetailItem Label="Ghi chú" Value="@dto.Note" />
+    </FluentStack>
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 16px;">
+        <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo($"/hr/salary-components/update/{Id}"))">Sửa</FluentButton>
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo("/hr/salary-components/list"))">Danh sách</FluentButton>
+    </FluentStack>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private SalaryComponentDto? dto;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        var result = await Service.GetByIdAsync(Id.ToGuid());
+        dto = result.Value;
+        if (dto is null)
+            alert?.AddAlertError("Không tìm thấy khoản lương.");
+        await InvokeAsync(StateHasChanged);
+    }
+}

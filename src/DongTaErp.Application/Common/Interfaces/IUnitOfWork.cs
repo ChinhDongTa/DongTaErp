@@ -20,6 +20,7 @@ public interface IUnitOfWork : IAsyncDisposable
     IRepository<Employee> Employees { get; }
     IRepository<LeaveRequest> LeaveRequests { get; }
     IRepository<Payroll> Payrolls { get; }
+    IRepository<PayrollLine> PayrollLines { get; }
     IRepository<GoodsIssue> GoodsIssues { get; }
     IRepository<GoodsIssueLine> GoodsIssueLines { get; }
     IRepository<Invoice> Invoices { get; }

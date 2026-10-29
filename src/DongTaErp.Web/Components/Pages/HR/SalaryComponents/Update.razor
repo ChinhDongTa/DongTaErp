@@ -1,0 +1,78 @@
+@page "/hr/salary-components/update/{Id}"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.SalaryComponents
+@using DongTaErp.Domain.Enums
+@inject ISalaryComponentService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Sửa khoản lương</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="Sửa khoản lương" />
+    <EditForm Model="dto" OnSubmit="SaveAsync">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 520px;">
+            <FluentTextInput @bind-Value="dto.Code" Label="Mã" MaxLength="30" />
+            <FluentTextInput @bind-Value="dto.Name" Label="Tên" MaxLength="160" />
+            <FluentSelect TOption="SalaryComponentType?" TValue="SalaryComponentType?" Items="types"
+                          OptionText="@(x => x?.ToDisplayName())" @bind-Value="dto.Type" Label="Loại" />
+            <FluentCheckbox @bind-Value="isFixed" Label="Khoản cố định theo hợp đồng" Style="margin-top: 34px;" />
+            <FluentCheckbox @bind-Value="isTaxable" Label="Chịu thuế" />
+            <FluentCheckbox @bind-Value="isActive" Label="Đang dùng" />
+            <FluentTextInput @bind-Value="dto.Note" Label="Ghi chú" MaxLength="300" />
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="@($"/hr/salary-components/view/{Id}")" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private UpdateSalaryComponentDto? dto;
+    private bool isFixed;
+    private bool isTaxable;
+    private bool isActive = true;
+    private bool isSaving;
+    private static readonly IReadOnlyList<SalaryComponentType?> types = Enum.GetValues<SalaryComponentType>().Cast<SalaryComponentType?>().ToList();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
+        dto = result.Value;
+        if (dto is null)
+            alert?.AddAlertError("Không tìm thấy khoản lương.");
+        else
+        {
+            isFixed = dto.IsFixed ?? false;
+            isTaxable = dto.IsTaxable ?? false;
+            isActive = dto.IsActive ?? true;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (dto is null)
+            return;
+        dto.IsFixed = isFixed;
+        dto.IsTaxable = isTaxable;
+        dto.IsActive = isActive;
+        isSaving = true;
+        var result = await Service.UpdateAsync(Id.ToGuid(), dto);
+        isSaving = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không cập nhật được.");
+            return;
+        }
+        Navigation.NavigateTo($"/hr/salary-components/view/{Id}");
+    }
+}

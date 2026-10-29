@@ -1,0 +1,82 @@
+@page "/hr/salary-components/list"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.SalaryComponents
+@inject NavigationManager Navigation
+@inject ISalaryComponentService Service
+
+<PageTitle>Khoản lương</PageTitle>
+<ActionTitle Text="Khoản lương" />
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
+    <FluentTextInput @bind-Value="searchTerm" Placeholder="Mã, tên khoản" Style="width: 280px;" @onkeypress="OnSearchKey" />
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="SearchAsync">Tìm</FluentButton>
+    <FluentButton IconStart="@(new Icons.Regular.Size20.Add())" Appearance="ButtonAppearance.Primary"
+                  OnClick="@(() => Navigation.NavigateTo("/hr/salary-components/create"))">Tạo khoản</FluentButton>
+</FluentStack>
+
+<PaginatedTable TItem="SalaryComponentDto" Data="page" PageSize="pageSize"
+                GridTemplateColumns="1fr 2fr 1fr .8fr .8fr .8fr .8fr"
+                OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
+    <PropertyColumn TGridItem="SalaryComponentDto" TProp="string" Title="Mã" Property="@(c => c!.Code)" />
+    <PropertyColumn TGridItem="SalaryComponentDto" TProp="string" Title="Tên" Property="@(c => c!.Name)" />
+    <PropertyColumn TGridItem="SalaryComponentDto" TProp="string" Title="Loại" Property="@(c => c!.TypeName)" />
+    <PropertyColumn TGridItem="SalaryComponentDto" TProp="string" Title="Cố định" Property="@(c => c!.IsFixed ? "Có" : "Không")" />
+    <PropertyColumn TGridItem="SalaryComponentDto" TProp="string" Title="Chịu thuế" Property="@(c => c!.IsTaxable ? "Có" : "Không")" />
+    <TemplateColumn TGridItem="SalaryComponentDto" Title="Trạng thái">
+        <FluentBadge Appearance="BadgeAppearance.Filled">@(context.IsActive ? "Dùng" : "Ngưng")</FluentBadge>
+    </TemplateColumn>
+    <TemplateColumn TGridItem="SalaryComponentDto" Title="Thao tác" Context="item">
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem"
+                      @onclick="@(() => Navigation.NavigateTo($"/hr/salary-components/view/{item.Id}"))" />
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Edit())" Appearance="ButtonAppearance.Primary" Title="Sửa"
+                      @onclick="@(() => Navigation.NavigateTo($"/hr/salary-components/update/{item.Id}"))" />
+    </TemplateColumn>
+</PaginatedTable>
+
+@code {
+    private PaginatedList<SalaryComponentDto>? page;
+    private readonly int pageSize = Models.Constants.PageSize;
+    private int currentPage = 1;
+    private bool isLoading;
+    private int requestVersion;
+    private string? searchTerm;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadData(1);
+    }
+
+    private Task LoadPageAsync(int pageNumber)
+    {
+        currentPage = pageNumber;
+        return LoadData(pageNumber);
+    }
+
+    private Task SearchAsync()
+    {
+        currentPage = 1;
+        return LoadData(1);
+    }
+
+    private Task OnSearchKey(KeyboardEventArgs e) => e.Key == "Enter" ? SearchAsync() : Task.CompletedTask;
+
+    private async Task LoadData(int pageNumber)
+    {
+        var version = ++requestVersion;
+        isLoading = true;
+        try
+        {
+            var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize));
+            if (version == requestVersion && result.Succeeded)
+                page = result.Value;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}

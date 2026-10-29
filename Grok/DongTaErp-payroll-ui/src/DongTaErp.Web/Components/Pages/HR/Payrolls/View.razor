@@ -1,0 +1,53 @@
+@page "/hr/payrolls/view/{Id}"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Payrolls
+@inject IPayrollService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Bảng lương</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="@dto.EmployeeName" />
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="32">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <DetailItem Label="Kỳ" Value="@($"{dto.PeriodStartDate:dd/MM/yyyy} - {dto.PeriodEndDate:dd/MM/yyyy}")" />
+            <DetailItem Label="Thu nhập" Value="@dto.GrossAmount.ToCurrency()" />
+            <DetailItem Label="Khấu trừ" Value="@dto.DeductionAmount.ToCurrency()" />
+            <DetailItem Label="Thực lãnh" Value="@dto.NetAmount.ToCurrency()" />
+            <DetailItem Label="Trạng thái" Value="@dto.PaymentStatusName" />
+        </FluentStack>
+    </FluentStack>
+    <h4 style="margin-top: 16px;">Chi tiết khoản lương</h4>
+    <FluentDataGrid Items="@dto.Lines.AsQueryable()">
+        <PropertyColumn Title="Khoản" Property="@(c => c.ComponentName)" />
+        <PropertyColumn Title="Số lượng" Property="@(c => c.Quantity.ToDisplay())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Đơn giá" Property="@(c => c.Rate.ToCurrency())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Thành tiền" Property="@(c => c.Amount.ToCurrency())" Align="DataGridCellAlignment.End" />
+    </FluentDataGrid>
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 16px;">
+        <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo($"/hr/payrolls/update/{dto.Id}"))">Sửa</FluentButton>
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo("/hr/payrolls/list"))">Danh sách</FluentButton>
+    </FluentStack>
+        
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private PayrollDto? dto;
+    private Alert? alert;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var result = await Service.GetByIdAsync(Id.ToGuid());
+        dto = result.Succeeded ? result.Value : null;
+        if (dto is null)
+            alert?.AddAlertError("Không tìm thấy bảng lương.");
+    }
+}

@@ -1,0 +1,109 @@
+@rendermode InteractiveServer
+@implements IDisposable
+@inject NavigationManager NavigationManager
+
+<FluentNav Id="main-menu" Width="260px">
+    <AuthorizeView Roles="@AppRoles.All">
+        <FluentNavItem Href="/" Match="NavLinkMatch.All"
+                       IconRest="@(new Icons.Regular.Size20.Home())"
+                       IconActive="@(new Icons.Filled.Size20.Home())">Trang chủ</FluentNavItem>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="@AppRoles.Catalog">
+        <FluentNavCategory Title="Danh mục" Expanded="false"
+                           IconRest="@(new Icons.Regular.Size20.Library())"
+                           IconActive="@(new Icons.Filled.Size20.Library())">
+            <FluentNavItem Href="/partners/list">Đối tác</FluentNavItem>
+            <FluentNavItem Href="/products/list">Sản phẩm</FluentNavItem>
+            <FluentNavItem Href="/warehouses/list">Kho hàng</FluentNavItem>
+            <FluentNavItem Href="/warehouses/stock">Tồn kho</FluentNavItem>
+            <FluentNavItem Href="/stock-transfers/review">Duyệt điều chuyển</FluentNavItem>
+            <FluentNavItem Href="/stock-transfers/create">Điều chuyển</FluentNavItem>
+            <FluentNavItem Href="/inventory-txns/list">Sổ kho</FluentNavItem>
+        </FluentNavCategory>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="@AppRoles.SalesArea">
+        <FluentNavCategory Title="Bán hàng" Expanded="false"
+                           IconRest="@(new Icons.Regular.Size20.ShoppingBag())"
+                           IconActive="@(new Icons.Filled.Size20.ShoppingBag())">
+            <FluentNavItem Href="/sales-orders/list">Đơn bán</FluentNavItem>
+            <FluentNavItem Href="/goods-issues/list">Xuất kho</FluentNavItem>
+            <FluentNavItem Href="/invoices/list">Hóa đơn</FluentNavItem>
+            <FluentNavItem Href="/payments/list">Thu tiền</FluentNavItem>
+        </FluentNavCategory>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="@AppRoles.PurchaseArea">
+        <FluentNavCategory Title="Mua hàng" Expanded="false"
+                           IconRest="@(new Icons.Regular.Size20.Cart())"
+                           IconActive="@(new Icons.Filled.Size20.Cart())">
+            <FluentNavItem Href="/purchase-orders/list">Đơn mua</FluentNavItem>
+            <FluentNavItem Href="/goods-receipts/list">Nhập kho</FluentNavItem>
+            <FluentNavItem Href="/vendor-bills/list">Hóa đơn mua</FluentNavItem>
+            <FluentNavItem Href="/disbursements/list">Chi tiền</FluentNavItem>
+        </FluentNavCategory>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="@AppRoles.Hr">
+        <FluentNavCategory Title="Nhân sự" Expanded="false"
+                           IconRest="@(new Icons.Regular.Size20.People())"
+                           IconActive="@(new Icons.Filled.Size20.People())">
+            <FluentNavItem Href="/hr/departments/list">Phòng ban</FluentNavItem>
+            <FluentNavItem Href="/hr/job-positions/list">Chức vụ</FluentNavItem>
+            <FluentNavItem Href="/hr/employees/list">Nhân viên</FluentNavItem>
+            <FluentNavItem Href="/hr/salary-components/list">Khoản lương</FluentNavItem>
+            <FluentNavItem Href="/hr/compensations/list">Hợp đồng lương</FluentNavItem>
+            <FluentNavItem Href="/hr/leave-requests/list">Nghỉ phép</FluentNavItem>
+            <FluentNavItem Href="/hr/payrolls/list">Bảng lương</FluentNavItem>
+        </FluentNavCategory>
+    </AuthorizeView>
+
+    <FluentNavCategory Title="Quản trị" Expanded="false"
+                       IconRest="@(new Icons.Regular.Size20.Settings())"
+                       IconActive="@(new Icons.Filled.Size20.Settings())">
+        <AuthorizeView Roles="@AppRoles.Manage">
+            <FluentNavItem Href="/admin/users/list">Người dùng</FluentNavItem>
+            <FluentNavItem Href="/admin/roles/manager">Roles</FluentNavItem>
+        </AuthorizeView>
+        <AuthorizeView>
+            <Authorized>
+                <FluentNavItem Href="Account/Manage">Tài khoản</FluentNavItem>
+            </Authorized>
+            <NotAuthorized>
+                <FluentNavItem Href="Account/Login">Đăng nhập</FluentNavItem>
+            </NotAuthorized>
+        </AuthorizeView>
+    </FluentNavCategory>
+
+    <AuthorizeView>
+        <Authorized>
+            <form action="Account/Logout" method="post" style="margin: 8px;">
+                <AntiforgeryToken />
+                <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                <FluentButton Type="ButtonType.Submit" Appearance="ButtonAppearance.Subtle" Style="width: 100%;">Đăng xuất</FluentButton>
+            </form>
+        </Authorized>
+    </AuthorizeView>
+</FluentNav>
+
+@code {
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}

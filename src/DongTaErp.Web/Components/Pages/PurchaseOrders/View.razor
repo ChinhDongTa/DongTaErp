@@ -81,6 +81,7 @@ else
         dto = result.Succeeded ? result.Value : null;
         if (dto is null)
             alert?.AddAlertError("Không tìm thấy đơn mua.");
+        StateHasChanged();
     }
 
     private async Task ConfirmAsync()
