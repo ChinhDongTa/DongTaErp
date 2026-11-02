@@ -17,6 +17,7 @@
     <FluentButton Appearance="ButtonAppearance.Outline" OnClick="SearchAsync">Tìm</FluentButton>
     <FluentButton IconStart="@(new Icons.Regular.Size20.Add())" Appearance="ButtonAppearance.Primary"
                   OnClick="@(() => Navigation.NavigateTo("/sales-orders/create"))">Tạo đơn bán</FluentButton>
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo("/shop"))">Đơn khách đặt</FluentButton>
 </FluentStack>
 
 <PaginatedTable TItem="SalesOrderDto" Data="page" PageSize="pageSize"

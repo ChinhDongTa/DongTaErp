@@ -7,6 +7,9 @@
         <FluentNavItem Href="/" Match="NavLinkMatch.All"
                        IconRest="@(new Icons.Regular.Size20.Home())"
                        IconActive="@(new Icons.Filled.Size20.Home())">Trang chủ</FluentNavItem>
+        <FluentNavItem Href="/shop"
+                       IconRest="@(new Icons.Regular.Size20.Cart())"
+                       IconActive="@(new Icons.Filled.Size20.Cart())">Đặt hàng</FluentNavItem>
     </AuthorizeView>
 
     <AuthorizeView Roles="@AppRoles.Catalog">

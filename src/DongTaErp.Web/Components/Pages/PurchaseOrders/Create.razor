@@ -38,7 +38,7 @@
                           @bind-Value="selectedProductId" Label="Sản phẩm" Style="min-width: 320px;" />
             <DecimalInput @bind-Value="newQty" Label="Số lượng" Min="0" TValue="decimal" Style="width: 120px;" />
             <DecimalInput @bind-Value="newPrice" Label="Đơn giá" Unit="đ" Min="0" TValue="decimal" Style="width: 160px;" />
-            <FluentButton Appearance="ButtonAppearance.Outline" Style="align-self: end;" OnClick="AddLine">Thêm dòng</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Outline" style="margin-top:34px" OnClick="AddLine">Thêm dòng</FluentButton>
         </FluentStack>
 
         <FluentDataGrid Items="@lines.AsQueryable()" Style="width: 100%;">

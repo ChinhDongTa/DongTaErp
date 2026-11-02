@@ -50,6 +50,7 @@
 </EditForm>
 
 @code {
+    [SupplyParameterFromQuery(Name = "orderId")] public string? OrderId { get; set; }
     private Alert? alert;
     private readonly CreateGoodsIssueDto dto = new() { Code = "GI".GetRandomCode() };
     private DateTime? issueDate = DateTime.Today;
@@ -66,8 +67,9 @@
             .Select(x => new OrderOption(x.Id.ToString(), x.Label, x.ExtraId?.ToString() ?? "")).ToList();
         warehouses = ((await Lookup.GetWarehousesAsync()).Value ?? [])
             .Select(x => new WarehouseOption(x.Id.ToString(), x.Label)).ToList();
-        if (orders.Count > 0)
-            await OnOrderChanged(orders[0].Id);
+        var selected = orders.FirstOrDefault(x => x.Id == OrderId)?.Id ?? orders.FirstOrDefault()?.Id;
+        if (!string.IsNullOrEmpty(selected))
+            await OnOrderChanged(selected);
     }
 
     private async Task OnOrderChanged(string value)

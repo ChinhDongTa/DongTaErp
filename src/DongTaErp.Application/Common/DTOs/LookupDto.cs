@@ -8,6 +8,17 @@ public class LookupItemDto
     public Guid? ExtraId { get; set; }
 }
 
+public class CatalogItemDto
+{
+    public Guid Id { get; set; }
+    public string Sku { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Unit { get; set; } = "";
+    public decimal SalePrice { get; set; }
+    public decimal StockQty { get; set; }
+    public string Label => Sku + " - " + Name;
+}
+
 public class DocumentLineLookupDto
 {
     public Guid LineId { get; set; }

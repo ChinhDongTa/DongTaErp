@@ -1,0 +1,160 @@
+@page "/shop"
+@attribute [Authorize(Roles = AppRoles.All)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Lookups
+@using DongTaErp.Application.Services.SalesOrders
+@inject ILookupService Lookup
+@inject ISalesOrderService Orders
+@inject NavigationManager Navigation
+
+<PageTitle>Đặt hàng</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Đặt hàng" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Chọn sản phẩm, sửa số lượng rồi bấm Đặt hàng. Tồn là tổng các kho, chỉ để tham khảo. Đơn sẽ chờ nhân viên bán xác nhận.
+</FluentMessageBar>
+
+@if (!loaded)
+{
+    <PageLoading />
+}
+else
+{
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" Style="margin-bottom: 12px;">
+        <FluentSelect TOption="OptionItem" TValue="string" Items="customers" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                      @bind-Value="customerId" Label="Khách hàng" Style="min-width: 280px;" />
+        <FluentTextInput @bind-Value="keyword" Placeholder="Tìm sản phẩm" Style="width: 240px;" />
+        <FluentTextInput @bind-Value="notes" Label="Ghi chú" Style="width: 280px;" />
+    </FluentStack>
+
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="16" Style="align-items: start;">
+        <div style="flex: 1.4; min-width: 420px;">
+            <h3 style="margin: 0 0 8px;">Sản phẩm</h3>
+            <FluentDataGrid Items="@Filtered.AsQueryable()" GridTemplateColumns="1.4fr 2fr .6fr 1fr .8fr .8fr">
+                <PropertyColumn Title="Mã" Property="@(c => c.Sku)" />
+                <PropertyColumn Title="Tên" Property="@(c => c.Name)" />
+                <PropertyColumn Title="ĐVT" Property="@(c => c.Unit)" />
+                <PropertyColumn Title="Giá" Property="@(c => c.SalePrice.ToCurrency())" Align="DataGridCellAlignment.End" />
+                <TemplateColumn Title="Tồn">
+                    <FluentBadge Appearance="BadgeAppearance.Filled">@context.StockQty.ToDisplay()</FluentBadge>
+                </TemplateColumn>
+                <TemplateColumn Title="" Context="item">
+                    <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Add(item))">Chọn</FluentButton>
+                </TemplateColumn>
+            </FluentDataGrid>
+        </div>
+        <div style="flex: 1; min-width: 360px; background: #f7f9fc; border: 1px solid #e4e8ee; border-radius: 8px; padding: 12px;">
+            <h3 style="margin: 0 0 8px;">Giỏ hàng</h3>
+            @if (cart.Count == 0)
+            {
+                <p>Chưa chọn sản phẩm.</p>
+            }
+            else
+            {
+                <FluentDataGrid Items="@cart.AsQueryable()" GridTemplateColumns="2fr .8fr 1fr .5fr">
+                    <PropertyColumn Title="Sản phẩm" Property="@(c => c.Name)" />
+                    <TemplateColumn Title="SL" Context="line">
+                        <DecimalInput @bind-Value="line.Qty" Min="0" TValue="decimal" />
+                    </TemplateColumn>
+                    <PropertyColumn Title="Tiền" Property="@(c => c.Amount.ToCurrency())" Align="DataGridCellAlignment.End" />
+                    <TemplateColumn Title="" Context="line">
+                        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => cart.Remove(line))">Xóa</FluentButton>
+                    </TemplateColumn>
+                </FluentDataGrid>
+                <div style="margin-top: 8px;"><strong>Tạm tính:</strong> @cart.Sum(x => x.Amount).ToCurrency()</div>
+            }
+            <FluentButton Appearance="ButtonAppearance.Primary" Style="margin-top: 12px;" OnClick="PlaceAsync" Disabled="@(placing || cart.Count == 0)">Đặt hàng</FluentButton>
+        </div>
+    </FluentStack>
+}
+
+@code {
+    private Alert? alert;
+    private bool loaded;
+    private bool placing;
+    private string customerId = "";
+    private string? keyword;
+    private string? notes;
+    private List<OptionItem> customers = [];
+    private List<CatalogItemDto> products = [];
+    private List<CartLine> cart = [];
+    private Guid defaultWarehouseId;
+    private IEnumerable<CatalogItemDto> Filtered => string.IsNullOrWhiteSpace(keyword)
+        ? products
+        : products.Where(x => x.Label.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        customers = ((await Lookup.GetCustomersAsync()).Value ?? []).Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
+        products = (await Lookup.GetCatalogAsync()).Value ?? [];
+        defaultWarehouseId = ((await Lookup.GetWarehousesAsync()).Value ?? []).FirstOrDefault()?.Id ?? Guid.Empty;
+        customerId = customers.FirstOrDefault()?.Id ?? "";
+        loaded = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void Add(CatalogItemDto item)
+    {
+        var existing = cart.FirstOrDefault(x => x.ProductId == item.Id);
+        if (existing is not null)
+        {
+            existing.Qty += 1;
+            return;
+        }
+        cart.Add(new CartLine(item.Id, item.Label, item.SalePrice, item.StockQty));
+    }
+
+    private async Task PlaceAsync()
+    {
+        if (!Guid.TryParse(customerId, out var partnerId) || defaultWarehouseId == Guid.Empty)
+        {
+            alert?.AddAlertError("Chọn khách hàng và cần có kho đề xuất.");
+            return;
+        }
+        var over = cart.FirstOrDefault(x => x.Qty > x.StockQty);
+        if (over is not null)
+        {
+            alert?.AddAlertError($"{over.Name} vượt tồn ({over.StockQty.ToDisplay()}).");
+            return;
+        }
+        if (cart.Any(x => x.Qty <= 0))
+        {
+            alert?.AddAlertError("Số lượng phải lớn hơn 0.");
+            return;
+        }
+
+        placing = true;
+        var dto = new CreateSalesOrderDto
+        {
+            Number = "SO".GetRandomCode(),
+            PartnerId = partnerId,
+            WarehouseId = defaultWarehouseId,
+            OrderDate = DateTime.Today,
+            Notes = string.IsNullOrWhiteSpace(notes) ? "Khách đặt từ trang Đặt hàng" : notes,
+            Lines = cart.Select(x => new CreateSalesOrderLineDto { ProductId = x.ProductId, Qty = x.Qty, UnitPrice = x.Price }).ToList()
+        };
+        var result = await Orders.CreateAsync(dto);
+        placing = false;
+        if (!result.Succeeded || string.IsNullOrEmpty(result.Value))
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không đặt được hàng.");
+            return;
+        }
+        alert?.AddAlert("Đã đặt hàng. Nhân viên bán sẽ xác nhận.");
+        cart.Clear();
+    }
+
+    private sealed record OptionItem(string Id, string Name);
+    private sealed class CartLine(Guid productId, string name, decimal price, decimal stockQty)
+    {
+        public Guid ProductId { get; } = productId;
+        public string Name { get; } = name;
+        public decimal Price { get; } = price;
+        public decimal StockQty { get; } = stockQty;
+        public decimal Qty { get; set; } = 1;
+        public decimal Amount => Qty * Price;
+    }
+}

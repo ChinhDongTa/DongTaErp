@@ -48,7 +48,9 @@ else
         }
         @if (dto.Status == SalesOrderStatus.Confirmed)
         {
-            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo("/goods-issues/create"))">Tạo phiếu xuất</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo($"/goods-issues/create?orderId={dto.Id}"))">Xuất kho</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo($"/invoices/create?orderId={dto.Id}"))">Hóa đơn</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo("/payments/create"))">Thu tiền</FluentButton>
         }
         @if (dto.Status != SalesOrderStatus.Cancelled)
         {

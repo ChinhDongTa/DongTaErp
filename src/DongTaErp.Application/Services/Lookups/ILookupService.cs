@@ -4,6 +4,7 @@ public interface ILookupService
 {
     Task<Result<List<LookupItemDto>>> GetWarehousesAsync(CancellationToken ct = default);
     Task<Result<List<LookupItemDto>>> GetProductsAsync(bool salePrice = true, CancellationToken ct = default);
+    Task<Result<List<CatalogItemDto>>> GetCatalogAsync(CancellationToken ct = default);
     Task<Result<List<LookupItemDto>>> GetCustomersAsync(CancellationToken ct = default);
     Task<Result<List<LookupItemDto>>> GetSuppliersAsync(CancellationToken ct = default);
     Task<Result<List<LookupItemDto>>> GetCategoriesAsync(CancellationToken ct = default);

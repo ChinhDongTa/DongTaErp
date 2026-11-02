@@ -12,6 +12,21 @@ public class LookupService(IUnitOfWork unitOfWork) : ILookupService
         => Result<List<LookupItemDto>>.Success(await unitOfWork.Products.Query().Where(x => x.IsActive).OrderBy(x => x.Sku)
             .Select(x => new LookupItemDto { Id = x.Id, Label = x.Sku + " - " + x.Name, Price = salePrice ? x.SalePrice : x.CostPrice }).ToListAsync(ct));
 
+    public async Task<Result<List<CatalogItemDto>>> GetCatalogAsync(CancellationToken ct = default)
+    {
+        var products = await unitOfWork.Products.Query().Where(x => x.IsActive).OrderBy(x => x.Sku)
+            .Select(x => new CatalogItemDto { Id = x.Id, Sku = x.Sku, Name = x.Name, Unit = x.Unit, SalePrice = x.SalePrice })
+            .ToListAsync(ct);
+        var stocks = await unitOfWork.StockBalances.Query()
+            .GroupBy(x => x.ProductId)
+            .Select(g => new { ProductId = g.Key, Qty = g.Sum(x => x.Qty) })
+            .ToListAsync(ct);
+        var stockMap = stocks.ToDictionary(x => x.ProductId, x => x.Qty);
+        foreach (var product in products)
+            product.StockQty = stockMap.GetValueOrDefault(product.Id);
+        return Result<List<CatalogItemDto>>.Success(products);
+    }
+
     public async Task<Result<List<LookupItemDto>>> GetCustomersAsync(CancellationToken ct = default)
         => Result<List<LookupItemDto>>.Success(await unitOfWork.Partners.Query()
             .Where(x => x.IsActive && (x.Type == PartnerType.Customer || x.Type == PartnerType.Both)).OrderBy(x => x.Code)
