@@ -57,6 +57,24 @@ public class SalesOrderService
         }
     }
 
+    public async Task<Result<List<NewOrderNoticeDto>>> GetNewOrdersAsync(CancellationToken ct = default)
+    {
+        var items = await _unitOfWork.SalesOrders.Query()
+            .Where(x => x.Status == SalesOrderStatus.Draft)
+            .OrderByDescending(x => x.Created)
+            .Take(20)
+            .Select(x => new NewOrderNoticeDto
+            {
+                Id = x.Id,
+                Number = x.Number,
+                PartnerName = x.Partner.Name,
+                OrderDate = x.OrderDate,
+                Total = x.Total
+            })
+            .ToListAsync(ct);
+        return Result<List<NewOrderNoticeDto>>.Success(items);
+    }
+
     public async Task<Result> ConfirmAsync(Guid id, CancellationToken ct = default)
     {
         var order = await _unitOfWork.SalesOrders.Query().Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id, ct);

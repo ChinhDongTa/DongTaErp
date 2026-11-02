@@ -21,6 +21,15 @@ public class SalesOrderDto : BaseDto
     public List<SalesOrderLineDto> Lines { get; set; } = [];
 }
 
+public class NewOrderNoticeDto
+{
+    public Guid Id { get; set; }
+    public string Number { get; set; } = "";
+    public string PartnerName { get; set; } = "";
+    public DateTime OrderDate { get; set; }
+    public decimal Total { get; set; }
+}
+
 public class CreateSalesOrderDto
 {
     /// <summary>

@@ -2,8 +2,12 @@
 
 <FluentLayout>
     <FluentLayoutItem Area="LayoutArea.Header">
-        <FluentLayoutHamburger />
-        DongTaErp.Web
+        <div style="display: flex; align-items: center; width: 100%; gap: 8px;">
+            <FluentLayoutHamburger />
+            <span>DongTaErp.Web</span>
+            <FluentSpacer />
+            <OrderBell />
+        </div>
     </FluentLayoutItem>
     <FluentLayoutItem Area="LayoutArea.Navigation">
         <NavMenu />

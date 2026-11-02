@@ -1,0 +1,94 @@
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@implements IDisposable
+@using DongTaErp.Application.Services.SalesOrders
+@inject IServiceScopeFactory ScopeFactory
+@inject NavigationManager Navigation
+
+<AuthorizeView Roles="@AppRoles.SalesArea">
+    <div style="position: relative;">
+        <FluentMenuButton Appearance="ButtonAppearance.Outline"
+                          IconStart="@(new Icons.Regular.Size20.Alert())"
+                          Text="Đơn mới"
+                          Title="Đơn vừa đặt">
+            <FluentMenuItem Disabled="true">Có @orders.Count đơn vừa đặt</FluentMenuItem>
+            @if (orders.Count == 0)
+            {
+                <FluentMenuItem Disabled="true">Không có đơn mới</FluentMenuItem>
+            }
+            else
+            {
+                @foreach (var order in orders)
+                {
+                    <FluentMenuItem OnClick="@(() => Open(order.Id))">
+                        @order.Number · @order.PartnerName · @order.Total.ToCurrency()
+                    </FluentMenuItem>
+                }
+                <FluentMenuItem OnClick="OpenList">Xem tất cả đơn mới</FluentMenuItem>
+            }
+        </FluentMenuButton>
+        @if (orders.Count > 0)
+        {
+            <span style="position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; border-radius: 9px; background: #d13438; color: white; font-size: 11px; line-height: 18px; text-align: center; padding: 0 4px; pointer-events: none;">
+                @orders.Count
+            </span>
+        }
+    </div>
+</AuthorizeView>
+
+@code {
+    private List<NewOrderNoticeDto> orders = [];
+    private PeriodicTimer? timer;
+    private readonly SemaphoreSlim gate = new(1, 1);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        timer = new PeriodicTimer(TimeSpan.FromSeconds(20));
+        _ = PollAsync();
+    }
+
+    private async Task PollAsync()
+    {
+        try
+        {
+            while (timer is not null && await timer.WaitForNextTickAsync())
+            {
+                await LoadAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        if (!await gate.WaitAsync(0))
+            return;
+        try
+        {
+            await using var scope = ScopeFactory.CreateAsyncScope();
+            var service = scope.ServiceProvider.GetRequiredService<ISalesOrderService>();
+            orders = (await service.GetNewOrdersAsync()).Value ?? [];
+        }
+        catch
+        {
+            // Poll nền không được làm rơi circuit khi trang khác đang dùng DbContext.
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    private void Open(Guid id) => Navigation.NavigateTo($"/sales-orders/view/{id}");
+
+    private void OpenList() => Navigation.NavigateTo("/sales-orders/list?status=new");
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+        gate.Dispose();
+    }
+}

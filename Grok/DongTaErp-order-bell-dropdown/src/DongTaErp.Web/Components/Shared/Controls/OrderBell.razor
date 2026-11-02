@@ -1,0 +1,68 @@
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@implements IDisposable
+@using DongTaErp.Application.Services.SalesOrders
+@inject ISalesOrderService Orders
+@inject NavigationManager Navigation
+
+<AuthorizeView Roles="@AppRoles.SalesArea">
+    <div style="position: relative;">
+        <FluentMenuButton Appearance="ButtonAppearance.Outline"
+                          IconStart="@(new Icons.Regular.Size20.Alert())"
+                          Text="Đơn mới"
+                          Title="Đơn vừa đặt">
+            <FluentMenuItem Disabled="true">Có @orders.Count đơn vừa đặt</FluentMenuItem>
+            @if (orders.Count == 0)
+            {
+                <FluentMenuItem Disabled="true">Không có đơn mới</FluentMenuItem>
+            }
+            else
+            {
+                @foreach (var order in orders)
+                {
+                    <FluentMenuItem OnClick="@(() => Open(order.Id))">
+                        @order.Number · @order.PartnerName · @order.Total.ToCurrency()
+                    </FluentMenuItem>
+                }
+                <FluentMenuItem OnClick="OpenList">Xem tất cả đơn mới</FluentMenuItem>
+            }
+        </FluentMenuButton>
+        @if (orders.Count > 0)
+        {
+            <span style="position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; border-radius: 9px; background: #d13438; color: white; font-size: 11px; line-height: 18px; text-align: center; padding: 0 4px; pointer-events: none;">
+                @orders.Count
+            </span>
+        }
+    </div>
+</AuthorizeView>
+
+@code {
+    private List<NewOrderNoticeDto> orders = [];
+    private PeriodicTimer? timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        timer = new PeriodicTimer(TimeSpan.FromSeconds(20));
+        _ = PollAsync();
+    }
+
+    private async Task PollAsync()
+    {
+        while (timer is not null && await timer.WaitForNextTickAsync())
+        {
+            await LoadAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        orders = (await Orders.GetNewOrdersAsync()).Value ?? [];
+    }
+
+    private void Open(Guid id) => Navigation.NavigateTo($"/sales-orders/view/{id}");
+
+    private void OpenList() => Navigation.NavigateTo("/sales-orders/list?status=new");
+
+    public void Dispose() => timer?.Dispose();
+}

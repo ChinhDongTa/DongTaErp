@@ -5,4 +5,5 @@ public interface ISalesOrderService : ICrudService<SalesOrderDto, CreateSalesOrd
     Task<Result<PaginatedList<SalesOrderDto>>> SearchAsync(SimpleSearch search, CancellationToken ct = default);
     Task<Result> ConfirmAsync(Guid id, CancellationToken ct = default);
     Task<Result> CancelAsync(Guid id, CancellationToken ct = default);
+    Task<Result<List<NewOrderNoticeDto>>> GetNewOrdersAsync(CancellationToken ct = default);
 }

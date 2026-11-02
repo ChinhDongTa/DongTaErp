@@ -40,6 +40,7 @@
 </PaginatedTable>
 
 @code {
+    [SupplyParameterFromQuery(Name = "status")] public string? Status { get; set; }
     private PaginatedList<SalesOrderDto>? page;
     private readonly int pageSize = Models.Constants.PageSize;
     private int currentPage = 1;
@@ -74,6 +75,22 @@
        
         try
         {
+            if (Status == "new")
+            {
+                var notices = (await Service.GetNewOrdersAsync()).Value ?? [];
+                page = new PaginatedList<SalesOrderDto>(
+                    notices.Select(x => new SalesOrderDto
+                    {
+                        Id = x.Id,
+                        Number = x.Number,
+                        PartnerName = x.PartnerName,
+                        OrderDate = x.OrderDate,
+                        Total = x.Total,
+                        Status = SalesOrderStatus.Draft
+                    }).ToList(),
+                    notices.Count, 1, pageSize);
+                return;
+            }
             var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize));
             if (version == requestVersion && result.Succeeded)
                 page = result.Value;

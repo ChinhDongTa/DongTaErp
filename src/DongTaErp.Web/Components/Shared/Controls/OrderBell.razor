@@ -1,0 +1,73 @@
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@implements IDisposable
+@using DongTaErp.Application.Services.SalesOrders
+@inject ISalesOrderService Orders
+@inject IServiceScopeFactory ScopeFactory
+@inject NavigationManager Navigation
+
+<AuthorizeView Roles="@AppRoles.SalesArea">
+    <div style="position: relative;">
+        <FluentButton Appearance="ButtonAppearance.Outline" Title="Đơn mới" OnClick="ToggleAsync">
+            <FluentIcon Value="@(new Icons.Regular.Size20.Alert())" />
+        </FluentButton>
+        @if (orders.Count > 0)
+        {
+            <span style="position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px; border-radius: 9px; background: #d13438; color: white; font-size: 11px; line-height: 18px; text-align: center; padding: 0 4px;">
+                <a href="/sales-orders/list?status=new">@orders.Count</a>
+                
+            </span>
+        }
+    </div>
+</AuthorizeView>
+
+@code {
+    private bool open;
+    private List<NewOrderNoticeDto> orders = [];
+    private PeriodicTimer? timer;
+    private readonly SemaphoreSlim gate = new(1, 1);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        timer = new PeriodicTimer(TimeSpan.FromSeconds(20));
+        _ = PollAsync();
+    }
+
+    private async Task PollAsync()
+    {
+        while (timer is not null && await timer.WaitForNextTickAsync())
+        {
+            await LoadAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        if (!await gate.WaitAsync(0))
+            return;
+        try
+        {
+            await using var scope = ScopeFactory.CreateAsyncScope();
+            var service = scope.ServiceProvider.GetRequiredService<ISalesOrderService>();
+            orders = (await service.GetNewOrdersAsync()).Value ?? [];
+        }
+        catch
+        {
+            // Poll nền không được làm rơi circuit khi trang khác đang dùng DbContext.
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    private async Task ToggleAsync()
+    {
+        open = !open;
+        if (open)
+            await LoadAsync();
+    }
+
+    public void Dispose() => timer?.Dispose();
+}

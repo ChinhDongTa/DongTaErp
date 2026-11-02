@@ -1,0 +1,82 @@
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@implements IDisposable
+@using DongTaErp.Application.Services.SalesOrders
+@inject ISalesOrderService Orders
+@inject NavigationManager Navigation
+
+<AuthorizeView Roles="@AppRoles.SalesArea">
+    <div style="position: relative;">
+        <FluentButton Appearance="ButtonAppearance.Outline" Title="Đơn mới" OnClick="ToggleAsync">
+            <FluentIcon Value="@(new Icons.Regular.Size20.Alert())" />
+        </FluentButton>
+        @if (orders.Count > 0)
+        {
+            <span style="position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px; border-radius: 9px; background: #d13438; color: white; font-size: 11px; line-height: 18px; text-align: center; padding: 0 4px;">
+                @orders.Count
+            </span>
+        }
+        @if (open)
+        {
+            <div style="position: absolute; right: 0; top: 40px; width: 320px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 20; padding: 10px;">
+                <strong>Có @orders.Count đơn vừa đặt</strong>
+                @if (orders.Count == 0)
+                {
+                    <p style="margin: 8px 0 0;">Không có đơn mới.</p>
+                }
+                else
+                {
+                    @foreach (var order in orders)
+                    {
+                        <div style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                            <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Open(order.Id))">@order.Number</FluentButton>
+                            <div style="font-size: 12px; color: #666;">@order.PartnerName · @order.Total.ToCurrency()</div>
+                        </div>
+                    }
+                }
+            </div>
+        }
+    </div>
+</AuthorizeView>
+
+@code {
+    private bool open;
+    private List<NewOrderNoticeDto> orders = [];
+    private PeriodicTimer? timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        timer = new PeriodicTimer(TimeSpan.FromSeconds(20));
+        _ = PollAsync();
+    }
+
+    private async Task PollAsync()
+    {
+        while (timer is not null && await timer.WaitForNextTickAsync())
+        {
+            await LoadAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await Orders.GetNewOrdersAsync();
+        orders = result.Value ?? [];
+    }
+
+    private async Task ToggleAsync()
+    {
+        open = !open;
+        if (open)
+            await LoadAsync();
+    }
+
+    private void Open(Guid id)
+    {
+        open = false;
+        Navigation.NavigateTo($"/sales-orders/view/{id}");
+    }
+
+    public void Dispose() => timer?.Dispose();
+}
