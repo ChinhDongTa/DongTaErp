@@ -12,6 +12,7 @@ using DongTaErp.Application.Services.Invoices;
 using DongTaErp.Application.Services.JobPositions;
 using DongTaErp.Application.Services.LeaveRequests;
 using DongTaErp.Application.Services.Lookups;
+using DongTaErp.Application.Services.StockAlerts;
 using DongTaErp.Application.Services.Partners;
 using DongTaErp.Application.Services.Payments;
 using DongTaErp.Application.Services.Payrolls;
@@ -41,6 +42,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<IStockTransferService, StockTransferService>();
         builder.Services.AddScoped<ILookupService, LookupService>();
         builder.Services.AddScoped<IDashboardService, DashboardService>();
+        builder.Services.AddScoped<IStockAlertService, StockAlertService>();
         builder.Services.AddScoped<IDepartmentService, DepartmentService>();
         builder.Services.AddScoped<IJobPositionService, JobPositionService>();
         builder.Services.AddScoped<IEmployeeService, EmployeeService>();

@@ -4,6 +4,7 @@ using DongTaErp.Infrastructure.Data;
 using DongTaErp.Web.Components.Account;
 using DongTaErp.Web.Security;
 using DongTaErp.Web.Services;
+using DongTaErp.Application.Services.StockAlerts;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using IdentityRevalidatingAuthenticationStateProvider = DongTaErp.Web.Components.Account.IdentityRevalidatingAuthenticationStateProvider;
@@ -42,6 +43,8 @@ public static class DependencyInjection
         builder.Services.AddScoped<IUserClaimsPrincipalFactory<AppUser>, AppUserClaimsPrincipalFactory>();
         builder.Services.AddSingleton<IEmailSender<AppUser>, IdentityNoOpEmailSender>();
 
+
+        builder.Services.AddHostedService<StockAlertHostedService>();
 
         builder.Services.AddCors(o => o.AddPolicy("mobile", p =>
             p.AllowAnyHeader()

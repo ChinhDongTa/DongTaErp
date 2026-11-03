@@ -1,4 +1,6 @@
 ﻿using DongTaErp.Infrastructure.Data;
+using DongTaErp.Infrastructure.Email;
+using DongTaErp.Application.Common.Email;
 using DongTaErp.Infrastructure.Data.Interceptors;
 using DongTaErp.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -25,6 +27,8 @@ public static class DependencyInjection
 
         // Register UnitOfWork and Repositories
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+        builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
+        builder.Services.AddScoped<IAppEmailSender, SmtpEmailSender>();
         //builder.Services.AddTransient<IIdentityService, IdentityService>();
     }
 }

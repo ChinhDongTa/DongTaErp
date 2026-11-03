@@ -1,3 +1,4 @@
+using DongTaErp.Application.Services.StockAlerts;
 using DongTaErp.Domain.Enums;
 namespace DongTaErp.Application.Services.GoodsIssues;
 
@@ -11,16 +12,19 @@ public class GoodsIssueService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<GoodsIssueService> _logger;
+    private readonly IStockAlertService _stockAlerts;
 
     public GoodsIssueService(
         IUnitOfWork unitOfWork,
         ILogger<GoodsIssueService> logger,
         IValidator<CreateGoodsIssueDto> createValidator,
-        IValidator<UpdateGoodsIssueDto> updateValidator)
+        IValidator<UpdateGoodsIssueDto> updateValidator,
+        IStockAlertService stockAlerts)
         : base(unitOfWork.GoodsIssues, unitOfWork, logger, createValidator, updateValidator)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _stockAlerts = stockAlerts;
     }
 
     public async Task<Result<PaginatedList<GoodsIssueDto>>> SearchAsync(SimpleSearch search, CancellationToken ct = default)
@@ -129,6 +133,7 @@ public class GoodsIssueService
             await _unitOfWork.GoodsIssues.AddAsync(issue, ct);
             await DeductStockAsync(issue, ct);
             await _unitOfWork.CommitTransactionAsync(ct);
+            _ = NotifyLowStockAsync();
             return Result<string>.Created(issue.Id.ToString());
         }
         catch (Exception ex)
@@ -203,6 +208,7 @@ public class GoodsIssueService
             issue.PostedAt = DateTime.UtcNow;
             await _unitOfWork.SaveChangesAsync(ct);
             await _unitOfWork.CommitTransactionAsync(ct);
+            _ = NotifyLowStockAsync();
             return Result.Success(ResultStatus.NoContent);
         }
         catch (Exception ex)
@@ -210,6 +216,18 @@ public class GoodsIssueService
             await _unitOfWork.RollbackTransactionAsync(ct);
             _logger.LogError(ex, "Error posting goods issue {Id}", id);
             return Result.Error("Không ghi sổ được phiếu xuất.");
+        }
+    }
+
+    private async Task NotifyLowStockAsync()
+    {
+        try
+        {
+            await _stockAlerts.NotifyPurchasingAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send stock alert after goods issue");
         }
     }
 

@@ -2,17 +2,17 @@
 @implements IDisposable
 @using DongTaErp.Application.Services.SalesOrders
 @inject IServiceScopeFactory ScopeFactory
-
+@inject NavigationManager navigationManager
 <AuthorizeView Roles="@AppRoles.SalesArea">
     <div class="bell">
-        <button type="button" class="bell-btn" title="Đơn mới" @onclick="ToggleAsync">
+        <button type="button" class="bell-btn" title="Đơn mới" @onclick="GotoListNew">
             <FluentIcon Value="@(new Icons.Regular.Size20.Alert())" />
             @if (orders.Count > 0)
             {
                 <span class="bell-count">@orders.Count</span>
             }
         </button>
-        @if (open)
+       @*  @if (open)
         {
             <div class="bell-panel">
                 <div class="bell-title">@(orders.Count == 0 ? "Không có đơn mới" : $"{orders.Count} đơn mới")</div>
@@ -25,12 +25,12 @@
                 }
                 <a class="bell-all" href="/sales-orders/list?status=new">Xem tất cả</a>
             </div>
-        }
+        } *@
     </div>
 </AuthorizeView>
 
 @code {
-    private bool open;
+    //private bool open;
     private List<NewOrderNoticeDto> orders = [];
     private PeriodicTimer? timer;
     private readonly SemaphoreSlim gate = new(1, 1);
@@ -76,11 +76,10 @@
         }
     }
 
-    private async Task ToggleAsync()
+    private async Task GotoListNew()
     {
-        open = !open;
-        if (open)
-            await LoadAsync();
+        //open = !open;
+        navigationManager.NavigateTo("/sales-orders/list?status=new", forceLoad: true);
     }
 
     public void Dispose()
