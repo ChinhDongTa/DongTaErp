@@ -1,21 +1,30 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @implements IDisposable
 @using DongTaErp.Application.Services.SalesOrders
-@inject ISalesOrderService Orders
 @inject IServiceScopeFactory ScopeFactory
-@inject NavigationManager Navigation
 
 <AuthorizeView Roles="@AppRoles.SalesArea">
-    <div style="position: relative;">
-        <FluentButton Appearance="ButtonAppearance.Outline" Title="Đơn mới" OnClick="ToggleAsync">
+    <div class="bell">
+        <button type="button" class="bell-btn" title="Đơn mới" @onclick="ToggleAsync">
             <FluentIcon Value="@(new Icons.Regular.Size20.Alert())" />
-        </FluentButton>
-        @if (orders.Count > 0)
+            @if (orders.Count > 0)
+            {
+                <span class="bell-count">@orders.Count</span>
+            }
+        </button>
+        @if (open)
         {
-            <span style="position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px; border-radius: 9px; background: #d13438; color: white; font-size: 11px; line-height: 18px; text-align: center; padding: 0 4px;">
-                <a href="/sales-orders/list?status=new">@orders.Count</a>
-                
-            </span>
+            <div class="bell-panel">
+                <div class="bell-title">@(orders.Count == 0 ? "Không có đơn mới" : $"{orders.Count} đơn mới")</div>
+                @foreach (var order in orders)
+                {
+                    <a class="bell-item" href="@($"/sales-orders/view/{order.Id}")">
+                        <strong>@order.Number</strong>
+                        <span>@order.PartnerName · @order.Total.ToCurrency()</span>
+                    </a>
+                }
+                <a class="bell-all" href="/sales-orders/list?status=new">Xem tất cả</a>
+            </div>
         }
     </div>
 </AuthorizeView>
@@ -35,10 +44,16 @@
 
     private async Task PollAsync()
     {
-        while (timer is not null && await timer.WaitForNextTickAsync())
+        try
         {
-            await LoadAsync();
-            await InvokeAsync(StateHasChanged);
+            while (timer is not null && await timer.WaitForNextTickAsync())
+            {
+                await LoadAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (ObjectDisposedException)
+        {
         }
     }
 
@@ -54,7 +69,6 @@
         }
         catch
         {
-            // Poll nền không được làm rơi circuit khi trang khác đang dùng DbContext.
         }
         finally
         {
@@ -69,5 +83,9 @@
             await LoadAsync();
     }
 
-    public void Dispose() => timer?.Dispose();
+    public void Dispose()
+    {
+        timer?.Dispose();
+        gate.Dispose();
+    }
 }

@@ -5,15 +5,9 @@
 @using DongTaErp.Application.Services.SalesOrders
 @inject ILookupService Lookup
 @inject ISalesOrderService Orders
-@inject NavigationManager Navigation
 
 <PageTitle>Đặt hàng</PageTitle>
 <Alert @ref="alert" />
-<ActionTitle Text="Đặt hàng" />
-
-<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
-    Chọn sản phẩm, sửa số lượng rồi bấm Đặt hàng. Tồn là tổng các kho, chỉ để tham khảo. Đơn sẽ chờ nhân viên bán xác nhận.
-</FluentMessageBar>
 
 @if (!loaded)
 {
@@ -21,52 +15,70 @@
 }
 else
 {
-    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" Style="margin-bottom: 12px;">
-        <FluentSelect TOption="OptionItem" TValue="string" Items="customers" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
-                      @bind-Value="customerId" Label="Khách hàng" Style="min-width: 280px;" />
-        <FluentTextInput @bind-Value="keyword" Label="Sản phẩm" Placeholder="Tìm sản phẩm" style="width: 240px" />
-        <FluentTextInput @bind-Value="notes" Label="Ghi chú" Style="width: 280px;" />
-    </FluentStack>
+    <div class="shop-page">
+        <div class="shop-head">
+            <div>
+                <h2>Đặt hàng</h2>
+                <p>Chọn sản phẩm, sửa số lượng rồi đặt. Tồn là tổng các kho.</p>
+            </div>
+            <div class="shop-filters">
+                <FluentSelect TOption="OptionItem" TValue="string" Items="customers" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id)"
+                              @bind-Value="customerId" Label="Khách hàng" />
+                <FluentTextInput @bind-Value="keyword" Label="Tìm sản phẩm" Placeholder="Mã hoặc tên" />
+            </div>
+        </div>
 
-    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="16" Style="align-items: start;">
-        <div style="flex: 1.4; min-width: 420px;">
-            <h3 style="margin: 0 0 8px;">Sản phẩm</h3>
-            <FluentDataGrid Items="@Filtered.AsQueryable()" GridTemplateColumns="1.4fr 2fr .6fr 1fr .8fr .8fr">
-                <PropertyColumn Title="Mã" Property="@(c => c.Sku)" />
-                <PropertyColumn Title="Tên" Property="@(c => c.Name)" />
-                <PropertyColumn Title="ĐVT" Property="@(c => c.Unit)" />
-                <PropertyColumn Title="Giá" Property="@(c => c.SalePrice.ToCurrency())" Align="DataGridCellAlignment.End" />
-                <TemplateColumn Title="Tồn">
-                    <FluentBadge Appearance="BadgeAppearance.Filled">@context.StockQty.ToDisplay()</FluentBadge>
-                </TemplateColumn>
-                <TemplateColumn Title="" Context="item">
-                    <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Add(item))">Chọn</FluentButton>
-                </TemplateColumn>
-            </FluentDataGrid>
+        <div class="shop-body">
+            <div class="product-grid">
+                @foreach (var item in Filtered)
+                {
+                    <article class="product-card">
+                        <div class="product-top">
+                            <span class="sku">@item.Sku</span>
+                            <span class="stock @(item.StockQty > 0 ? "ok" : "out")">Tồn @item.StockQty.ToDisplay()</span>
+                        </div>
+                        <h3>@item.Name</h3>
+                        <div class="unit">@item.Unit</div>
+                        <div class="price">@item.SalePrice.ToCurrency()</div>
+                        <FluentButton Appearance="ButtonAppearance.Primary" Disabled="@(item.StockQty <= 0)" OnClick="@(() => Add(item))">
+                            @(item.StockQty <= 0 ? "Hết hàng" : "Thêm vào giỏ")
+                        </FluentButton>
+                    </article>
+                }
+            </div>
+
+            <aside class="cart-panel">
+                <h3>Giỏ hàng <span>@cart.Count</span></h3>
+                @if (cart.Count == 0)
+                {
+                    <p class="empty">Chưa có sản phẩm.</p>
+                }
+                else
+                {
+                    @foreach (var line in cart)
+                    {
+                        <div class="cart-line">
+                            <div>
+                                <strong>@line.Name</strong>
+                                <div class="muted">@line.Price.ToCurrency() · tồn @line.StockQty.ToDisplay()</div>
+                            </div>
+                            <DecimalInput @bind-Value="line.Qty" Min="0" TValue="decimal" Style="width: 90px;" />
+                            <div class="line-total">@line.Amount.ToCurrency()</div>
+                            <button type="button" class="remove" @onclick="@(() => cart.Remove(line))">×</button>
+                        </div>
+                    }
+                }
+                <FluentTextInput @bind-Value="notes" Label="Ghi chú" Placeholder="Giao buổi sáng..." />
+                <div class="cart-total">
+                    <span>Tạm tính</span>
+                    <strong>@cart.Sum(x => x.Amount).ToCurrency()</strong>
+                </div>
+                <FluentButton Appearance="ButtonAppearance.Primary" OnClick="PlaceAsync" Disabled="@(placing || cart.Count == 0)">
+                    @(placing ? "Đang đặt..." : "Đặt hàng")
+                </FluentButton>
+            </aside>
         </div>
-        <div style="flex: 1; min-width: 360px; background: #f7f9fc; border: 1px solid #e4e8ee; border-radius: 8px; padding: 12px;">
-            <h3 style="margin: 0 0 8px;">Giỏ hàng</h3>
-            @if (cart.Count == 0)
-            {
-                <p>Chưa chọn sản phẩm.</p>
-            }
-            else
-            {
-                <FluentDataGrid Items="@cart.AsQueryable()" GridTemplateColumns="2fr .5fr 1fr 1fr">
-                    <PropertyColumn Title="Sản phẩm" Property="@(c => c.Name)" />
-                    <TemplateColumn Title="SL" Context="line">
-                        <DecimalInput @bind-Value="line.Qty" Min="0" TValue="decimal" />
-                    </TemplateColumn>
-                    <PropertyColumn Title="Tiền" Property="@(c => c.Amount.ToCurrency())" Align="DataGridCellAlignment.End" />
-                    <TemplateColumn Title="" Context="line">
-                        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => cart.Remove(line))">Xóa</FluentButton>
-                    </TemplateColumn>
-                </FluentDataGrid>
-                <div style="margin-top: 8px;"><strong>Tạm tính:</strong> @cart.Sum(x => x.Amount).ToCurrency()</div>
-            }
-            <FluentButton Appearance="ButtonAppearance.Primary" Style="margin-top: 12px;" OnClick="PlaceAsync" Disabled="@(placing || cart.Count == 0)">Đặt hàng</FluentButton>
-        </div>
-    </FluentStack>
+    </div>
 }
 
 @code {
@@ -145,6 +157,7 @@ else
         }
         alert?.AddAlert("Đã đặt hàng. Nhân viên bán sẽ xác nhận.");
         cart.Clear();
+        notes = null;
     }
 
     private sealed record OptionItem(string Id, string Name);

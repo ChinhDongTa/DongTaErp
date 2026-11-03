@@ -1,0 +1,238 @@
+@import '/_content/Microsoft.FluentUI.AspNetCore.Components/css/reboot.css';
+
+body {
+  --body-font: "Segoe UI Variable", "Segoe UI", sans-serif;
+  font-family: var(--body-font);
+  font-size: var(--type-ramp-base-font-size);
+  line-height: var(--type-ramp-base-line-height);
+  margin: 0;
+}
+
+.navmenu-icon {
+  display: none;
+}
+
+.main {
+  min-height: calc(100dvh - 86px);
+  color: var(--neutral-foreground-rest);
+  align-items: stretch !important;
+}
+
+nav {
+  align-self: stretch;
+  height: calc(100dvh - 80px) !important;
+  display: flex;
+}
+
+.content {
+  padding: 0.5rem 1.5rem;
+  align-self: stretch !important;
+  width: 100%;
+}
+
+.manage {
+  width: 100dvw;
+}
+
+.fluent-layout-item[area="footer"] {
+  background: var(--neutral-layer-4);
+  color: var(--neutral-foreground-rest);
+  align-items: center;
+  padding: 10px 10px;
+}
+
+  .fluent-layout-item[area="footer"] fluent-link {
+    color: var(--neutral-foreground-rest);
+    text-decoration: none;
+  }
+
+    .fluent-layout-item[area="footer"] fluent-link:focus {
+      outline: 1px dashed;
+      outline-offset: 3px;
+    }
+
+    .fluent-layout-item[area="footer"] fluent-link:hover {
+      text-decoration: underline;
+    }
+
+
+.alert {
+  border: 1px dashed var(--accent-fill-rest);
+  padding: 5px;
+}
+
+/*Css của tôi */
+/*fluent-text-input {
+    min-width: 250px;
+}*/
+.text200{
+    min-width:500px;
+}
+/*Thêm đoạn này để không ảnh hưởng bởi css của  nav phí trên*/
+.fluent-paginator .paginator-nav {
+    height: auto !important;
+}
+
+/*Hết css */
+
+.shop-page h2 { margin: 0; font-size: 1.4rem; }
+.shop-page p { margin: 4px 0 0; color: #667085; }
+.shop-head { display: flex; justify-content: space-between; gap: 16px; align-items: end; margin-bottom: 16px; flex-wrap: wrap; }
+.shop-filters { display: flex; gap: 12px; }
+.shop-body { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.product-card { background: #fff; border: 1px solid #e7ebf0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+.product-card h3 { margin: 4px 0 0; font-size: 1rem; min-height: 44px; }
+.product-top, .cart-total { display: flex; justify-content: space-between; align-items: center; }
+.sku, .unit, .muted { color: #667085; font-size: 12px; }
+.stock { font-size: 12px; padding: 2px 8px; border-radius: 999px; }
+.stock.ok { background: #e8f6ee; color: #107c10; }
+.stock.out { background: #fde7e9; color: #d13438; }
+.price { font-size: 1.15rem; font-weight: 650; color: #0f6cbd; margin: 4px 0 8px; }
+.cart-panel { position: sticky; top: 12px; background: #f8fafc; border: 1px solid #e7ebf0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.cart-panel h3 { margin: 0; display: flex; justify-content: space-between; }
+.cart-panel h3 span { background: #e8f1fb; color: #0f6cbd; border-radius: 999px; padding: 0 8px; font-size: 13px; }
+.cart-line { display: grid; grid-template-columns: 1fr 90px auto 24px; gap: 8px; align-items: center; padding-bottom: 8px; border-bottom: 1px solid #eef1f4; }
+.line-total { font-weight: 600; }
+.remove { border: none; background: transparent; color: #98a2b3; font-size: 18px; cursor: pointer; }
+.empty { color: #667085; margin: 8px 0; }
+.bell { position: relative; }
+.bell-btn { border: none; background: transparent; width: 36px; height: 36px; border-radius: 18px; cursor: pointer; position: relative; }
+.bell-btn:hover { background: #f2f4f7; }
+.bell-count { position: absolute; top: 0; right: 0; min-width: 16px; height: 16px; border-radius: 8px; background: #d13438; color: white; font-size: 10px; line-height: 16px; padding: 0 4px; }
+.bell-panel { position: absolute; right: 0; top: 42px; width: 280px; background: white; border: 1px solid #e7ebf0; border-radius: 12px; box-shadow: 0 12px 28px rgba(16,24,40,.12); z-index: 40; overflow: hidden; }
+.bell-title { padding: 12px 14px; font-weight: 650; border-bottom: 1px solid #f2f4f7; }
+.bell-item, .bell-all { display: block; padding: 10px 14px; text-decoration: none; color: inherit; }
+.bell-item { border-bottom: 1px solid #f6f7f9; }
+.bell-item:hover, .bell-all:hover { background: #f8fafc; }
+.bell-item span { display: block; color: #667085; font-size: 12px; margin-top: 2px; }
+.bell-all { color: #0f6cbd; font-weight: 650; }
+
+#blazor-error-ui {
+  background: lightyellow;
+  bottom: 0;
+  box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+  display: none;
+  left: 0;
+  padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+  position: fixed;
+  width: 100%;
+  z-index: 1000;
+  margin: 20px 0;
+}
+
+  #blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+  }
+
+.blazor-error-boundary {
+  background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
+  padding: 1rem 1rem 1rem 3.7rem;
+  color: white;
+}
+
+  .blazor-error-boundary::before {
+    content: "An error has occurred. "
+  }
+
+.loading-progress {
+  position: relative;
+  display: block;
+  width: 8rem;
+  height: 8rem;
+  margin: 20vh auto 1rem auto;
+}
+
+  .loading-progress circle {
+    fill: none;
+    stroke: #e0e0e0;
+    stroke-width: 0.6rem;
+    transform-origin: 50% 50%;
+    transform: rotate(-90deg);
+  }
+
+    .loading-progress circle:last-child {
+      stroke: #1b6ec2;
+      stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+      transition: stroke-dasharray 0.05s ease-in-out;
+    }
+
+.loading-progress-text {
+  position: absolute;
+  text-align: center;
+  font-weight: bold;
+  inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
+}
+
+  .loading-progress-text:after {
+    content: var(--blazor-load-percentage-text, "Loading");
+  }
+
+code {
+  color: #c02d76;
+}
+
+@media (max-width: 600px) {
+  .header-gutters {
+    margin: 0.5rem 3rem 0.5rem 1.5rem !important;
+  }
+
+  [dir="rtl"] .header-gutters {
+    margin: 0.5rem 1.5rem 0.5rem 3rem !important;
+  }
+
+  .main {
+    flex-direction: column !important;
+    row-gap: 0 !important;
+  }
+
+  nav.sitenav {
+    width: 100%;
+    height: 100%;
+  }
+
+  #main-menu {
+    width: 100% !important;
+  }
+
+    #main-menu > div:first-child:is(.expander) {
+      display: none;
+    }
+
+  .navmenu {
+    width: 100%;
+  }
+
+  #navmenu-toggle {
+    appearance: none;
+  }
+
+    #navmenu-toggle ~ nav {
+      display: none;
+    }
+
+    #navmenu-toggle:checked ~ nav {
+      display: block;
+    }
+
+  .navmenu-icon {
+    cursor: pointer;
+    z-index: 10;
+    display: block;
+    position: absolute;
+    top: 15px;
+    left: unset;
+    right: 20px;
+    width: 20px;
+    height: 20px;
+    border: none;
+  }
+
+  [dir="rtl"] .navmenu-icon {
+    left: 20px;
+    right: unset;
+  }
+}

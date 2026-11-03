@@ -1,0 +1,91 @@
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@implements IDisposable
+@using DongTaErp.Application.Services.SalesOrders
+@inject IServiceScopeFactory ScopeFactory
+
+<AuthorizeView Roles="@AppRoles.SalesArea">
+    <div class="bell">
+        <button type="button" class="bell-btn" title="Đơn mới" @onclick="ToggleAsync">
+            <FluentIcon Value="@(new Icons.Regular.Size20.Alert())" />
+            @if (orders.Count > 0)
+            {
+                <span class="bell-count">@orders.Count</span>
+            }
+        </button>
+        @if (open)
+        {
+            <div class="bell-panel">
+                <div class="bell-title">@(orders.Count == 0 ? "Không có đơn mới" : $"{orders.Count} đơn mới")</div>
+                @foreach (var order in orders)
+                {
+                    <a class="bell-item" href="@($"/sales-orders/view/{order.Id}")">
+                        <strong>@order.Number</strong>
+                        <span>@order.PartnerName · @order.Total.ToCurrency()</span>
+                    </a>
+                }
+                <a class="bell-all" href="/sales-orders/list?status=new">Xem tất cả</a>
+            </div>
+        }
+    </div>
+</AuthorizeView>
+
+@code {
+    private bool open;
+    private List<NewOrderNoticeDto> orders = [];
+    private PeriodicTimer? timer;
+    private readonly SemaphoreSlim gate = new(1, 1);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        timer = new PeriodicTimer(TimeSpan.FromSeconds(20));
+        _ = PollAsync();
+    }
+
+    private async Task PollAsync()
+    {
+        try
+        {
+            while (timer is not null && await timer.WaitForNextTickAsync())
+            {
+                await LoadAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        if (!await gate.WaitAsync(0))
+            return;
+        try
+        {
+            await using var scope = ScopeFactory.CreateAsyncScope();
+            var service = scope.ServiceProvider.GetRequiredService<ISalesOrderService>();
+            orders = (await service.GetNewOrdersAsync()).Value ?? [];
+        }
+        catch
+        {
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    private async Task ToggleAsync()
+    {
+        open = !open;
+        if (open)
+            await LoadAsync();
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+        gate.Dispose();
+    }
+}
