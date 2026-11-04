@@ -42,6 +42,8 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<DisbursementAllocation>? _disbursementAllocations;
     private IRepository<SalaryComponent>? _salaryComponent;
     private IRepository<EmployeeCompensation>? _employeeCompensations;
+    private IRepository<PositionDuty>? _positionDuties;
+    private IRepository<WorkAssignment>? _workAssignments;
     public UnitOfWork(IAppDbContext context)
     {
         _context = context;
@@ -123,6 +125,8 @@ public class UnitOfWork : IUnitOfWork
 
     public IRepository<SalaryComponent> SalaryComponents => _salaryComponent ??= new GenericRepository<SalaryComponent>(_context);
     public IRepository<EmployeeCompensation> EmployeeCompensations => _employeeCompensations ??= new GenericRepository<EmployeeCompensation>(_context);
+    public IRepository<PositionDuty> PositionDuties => _positionDuties ??= new GenericRepository<PositionDuty>(_context);
+    public IRepository<WorkAssignment> WorkAssignments => _workAssignments ??= new GenericRepository<WorkAssignment>(_context);
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         return await ((DbContext)_context).SaveChangesAsync(cancellationToken);

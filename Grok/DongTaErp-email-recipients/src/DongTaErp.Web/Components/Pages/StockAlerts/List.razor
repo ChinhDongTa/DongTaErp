@@ -1,0 +1,63 @@
+@page "/stock-alerts"
+@attribute [Authorize(Roles = AppRoles.PurchaseArea)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.StockAlerts
+@inject IStockAlertService Service
+
+<PageTitle>Cảnh báo tồn</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Cảnh báo tồn kho" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Mức an toàn là gấp 2 tồn tối thiểu. Hết hàng, dưới tối thiểu hoặc dưới mức an toàn sẽ được gửi email cho bộ phận mua.
+</FluentMessageBar>
+
+<FluentButton Appearance="ButtonAppearance.Primary" OnClick="SendAsync" Disabled="@sending" Style="margin-bottom: 12px;">Gửi email ngay</FluentButton>
+
+@if (!loaded)
+{
+    <PageLoading />
+}
+else if (items.Count == 0)
+{
+    <p>Không có sản phẩm dưới mức an toàn.</p>
+}
+else
+{
+    <FluentDataGrid Items="@items.AsQueryable()">
+        <PropertyColumn Title="Mức" Property="@(c => c.Level)" />
+        <PropertyColumn Title="Mã" Property="@(c => c.Sku)" />
+        <PropertyColumn Title="Sản phẩm" Property="@(c => c.ProductName)" />
+        <PropertyColumn Title="Kho" Property="@(c => c.Warehouse)" />
+        <PropertyColumn Title="Tồn" Property="@(c => c.Qty.ToDisplay())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="Tối thiểu" Property="@(c => c.MinQty.ToDisplay())" Align="DataGridCellAlignment.End" />
+        <PropertyColumn Title="An toàn" Property="@(c => c.SafeQty.ToDisplay())" Align="DataGridCellAlignment.End" />
+    </FluentDataGrid>
+}
+
+@code {
+    private Alert? alert;
+    private bool loaded;
+    private bool sending;
+    private List<StockAlertDto> items = [];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        items = (await Service.GetAlertsAsync()).Value ?? [];
+        loaded = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SendAsync()
+    {
+        sending = true;
+        var result = await Service.NotifyPurchasingAsync();
+        sending = false;
+        if (!result.Succeeded)
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không gửi được email.");
+        else
+            alert?.AddAlert(result.Value == 0 ? "Không có sản phẩm cần cảnh báo." : $"Đã gửi cảnh báo {result.Value} sản phẩm.");
+    }
+}

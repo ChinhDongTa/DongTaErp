@@ -16,6 +16,7 @@ public class JobPositionDto : BaseDto
     /// Trạng thái hoạt động
     /// </summary>
     public bool IsActive { get; set; }
+    public bool IsDirector { get; set; }
 }
 
 public class CreateJobPositionDto
@@ -40,6 +41,7 @@ public class CreateJobPositionDto
     /// Mặc định là true.
     /// </summary>
     public bool IsActive { get; set; } = true;
+    public bool IsDirector { get; set; }
 }
 
 public class UpdateJobPositionDto
@@ -55,4 +57,5 @@ public class UpdateJobPositionDto
     public string? Name { get; set; }
 
     public bool? IsActive { get; set; }
+    public bool? IsDirector { get; set; }
 }

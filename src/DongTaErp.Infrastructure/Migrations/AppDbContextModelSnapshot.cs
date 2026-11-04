@@ -977,6 +977,9 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsDirector")
+                        .HasColumnType("bit");
+
                     b.Property<DateTimeOffset>("LastModified")
                         .HasColumnType("datetimeoffset");
 
@@ -1343,6 +1346,41 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.HasIndex("SalaryComponentId");
 
                     b.ToTable("PayrollLines", (string)null);
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.PositionDuty", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("JobPositionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Topic")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobPositionId", "Topic")
+                        .IsUnique();
+
+                    b.ToTable("PositionDuties", (string)null);
                 });
 
             modelBuilder.Entity("DongTaErp.Domain.Entities.Product", b =>
@@ -1975,6 +2013,41 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.ToTable("Warehouses", (string)null);
                 });
 
+            modelBuilder.Entity("DongTaErp.Domain.Entities.WorkAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Topic")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId", "Topic")
+                        .IsUnique();
+
+                    b.ToTable("WorkAssignments", (string)null);
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -2436,6 +2509,17 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.Navigation("SalaryComponent");
                 });
 
+            modelBuilder.Entity("DongTaErp.Domain.Entities.PositionDuty", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.JobPosition", "JobPosition")
+                        .WithMany()
+                        .HasForeignKey("JobPositionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("JobPosition");
+                });
+
             modelBuilder.Entity("DongTaErp.Domain.Entities.Product", b =>
                 {
                     b.HasOne("DongTaErp.Domain.Entities.Category", "Category")
@@ -2584,6 +2668,17 @@ namespace DongTaErp.Infrastructure.Migrations
                     b.Navigation("PurchaseOrderLine");
 
                     b.Navigation("VendorBill");
+                });
+
+            modelBuilder.Entity("DongTaErp.Domain.Entities.WorkAssignment", b =>
+                {
+                    b.HasOne("DongTaErp.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

@@ -1,5 +1,4 @@
-﻿using DongTaErp.Domain.Entities;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
+﻿using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace DongTaErp.Infrastructure.Data.Configurations;
 

@@ -12,6 +12,7 @@ internal static class Extensions
             "code" => isDescending ? query.OrderByDescending(x => x.Code) : query.OrderBy(x => x.Code),
             "name" => isDescending ? query.OrderByDescending(x => x.Name) : query.OrderBy(x => x.Name),
             "isactive" => isDescending ? query.OrderByDescending(x => x.IsActive) : query.OrderBy(x => x.IsActive),
+            "isdirector" => isDescending ? query.OrderByDescending(x => x.IsDirector) : query.OrderBy(x => x.IsDirector),
             _ => throw new ArgumentException($"Invalid sort field: {sortBy}")
         };
     }
@@ -25,6 +26,7 @@ internal static class Extensions
         Code = x.Code,
         Name = x.Name,
         IsActive = x.IsActive,
+        IsDirector = x.IsDirector,
         CreatedAt = x.Created
     };
 }

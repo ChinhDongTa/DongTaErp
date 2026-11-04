@@ -54,7 +54,8 @@ public class JobPositionService
     {
         Code = dto.Code.Trim(),
         Name = dto.Name.Trim(),
-        IsActive = dto.IsActive
+        IsActive = dto.IsActive,
+        IsDirector = dto.IsDirector
     };
 
     protected override Expression<Func<JobPosition, UpdateJobPositionDto>> ToUpdateDto() => x => new UpdateJobPositionDto
@@ -62,7 +63,8 @@ public class JobPositionService
         Id = x.Id,
         Code = x.Code,
         Name = x.Name,
-        IsActive = x.IsActive
+        IsActive = x.IsActive,
+        IsDirector = x.IsDirector
     };
 
     protected override void UpdateEntity(JobPosition entity, UpdateJobPositionDto dto)
@@ -75,5 +77,7 @@ public class JobPositionService
 
         if (dto.IsActive.HasValueAndIsDifferentFrom(entity.IsActive))
             entity.IsActive = dto.IsActive!.Value;
+        if (dto.IsDirector.HasValueAndIsDifferentFrom(entity.IsDirector))
+            entity.IsDirector = dto.IsDirector!.Value;
     }
 }

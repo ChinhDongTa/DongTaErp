@@ -1,0 +1,92 @@
+@page "/work-assignments"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.WorkAssignments
+@inject IWorkAssignmentService Service
+
+<PageTitle>Phân công thông báo</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Phân công nhận email" />
+
+<FluentMessageBar Intent="MessageBarIntent.Info" Style="margin-bottom: 12px;">
+    Email lấy từ hồ sơ nhân viên. Chỉ gửi cho chức vụ được giao việc, người được phân công theo dõi, và ban giám đốc.
+</FluentMessageBar>
+
+@if (setup is null)
+{
+    <PageLoading />
+}
+else
+{
+    <h3>Chức vụ được xử lý cảnh báo tồn</h3>
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+        <FluentSelect TOption="WorkRecipientDto" TValue="string" Items="setup.Positions" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id.ToString())"
+                      @bind-Value="positionId" Label="Chức vụ" Style="min-width: 260px;" />
+        <FluentButton Appearance="ButtonAppearance.Primary" Style="margin-top: 48px;" OnClick="AddDutyAsync">Giao việc</FluentButton>
+    </FluentStack>
+    @foreach (var duty in setup.DutyPositions)
+    {
+        <div>@duty.Name <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => RemoveDutyAsync(duty.Id))">Xóa</FluentButton></div>
+    }
+
+    <h3 style="margin-top: 20px;">Nhân viên được phân công theo dõi</h3>
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+        <FluentSelect TOption="WorkRecipientDto" TValue="string" Items="setup.Employees" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id.ToString())"
+                      @bind-Value="employeeId" Label="Nhân viên" Style="min-width: 260px;" />
+        <FluentButton Appearance="ButtonAppearance.Primary" Style="margin-top: 48px;" OnClick="AddAssignmentAsync">Phân công</FluentButton>
+    </FluentStack>
+    @foreach (var item in setup.AssignedEmployees)
+    {
+        <div>@item.Name - @(item.Email ?? "chưa có email") <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => RemoveAssignmentAsync(item.Id))">Xóa</FluentButton></div>
+    }
+}
+
+@code {
+    private Alert? alert;
+    private WorkSetupDto? setup;
+    private string positionId = "";
+    private string employeeId = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        await LoadAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadAsync()
+    {
+        setup = (await Service.GetStockSetupAsync()).Value;
+        positionId = setup?.Positions.FirstOrDefault()?.Id.ToString() ?? "";
+        employeeId = setup?.Employees.FirstOrDefault()?.Id.ToString() ?? "";
+    }
+
+    private async Task AddDutyAsync()
+    {
+        if (!Guid.TryParse(positionId, out var id))
+            return;
+        await Service.AddPositionDutyAsync(id);
+        await LoadAsync();
+    }
+
+    private async Task AddAssignmentAsync()
+    {
+        if (!Guid.TryParse(employeeId, out var id))
+            return;
+        await Service.AddEmployeeAssignmentAsync(id);
+        await LoadAsync();
+    }
+
+    private async Task RemoveDutyAsync(Guid id)
+    {
+        await Service.RemovePositionDutyAsync(id);
+        await LoadAsync();
+    }
+
+    private async Task RemoveAssignmentAsync(Guid id)
+    {
+        await Service.RemoveEmployeeAssignmentAsync(id);
+        await LoadAsync();
+    }
+}

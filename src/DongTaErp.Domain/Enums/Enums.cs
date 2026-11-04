@@ -42,6 +42,13 @@ public enum SalaryComponentType
     Deduction = 2
 }
 
+/// <summary>Loại việc cần thông báo.</summary>
+public enum WorkTopic
+{
+    [Display(Name = "Cảnh báo tồn kho")]
+    StockAlert = 1
+}
+
 public enum SalesOrderStatus
 {
     [Display(Name = "Nháp")]

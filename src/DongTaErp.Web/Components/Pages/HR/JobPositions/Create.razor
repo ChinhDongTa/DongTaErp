@@ -14,6 +14,7 @@
         <FluentTextInput @bind-Value="dto.Code" Label="Mã chức vụ" Required="true" />
         <FluentTextInput @bind-Value="dto.Name" Label="Tên chức vụ" Required="true" />
         <FluentCheckbox @bind-Value="dto.IsActive" Label="Đang dùng" Style="margin-top: 34px;" />
+        <FluentCheckbox @bind-Value="dto.IsDirector" Label="Ban giám đốc" />
         <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/hr/job-positions/list" />
     </FluentStack>
 </EditForm>

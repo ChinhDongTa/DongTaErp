@@ -20,6 +20,7 @@ else
             <FluentTextInput @bind-Value="dto.Code" Label="Mã chức vụ" />
             <FluentTextInput @bind-Value="dto.Name" Label="Tên chức vụ" />
             <FluentCheckbox @bind-Value="isActive" Label="Đang dùng" Style="margin-top: 34px;" />
+            <FluentCheckbox @bind-Value="isDirector" Label="Ban giám đốc" />
             <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/hr/job-positions/list" />
         </FluentStack>
     </EditForm>
@@ -30,6 +31,7 @@ else
     private Alert? alert;
     private UpdateJobPositionDto? dto;
     private bool isActive = true;
+    private bool isDirector;
     private bool isSaving;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -45,6 +47,7 @@ else
         }
         dto = result.Value;
         isActive = dto.IsActive ?? true;
+        isDirector = dto.IsDirector ?? false;
         StateHasChanged();
     }
 
@@ -53,6 +56,7 @@ else
         if (dto is null)
             return;
         dto.IsActive = isActive;
+        dto.IsDirector = isDirector;
         isSaving = true;
         var result = await Service.UpdateAsync(Id.ToGuid(), dto);
         isSaving = false;

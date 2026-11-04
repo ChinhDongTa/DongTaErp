@@ -19,6 +19,7 @@ else
         <DetailItem Label="Mã" Value="@dto.Code" />
         <DetailItem Label="Tên" Value="@dto.Name" />
         <DetailItem Label="Trạng thái" Value="@(dto.IsActive ? "Đang dùng" : "Ngừng")" />
+        <DetailItem Label="Ban giám đốc" Value="@(dto.IsDirector ? "Có" : "Không")" />
     </FluentStack>
     <FluentButton Appearance="ButtonAppearance.Subtle" Style="margin-top: 16px;" OnClick="@(() => Navigation.NavigateTo("/hr/job-positions/list"))">Danh sách</FluentButton>
                   <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo($"/hr/job-positions/update/{dto.Id}"))">Sửa</FluentButton>

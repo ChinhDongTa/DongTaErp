@@ -42,6 +42,9 @@ public class JobPosition : BaseAuditableEntity
     /// <summary>Còn sử dụng hay không.</summary>
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Thuộc ban giám đốc. Luôn nhận email để biết và chỉ đạo.</summary>
+    public bool IsDirector { get; set; }
+
     /// <summary>Nhân viên giữ chức danh này.</summary>
     public ICollection<Employee> Employees { get; set; } = [];
 }
@@ -116,6 +119,36 @@ public class Employee : BaseAuditableEntity
 
     /// <summary>Các khoản lương hợp đồng.</summary>
     public virtual ICollection<EmployeeCompensation> Compensations { get; set; } = [];
+}
+
+/// <summary>
+/// Chức vụ được quyền xử lý một loại việc.
+/// </summary>
+public class PositionDuty : BaseAuditableEntity
+{
+    /// <summary>Chức vụ.</summary>
+    public Guid JobPositionId { get; set; }
+
+    /// <summary>Chức vụ.</summary>
+    public JobPosition JobPosition { get; set; } = null!;
+
+    /// <summary>Loại việc.</summary>
+    public WorkTopic Topic { get; set; }
+}
+
+/// <summary>
+/// Nhân viên được phân công theo dõi một loại việc, ngoài chức vụ.
+/// </summary>
+public class WorkAssignment : BaseAuditableEntity
+{
+    /// <summary>Nhân viên.</summary>
+    public Guid EmployeeId { get; set; }
+
+    /// <summary>Nhân viên.</summary>
+    public Employee Employee { get; set; } = null!;
+
+    /// <summary>Loại việc.</summary>
+    public WorkTopic Topic { get; set; }
 }
 
 /// <summary>
