@@ -10,7 +10,7 @@ public class Warehouses : EndpointGroupBase
     {
         //=============Data Retrieval Endpoints================
         group.MapGet(GetWarehouseById, "/{id}");
-        group.MapGet(GetWarehouses, "/");
+        group.MapGet(GetPaginatedWarehouses, "/");
         group.MapGet(SearchWarehouses, "/search");
 
         //=============Data Manipulation Endpoints================
@@ -25,7 +25,7 @@ public class Warehouses : EndpointGroupBase
         return result.ToHttpResult();
     }
 
-    public async Task<IResult> GetWarehouses([FromServices] IWarehouseService WarehouseService, int pageNumber, int pageSize, CancellationToken ct = default)
+    public async Task<IResult> GetPaginatedWarehouses([FromServices] IWarehouseService WarehouseService, int pageNumber, int pageSize, CancellationToken ct = default)
     {
         var result = await WarehouseService.GetAllAsync(pageNumber, pageSize, ct);
         return result.ToHttpResult();

@@ -3,7 +3,10 @@ using DongTaErp.Application.Common.Interfaces;
 using DongTaErp.Domain.Entities;
 using DongTaErp.Infrastructure.Data;
 using DongTaErp.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace DongTaErp.ApiGateway;
 
@@ -23,10 +26,24 @@ public static class DependencyInjection
                 new System.Text.Json.Serialization.JsonStringEnumConverter()
             );
         });
-        builder.Services.AddAuthentication()
-          .AddBearerToken(IdentityConstants.BearerScheme);
+        var key = builder.Configuration["Jwt:SecretKey"]
+            ?? throw new InvalidOperationException("Jwt:SecretKey not configured");
+        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(key)),
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ClockSkew = TimeSpan.Zero,
+                    RoleClaimType = System.Security.Claims.ClaimTypes.Role,
+                    NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier
+                };
+            });
 
-        builder.Services.AddAuthorizationBuilder();
+        builder.Services.AddAuthorization();
 
         builder.Services
             .AddIdentityCore<AppUser>()

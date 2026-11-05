@@ -1,5 +1,4 @@
-﻿using Azure.Core;
-using DongTaErp.Application.Common.DTOs;
+﻿using DongTaErp.Application.Common.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
@@ -278,7 +277,6 @@ public class IdentityService(UserManager<AppUser> userManager,
 
     private async Task<UserDto?> GetUserDtoByEmailUsingQueryAsync(string email, CancellationToken ct)
     {
-        var pattern = $"%{email}%";
         var query = $"""
             SELECT
               TOP 1 u.Id,
@@ -290,8 +288,7 @@ public class IdentityService(UserManager<AppUser> userManager,
               LEFT JOIN AspNetUserRoles ur ON u.Id = ur.UserId
               LEFT JOIN AspNetRoles r ON ur.RoleId = r.Id
             WHERE
-              u.Email LIKE @ pattern
-              OR u.UserName LIKE @ pattern
+              u.Email = @email
             GROUP BY
               u.Id,
               u.UserName,
@@ -300,7 +297,7 @@ public class IdentityService(UserManager<AppUser> userManager,
             ORDER BY
               u.UserName;
             """;
-        var list = await unitOfWork.QuerySqlRawAsync<UserDto>(query, [SqlArg.In(pattern, $"%{email}%")], ct);
+        var list = await unitOfWork.QuerySqlRawAsync<UserDto>(query, [SqlArg.In("email", email)], ct);
         return list.Count == 1 ? list[0] : null;
     }
     private static IEnumerable<string> GetIdentityErrors(IdentityResult identityResult)

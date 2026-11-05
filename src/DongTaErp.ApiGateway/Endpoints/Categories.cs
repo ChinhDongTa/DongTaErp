@@ -10,8 +10,8 @@ public class Categories : EndpointGroupBase
     {
         //=============Data Retrieval Endpoints================
         group.MapGet(GetCategoryById, "/{id}");
-        group.MapGet(GetCategorys, "/");
-        group.MapGet(SearchCategorys, "/search");
+        group.MapGet(GetCategories, "/");
+        group.MapGet(SearchCategories, "/search");
 
         //=============Data Manipulation Endpoints================
         group.MapPost(CreateCategoryAsync);
@@ -25,13 +25,13 @@ public class Categories : EndpointGroupBase
         return result.ToHttpResult();
     }
 
-    public async Task<IResult> GetCategorys([FromServices] ICategoryService CategoryService, int pageNumber, int pageSize, CancellationToken ct = default)
+    public async Task<IResult> GetCategories([FromServices] ICategoryService CategoryService, int pageNumber, int pageSize, CancellationToken ct = default)
     {
         var result = await CategoryService.GetAllAsync(pageNumber, pageSize, ct);
         return result.ToHttpResult();
     }
 
-    public async Task<IResult> SearchCategorys([FromServices] ICategoryService CategoryService, string? searchTerm,
+    public async Task<IResult> SearchCategories([FromServices] ICategoryService CategoryService, string? searchTerm,
         int pageNumber = 1,
         int pageSize = 20,
         string? sortBy = null,

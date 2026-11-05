@@ -10,7 +10,7 @@ public class Products : EndpointGroupBase
     {
         //=============Data Retrieval Endpoints================
         group.MapGet(GetProductById, "/{id}");
-        group.MapGet(GetProducts, "/");
+        group.MapGet(GetPaginatedProducts, "/");
         group.MapGet(SearchProducts, "/search");
 
         //=============Data Manipulation Endpoints================
@@ -25,7 +25,7 @@ public class Products : EndpointGroupBase
         return result.ToHttpResult();
     }
 
-    public async Task<IResult> GetProducts([FromServices] IProductService productService, int pageNumber, int pageSize, CancellationToken ct = default)
+    public async Task<IResult> GetPaginatedProducts([FromServices] IProductService productService, int pageNumber, int pageSize, CancellationToken ct = default)
     {
         var result = await productService.GetAllAsync(pageNumber, pageSize, ct);
         return result.ToHttpResult();
