@@ -13,5 +13,5 @@ public static class ApiRoles
     public const string SalesArea = "Admin,Sales,Accounting,Director";
     public const string PurchaseArea = "Admin,Purchasing,Accounting,Director";
     public const string Money = "Admin,Accounting,Director";
-    public const string Hr = "Admin,Director";
+    public const string Hr = "Admin,Director,HR";
 }

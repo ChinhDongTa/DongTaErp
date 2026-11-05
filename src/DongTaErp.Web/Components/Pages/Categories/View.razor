@@ -1,0 +1,41 @@
+@page "/categories/view/{Id}"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Categories
+@inject NavigationManager Navigation
+@inject ICategoryService Service
+
+<PageTitle>Chi tiết danh mục</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="@dto.Name" />
+    <DetailItem Label="Mã" Value="@dto.Code" />
+    <DetailItem Label="Tên" Value="@dto.Name" />
+    <DetailItem Label="Loại" Value="@dto.CategoryType" />
+    <DetailItem Label="Danh mục cha" Value="@(dto.ParentName ?? "-")" />
+    <EntityActions EntityId="@Id" Folder="/categories" />
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private CategoryDto? dto;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        var result = await Service.GetByIdAsync(Id.ToGuid());
+        if (result.Succeeded)
+            dto = result.Value;
+        else
+            alert?.AddAlertError("Không tìm thấy danh mục.");
+        await InvokeAsync(StateHasChanged);
+    }
+}

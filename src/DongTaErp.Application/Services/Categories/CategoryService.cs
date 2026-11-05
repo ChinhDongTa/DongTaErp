@@ -45,6 +45,24 @@ public class CategoryService : Base.GenericCrudService<Category, CategoryDto, Cr
         }
     }
 
+    public async Task<Result<List<LookupItemDto>>> GetTypesAsync(CancellationToken ct = default)
+    {
+        var items = await unitOfWork.CategoryTypes.Query()
+            .OrderBy(x => x.Name)
+            .Select(x => new LookupItemDto { Id = x.Id, Label = x.Code + " - " + x.Name })
+            .ToListAsync(ct);
+        return Result<List<LookupItemDto>>.Success(items);
+    }
+
+    public async Task<Result<List<LookupItemDto>>> GetParentsAsync(CancellationToken ct = default)
+    {
+        var items = await unitOfWork.Categories.Query()
+            .OrderBy(x => x.Name)
+            .Select(x => new LookupItemDto { Id = x.Id, Label = x.Code + " - " + x.Name })
+            .ToListAsync(ct);
+        return Result<List<LookupItemDto>>.Success(items);
+    }
+
     protected override Expression<Func<Category, CategoryDto>> ToDto() => Extensions.ExpressionToDto();
 
     protected override Category CreateEntity(CreateCategoryDto dto) => new()

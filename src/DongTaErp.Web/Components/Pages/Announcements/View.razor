@@ -1,0 +1,40 @@
+@page "/announcements/view/{Id}"
+@attribute [Authorize(Roles = AppRoles.All)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Announcements
+@inject IAnnouncementService Service
+
+<PageTitle>Chi tiết thông báo</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="@dto.Title" />
+    <DetailItem Label="Loại" Value="@dto.TypeName" />
+    <DetailItem Label="Người gửi" Value="@dto.SenderName" />
+    <DetailItem Label="Ngày" Value="@dto.Created.LocalDateTime.ToDateString()" />
+    <DetailItem Label="Nội dung" Value="@dto.Content" />
+    <DetailItem Label="Người nhận" Value="@string.Join(", ", dto.RecipientNames)" />
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private AnnouncementDto? dto;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        var result = await Service.GetByIdAsync(Id.ToGuid());
+        if (result.Succeeded)
+            dto = result.Value;
+        else
+            alert?.AddAlertError("Không tìm thấy thông báo.");
+        await InvokeAsync(StateHasChanged);
+    }
+}

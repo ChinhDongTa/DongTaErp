@@ -1,0 +1,46 @@
+@page "/announcements/mine"
+@attribute [Authorize(Roles = AppRoles.All)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Common.Interfaces
+@using DongTaErp.Application.Services.Announcements
+@inject IAnnouncementService Service
+@inject IUser User
+@inject NavigationManager Navigation
+
+<PageTitle>Thông báo của tôi</PageTitle>
+<ActionTitle Text="Thông báo của tôi" />
+
+@if (!loaded)
+{
+    <PageLoading />
+}
+else if (items.Count == 0)
+{
+    <p>Chưa có thông báo.</p>
+}
+else
+{
+    <FluentDataGrid Items="@items.AsQueryable()">
+        <PropertyColumn Title="Ngày" Property="@(c => c.Created.LocalDateTime.ToDateString())" />
+        <PropertyColumn Title="Loại" Property="@(c => c.TypeName)" />
+        <PropertyColumn Title="Tiêu đề" Property="@(c => c.Title)" />
+        <PropertyColumn Title="Người gửi" Property="@(c => c.SenderName)" />
+        <TemplateColumn Title="" Context="item">
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => Navigation.NavigateTo($"/announcements/view/{item.Id}"))">Xem</FluentButton>
+        </TemplateColumn>
+    </FluentDataGrid>
+}
+
+@code {
+    private bool loaded;
+    private List<AnnouncementDto> items = [];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        items = (await Service.GetMineAsync(User.Id ?? "")).Value ?? [];
+        loaded = true;
+        await InvokeAsync(StateHasChanged);
+    }
+}

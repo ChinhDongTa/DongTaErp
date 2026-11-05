@@ -1,0 +1,62 @@
+@page "/categories/create"
+@attribute [Authorize(Roles = AppRoles.Catalog)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Categories
+@inject NavigationManager Navigation
+@inject ICategoryService Service
+
+<PageTitle>Tạo danh mục</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Tạo danh mục" />
+
+<EditForm Model="dto" OnSubmit="SaveAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 520px;">
+        <FluentSelect TOption="LookupItemDto" TValue="string" Items="types" OptionText="@(x => x.Label)" OptionValue="@(x => x.Id.ToString())"
+                      @bind-Value="typeId" Label="Loại danh mục" />
+        <FluentTextInput @bind-Value="dto.Code" Label="Mã" />
+        <FluentTextInput @bind-Value="dto.Name" Label="Tên" />
+        <FluentSelect TOption="LookupItemDto" TValue="string" Items="parents" OptionText="@(x => x.Label)" OptionValue="@(x => x.Id.ToString())"
+                      @bind-Value="parentId" Label="Danh mục cha" />
+        <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/categories/list" />
+    </FluentStack>
+</EditForm>
+
+@code {
+    private Alert? alert;
+    private bool isSaving;
+    private CreateCategoryDto dto = new() { Code = "", Name = "" };
+    private List<LookupItemDto> types = [];
+    private List<LookupItemDto> parents = [];
+    private string typeId = "";
+    private string parentId = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        types = (await Service.GetTypesAsync()).Value ?? [];
+        parents = (await Service.GetParentsAsync()).Value ?? [];
+        typeId = types.FirstOrDefault()?.Id.ToString() ?? "";
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!Guid.TryParse(typeId, out var categoryTypeId))
+        {
+            alert?.AddAlertError("Chọn loại danh mục.");
+            return;
+        }
+        dto.CategoryTypeId = categoryTypeId;
+        dto.ParentId = Guid.TryParse(parentId, out var parent) ? parent : null;
+        isSaving = true;
+        var result = await Service.CreateAsync(dto);
+        isSaving = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không tạo được danh mục.");
+            return;
+        }
+        Navigation.NavigateTo("/categories/list");
+    }
+}

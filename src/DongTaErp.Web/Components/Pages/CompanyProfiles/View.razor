@@ -1,0 +1,43 @@
+@page "/company-profiles/view/{Id}"
+@attribute [Authorize(Roles = AppRoles.Manage)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.CompanyProfiles
+@inject NavigationManager Navigation
+@inject ICompanyProfileService Service
+
+<PageTitle>Chi tiết hồ sơ công ty</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="@dto.Name" />
+    <DetailItem Label="Tên" Value="@dto.Name" />
+    <DetailItem Label="Mã số thuế" Value="@(dto.TaxCode ?? "-")" />
+    <DetailItem Label="Điện thoại" Value="@dto.Phone" />
+    <DetailItem Label="Email" Value="@(dto.Email ?? "-")" />
+    <DetailItem Label="Địa chỉ" Value="@dto.Address" />
+    <DetailItem Label="Tiền tệ" Value="@dto.Currency" />
+    <EntityActions EntityId="@Id" Folder="/company-profiles" />
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private CompanyProfileDto? dto;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        var result = await Service.GetByIdAsync(Id.ToGuid());
+        if (result.Succeeded)
+            dto = result.Value;
+        else
+            alert?.AddAlertError("Không tìm thấy hồ sơ.");
+        await InvokeAsync(StateHasChanged);
+    }
+}

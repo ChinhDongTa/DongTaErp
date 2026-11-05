@@ -1,4 +1,5 @@
-﻿using DongTaErp.Application.Services.Categories;
+﻿using DongTaErp.Application.Services.Announcements;
+using DongTaErp.Application.Services.Categories;
 using DongTaErp.Application.Services.CompanyProfiles;
 using DongTaErp.Application.Services.Dashboard;
 using DongTaErp.Application.Services.Departments;
@@ -45,6 +46,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<IDashboardService, DashboardService>();
         builder.Services.AddScoped<IStockAlertService, StockAlertService>();
         builder.Services.AddScoped<IWorkAssignmentService, WorkAssignmentService>();
+        builder.Services.AddScoped<IAnnouncementService, AnnouncementService>();
         builder.Services.AddScoped<IDepartmentService, DepartmentService>();
         builder.Services.AddScoped<IJobPositionService, JobPositionService>();
         builder.Services.AddScoped<IEmployeeService, EmployeeService>();

@@ -8,4 +8,6 @@ public interface ICategoryService : ICrudService< CategoryDto, CreateCategoryDto
                                                                    string? sortBy = null,
                                                                    bool isDescending = false,
                                                                    CancellationToken ct = default);
+    Task<Result<List<LookupItemDto>>> GetTypesAsync(CancellationToken ct = default);
+    Task<Result<List<LookupItemDto>>> GetParentsAsync(CancellationToken ct = default);
 }

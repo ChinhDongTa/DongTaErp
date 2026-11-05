@@ -1,0 +1,41 @@
+@page "/company-profiles/create"
+@attribute [Authorize(Roles = AppRoles.Manage)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.CompanyProfiles
+@inject NavigationManager Navigation
+@inject ICompanyProfileService Service
+
+<PageTitle>Tạo hồ sơ công ty</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Tạo hồ sơ công ty" />
+
+<EditForm Model="dto" OnSubmit="SaveAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 560px;">
+        <FluentTextInput @bind-Value="dto.Name" Label="Tên công ty" />
+        <FluentTextInput @bind-Value="dto.TaxCode" Label="Mã số thuế" />
+        <FluentTextInput @bind-Value="dto.Phone" Label="Điện thoại" />
+        <FluentTextInput @bind-Value="dto.Email" Label="Email" />
+        <FluentTextInput @bind-Value="dto.Address" Label="Địa chỉ" />
+        <FluentTextInput @bind-Value="dto.Currency" Label="Tiền tệ" />
+        <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/company-profiles/list" />
+    </FluentStack>
+</EditForm>
+
+@code {
+    private Alert? alert;
+    private bool isSaving;
+    private CreateCompanyProfileDto dto = new() { Name = "", Phone = "", Address = "", Currency = "VND" };
+
+    private async Task SaveAsync()
+    {
+        isSaving = true;
+        var result = await Service.CreateAsync(dto);
+        isSaving = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không tạo được hồ sơ.");
+            return;
+        }
+        Navigation.NavigateTo("/company-profiles/list");
+    }
+}

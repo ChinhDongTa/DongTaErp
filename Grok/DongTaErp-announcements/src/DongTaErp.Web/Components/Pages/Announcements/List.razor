@@ -1,0 +1,75 @@
+@page "/announcements/list"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Announcements
+@inject NavigationManager Navigation
+@inject IAnnouncementService Service
+
+<PageTitle>Thông báo nội bộ</PageTitle>
+<ActionTitle Text="Thông báo nội bộ" />
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
+    <FluentTextInput @bind-Value="searchTerm" Placeholder="Tiêu đề, nội dung" Style="width: 280px;" @onkeypress="OnSearchKey" />
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="SearchAsync">Tìm</FluentButton>
+    <FluentButton IconStart="@(new Icons.Regular.Size20.Add())" Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo("/announcements/create"))">Gửi thông báo</FluentButton>
+</FluentStack>
+
+<PaginatedTable TItem="AnnouncementDto" Data="page" PageSize="pageSize"
+                GridTemplateColumns="1.6fr 1fr 1fr 1fr .6fr .6fr"
+                OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
+    <PropertyColumn TGridItem="AnnouncementDto" TProp="string" Title="Tiêu đề" Property="@(c => c!.Title)" />
+    <PropertyColumn TGridItem="AnnouncementDto" TProp="string" Title="Loại" Property="@(c => c!.TypeName)" />
+    <PropertyColumn TGridItem="AnnouncementDto" TProp="string" Title="Người gửi" Property="@(c => c!.SenderName)" />
+    <PropertyColumn TGridItem="AnnouncementDto" TProp="string" Title="Ngày" Property="@(c => c!.Created.LocalDateTime.ToDateString())" />
+    <PropertyColumn TGridItem="AnnouncementDto" TProp="int" Title="Người nhận" Property="@(c => c!.RecipientCount)" Align="DataGridCellAlignment.End" />
+    <TemplateColumn TGridItem="AnnouncementDto" Title="" Context="item">
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" @onclick="@(() => Navigation.NavigateTo($"/announcements/view/{item.Id}"))" />
+    </TemplateColumn>
+</PaginatedTable>
+
+@code {
+    private PaginatedList<AnnouncementDto>? page;
+    private readonly int pageSize = Models.Constants.PageSize;
+    private int currentPage = 1;
+    private bool isLoading;
+    private int requestVersion;
+    private string? searchTerm;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadData(1);
+    }
+
+    private Task LoadPageAsync(int pageNumber)
+    {
+        currentPage = pageNumber;
+        return LoadData(pageNumber);
+    }
+
+    private Task SearchAsync()
+    {
+        currentPage = 1;
+        return LoadData(1);
+    }
+
+    private Task OnSearchKey(KeyboardEventArgs e) => e.Key == "Enter" ? SearchAsync() : Task.CompletedTask;
+
+    private async Task LoadData(int pageNumber)
+    {
+        var version = ++requestVersion;
+        isLoading = true;
+        try
+        {
+            var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize));
+            if (version == requestVersion && result.Succeeded)
+                page = result.Value;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}

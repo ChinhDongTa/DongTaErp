@@ -7,9 +7,9 @@
         <FluentNavItem Href="/" Match="NavLinkMatch.All"
                        IconRest="@(new Icons.Regular.Size20.Home())"
                        IconActive="@(new Icons.Filled.Size20.Home())">Trang chủ</FluentNavItem>
-        <FluentNavItem Href="/shop"
-                       IconRest="@(new Icons.Regular.Size20.Cart())"
-                       IconActive="@(new Icons.Filled.Size20.Cart())">Đặt hàng</FluentNavItem>
+        <FluentNavItem Href="/announcements/mine"
+                       IconRest="@(new Icons.Regular.Size20.Alert())"
+                       IconActive="@(new Icons.Filled.Size20.Alert())">Thông báo của tôi</FluentNavItem>
     </AuthorizeView>
 
     <AuthorizeView Roles="@AppRoles.Catalog">
@@ -61,6 +61,7 @@
             <FluentNavItem Href="/hr/compensations/list">Hợp đồng lương</FluentNavItem>
             <FluentNavItem Href="/hr/leave-requests/list">Nghỉ phép</FluentNavItem>
             <FluentNavItem Href="/hr/payrolls/list">Bảng lương</FluentNavItem>
+            <FluentNavItem Href="/announcements/list">Gửi thông báo</FluentNavItem>
         </FluentNavCategory>
     </AuthorizeView>
 

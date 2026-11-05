@@ -13,7 +13,7 @@ public static class AppRoles
     public const string SalesArea = "Admin,Sales,Accounting,Director";
     public const string PurchaseArea = "Admin,Purchasing,Accounting,Director";
     public const string Money = "Admin,Accounting,Director";
-    public const string Hr = "Admin,Director";
+    public const string Hr = "Admin,Director,HR";
     public const string Manage = "Admin";
 
     public static readonly string[] AllRoles = [Admin, Sales, Purchasing, Accounting, Director];
@@ -25,6 +25,7 @@ public static class AppRoles
         Purchasing => "Mua hàng",
         Accounting => "Kế toán",
         Director => "Ban Giám đốc",
+        Hr => "Nhân sự",
         _ => role
     };
 }

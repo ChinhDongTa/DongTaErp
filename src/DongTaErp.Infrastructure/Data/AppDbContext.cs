@@ -39,6 +39,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<EmployeeCompensation> EmployeeCompensations => Set<EmployeeCompensation>();
     public DbSet<PositionDuty> PositionDuties => Set<PositionDuty>();
     public DbSet<WorkAssignment> WorkAssignments => Set<WorkAssignment>();
+    public DbSet<Announcement> Announcements => Set<Announcement>();
+    public DbSet<AnnouncementRecipient> AnnouncementRecipients => Set<AnnouncementRecipient>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -22,7 +22,7 @@ else
     <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
         <FluentSelect TOption="WorkRecipientDto" TValue="string" Items="setup.Positions" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id.ToString())"
                       @bind-Value="positionId" Label="Chức vụ" Style="min-width: 260px;" />
-        <FluentButton Appearance="ButtonAppearance.Primary" Style="margin-top: 48px;" OnClick="AddDutyAsync">Giao việc</FluentButton>
+        <FluentButton Appearance="ButtonAppearance.Primary" Style="margin-top: 34px;" OnClick="AddDutyAsync">Giao việc</FluentButton>
     </FluentStack>
     @foreach (var duty in setup.DutyPositions)
     {
@@ -33,7 +33,7 @@ else
     <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
         <FluentSelect TOption="WorkRecipientDto" TValue="string" Items="setup.Employees" OptionText="@(x => x.Name)" OptionValue="@(x => x.Id.ToString())"
                       @bind-Value="employeeId" Label="Nhân viên" Style="min-width: 260px;" />
-        <FluentButton Appearance="ButtonAppearance.Primary" Style="margin-top: 48px;" OnClick="AddAssignmentAsync">Phân công</FluentButton>
+        <FluentButton Appearance="ButtonAppearance.Primary" Style="margin-top: 34px;" OnClick="AddAssignmentAsync">Phân công</FluentButton>
     </FluentStack>
     @foreach (var item in setup.AssignedEmployees)
     {

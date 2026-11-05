@@ -1,15 +1,17 @@
 using DongTaErp.ApiGateway;
+using DongTaErp.ApiGateway.OpenApi;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
-
-// Add services to the container.
 builder.AddApiGatewayServices();
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
+    options.AddOperationTransformer<BearerSecurityRequirementTransformer>();
+});
 
 var app = builder.Build();
 
@@ -25,7 +27,10 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference(options =>
     {
         options.WithTitle("DongTaErp.ApiGateway")
-               .WithTheme(ScalarTheme.Laserwave); 
+               .WithTheme(ScalarTheme.Laserwave)
+               .AddPreferredSecuritySchemes("Bearer")
+               .AddHttpAuthentication("Bearer", scheme => scheme.Token = "")
+               .EnablePersistentAuthentication();
     });
 }
 

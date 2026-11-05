@@ -36,4 +36,6 @@ public interface IAppDbContext
     DbSet<EmployeeCompensation> EmployeeCompensations { get; }
     DbSet<PositionDuty> PositionDuties { get; }
     DbSet<WorkAssignment> WorkAssignments { get; }
+    DbSet<Announcement> Announcements { get; }
+    DbSet<AnnouncementRecipient> AnnouncementRecipients { get; }
 }

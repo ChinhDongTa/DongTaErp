@@ -1,0 +1,63 @@
+@page "/company-profiles/update/{Id}"
+@attribute [Authorize(Roles = AppRoles.Manage)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.CompanyProfiles
+@inject NavigationManager Navigation
+@inject ICompanyProfileService Service
+
+<PageTitle>Cập nhật hồ sơ công ty</PageTitle>
+<Alert @ref="alert" />
+
+@if (dto is null)
+{
+    <PageLoading />
+}
+else
+{
+    <ActionTitle Text="Cập nhật hồ sơ công ty" />
+    <EditForm Model="dto" OnSubmit="SaveAsync">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 560px;">
+            <FluentTextInput @bind-Value="dto.Name" Label="Tên công ty" />
+            <FluentTextInput @bind-Value="dto.TaxCode" Label="Mã số thuế" />
+            <FluentTextInput @bind-Value="dto.Phone" Label="Điện thoại" />
+            <FluentTextInput @bind-Value="dto.Email" Label="Email" />
+            <FluentTextInput @bind-Value="dto.Address" Label="Địa chỉ" />
+            <FluentTextInput @bind-Value="dto.Currency" Label="Tiền tệ" />
+            <FormActionButtons IsSaving="@isSaving" SaveText="Lưu" CancelUrl="/company-profiles/list" />
+        </FluentStack>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public required string Id { get; set; }
+    private Alert? alert;
+    private bool isSaving;
+    private UpdateCompanyProfileDto? dto;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
+        if (result.Succeeded)
+            dto = result.Value;
+        else
+            alert?.AddAlertError("Không tìm thấy hồ sơ.");
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (dto is null)
+            return;
+        isSaving = true;
+        var result = await Service.UpdateAsync(Id.ToGuid(), dto);
+        isSaving = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không cập nhật được.");
+            return;
+        }
+        Navigation.NavigateTo($"/company-profiles/view/{Id}");
+    }
+}

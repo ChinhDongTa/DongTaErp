@@ -258,3 +258,22 @@ public enum LeaveStatus
     [Display(Name = "Đã hủy")]
     Cancelled = 3
 }
+
+/// <summary>Loại thông báo nội bộ.</summary>
+public enum AnnouncementType
+{
+    [Display(Name = "Thông báo chung")]
+    General = 0,
+
+    [Display(Name = "Tăng lương")]
+    SalaryIncrease = 1,
+
+    [Display(Name = "Giảm lương")]
+    SalaryDecrease = 2,
+
+    [Display(Name = "Tăng ca")]
+    Overtime = 3,
+
+    [Display(Name = "Chỉ đạo")]
+    Directive = 4
+}

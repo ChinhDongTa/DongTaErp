@@ -1,0 +1,76 @@
+@page "/company-profiles/list"
+@attribute [Authorize(Roles = AppRoles.Manage)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.CompanyProfiles
+@inject NavigationManager Navigation
+@inject ICompanyProfileService Service
+
+<PageTitle>Hồ sơ công ty</PageTitle>
+<ActionTitle Text="Hồ sơ công ty" />
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin: 8px 0 12px;">
+    <FluentTextInput @bind-Value="searchTerm" Placeholder="Tên, mã số thuế" Style="width: 280px;" @onkeypress="OnSearchKey" />
+    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="SearchAsync">Tìm</FluentButton>
+    <FluentButton IconStart="@(new Icons.Regular.Size20.Add())" Appearance="ButtonAppearance.Primary" OnClick="@(() => Navigation.NavigateTo("/company-profiles/create"))">Tạo hồ sơ</FluentButton>
+</FluentStack>
+
+<PaginatedTable TItem="CompanyProfileDto" Data="page" PageSize="pageSize"
+                GridTemplateColumns="1.6fr 1fr 1fr 1.6fr .6fr .8fr"
+                OnPageChanged="LoadPageAsync" CurrentPage="currentPage" IsLoading="isLoading">
+    <PropertyColumn TGridItem="CompanyProfileDto" TProp="string" Title="Tên" Property="@(c => c!.Name)" />
+    <PropertyColumn TGridItem="CompanyProfileDto" TProp="string?" Title="MST" Property="@(c => c!.TaxCode)" />
+    <PropertyColumn TGridItem="CompanyProfileDto" TProp="string" Title="Điện thoại" Property="@(c => c!.Phone)" />
+    <PropertyColumn TGridItem="CompanyProfileDto" TProp="string" Title="Địa chỉ" Property="@(c => c!.Address)" />
+    <PropertyColumn TGridItem="CompanyProfileDto" TProp="string" Title="Tiền tệ" Property="@(c => c!.Currency)" />
+    <TemplateColumn TGridItem="CompanyProfileDto" Title="Thao tác" Context="item">
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Eye())" Appearance="ButtonAppearance.Primary" Title="Xem" @onclick="@(() => Navigation.NavigateTo($"/company-profiles/view/{item.Id}"))" />
+        <FluentButton IconStart="@(new Icons.Regular.Size20.Edit())" Appearance="ButtonAppearance.Primary" Title="Sửa" @onclick="@(() => Navigation.NavigateTo($"/company-profiles/update/{item.Id}"))" />
+    </TemplateColumn>
+</PaginatedTable>
+
+@code {
+    private PaginatedList<CompanyProfileDto>? page;
+    private readonly int pageSize = Models.Constants.PageSize;
+    private int currentPage = 1;
+    private bool isLoading;
+    private int requestVersion;
+    private string? searchTerm;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadData(1);
+    }
+
+    private Task LoadPageAsync(int pageNumber)
+    {
+        currentPage = pageNumber;
+        return LoadData(pageNumber);
+    }
+
+    private Task SearchAsync()
+    {
+        currentPage = 1;
+        return LoadData(1);
+    }
+
+    private Task OnSearchKey(KeyboardEventArgs e) => e.Key == "Enter" ? SearchAsync() : Task.CompletedTask;
+
+    private async Task LoadData(int pageNumber)
+    {
+        var version = ++requestVersion;
+        isLoading = true;
+        try
+        {
+            var result = await Service.SearchAsync(searchTerm, pageNumber, pageSize);
+            if (version == requestVersion && result.Succeeded)
+                page = result.Value;
+        }
+        finally
+        {
+            if (version == requestVersion)
+                isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}
