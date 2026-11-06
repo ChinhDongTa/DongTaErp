@@ -1,0 +1,68 @@
+@page "/announcements/create"
+@attribute [Authorize(Roles = AppRoles.Hr)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using DongTaErp.Application.Services.Announcements
+@using DongTaErp.Application.Services.Lookups
+@inject NavigationManager Navigation
+@inject IAnnouncementService Service
+@inject ILookupService Lookup
+
+<PageTitle>Gửi thông báo</PageTitle>
+<Alert @ref="alert" />
+<ActionTitle Text="Gửi thông báo" />
+
+<EditForm Model="dto" OnSubmit="SaveAsync">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10" Style="max-width: 640px;">
+        <FluentSelect TOption="AnnouncementType" TValue="AnnouncementType" Items="types" OptionText="@(x => x.ToDisplayName())" @bind-Value="dto.Type" Label="Loại" />
+        <FluentTextInput @bind-Value="dto.Title" Label="Tiêu đề" />
+        <FluentTextArea @bind-Value="dto.Content" Label="Nội dung" Rows="6" />
+        <FluentCheckbox @bind-Value="dto.SendToAll" Label="Gửi toàn bộ nhân viên" />
+        @if (!dto.SendToAll)
+        {
+            <FluentSelect TOption="LookupItemDto" TValue="string" Items="departments" OptionText="@(x => x.Label)" OptionValue="@(x => x.Id.ToString())"
+                          @bind-Value="departmentId" Label="Phòng ban" />
+            <EmployeePicker @bind-Value="employeeText" @bind-SelectedIds="selectedEmployeeIds" Label="Chọn nhân viên" />
+        }
+        <FluentCheckbox @bind-Value="dto.SendEmail" Label="Gửi email cho người có email" />
+        <FormActionButtons IsSaving="@sending" SaveText="Gửi" CancelUrl="/announcements/list" />
+    </FluentStack>
+</EditForm>
+
+@code {
+    private Alert? alert;
+    private bool sending;
+    private CreateAnnouncementDto dto = new();
+    private List<AnnouncementType> types = Enum.GetValues<AnnouncementType>().ToList();
+    private List<LookupItemDto> departments = [];
+    private string departmentId = "";
+    private string? employeeText;
+    private List<Guid> selectedEmployeeIds = [];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        departments = (await Lookup.GetDepartmentsAsync()).Value ?? [];
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        dto.DepartmentId = Guid.TryParse(departmentId, out var department) ? department : null;
+        dto.EmployeeIds = selectedEmployeeIds;
+        if (!dto.SendToAll && dto.DepartmentId is null && dto.EmployeeIds.Count == 0)
+        {
+            alert?.AddAlertError("Chọn toàn bộ, một phòng ban, hoặc nhập nhân viên.");
+            return;
+        }
+        sending = true;
+        var result = await Service.CreateAsync(dto);
+        sending = false;
+        if (!result.Succeeded)
+        {
+            alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không gửi được.");
+            return;
+        }
+        Navigation.NavigateTo($"/announcements/view/{result.Value}");
+    }
+}

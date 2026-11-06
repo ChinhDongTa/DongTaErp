@@ -1,0 +1,103 @@
+@using DongTaErp.Application.Services.Lookups
+@inject ILookupService Lookup
+
+<div style="position: relative; max-width: 520px;">
+    <FluentTextInput Value="@displayText"
+                     Label="@Label"
+                     Placeholder="@Placeholder"
+                     ReadOnly="true"
+                     Style="width: 100%; cursor: pointer;"
+                     @onclick="Toggle"
+                     @onfocus="Open" />
+    @if (open)
+    {
+        <div style="position: absolute; z-index: 20; left: 0; right: 0; top: 72px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: 8px;">
+            <FluentTextInput @bind-Value="keyword" Placeholder="Tìm mã hoặc tên" Immediate="true" Style="width: 100%; margin-bottom: 8px;" />
+            <div style="max-height: 240px; overflow: auto;">
+                @if (!Filtered.Any())
+                {
+                    <div style="padding: 8px; color: #666;">Không có nhân viên.</div>
+                }
+                else
+                {
+                    @foreach (var item in Filtered)
+                    {
+                        <div style="padding: 4px 6px;">
+                            <FluentCheckbox Value="@IsSelected(item.Id)"
+                                            ValueChanged="@(v => ToggleItem(item, v))"
+                                            Label="@item.Label" />
+                        </div>
+                    }
+                }
+            </div>
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 8px;">
+                <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="ClearAsync">Bỏ chọn</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary" OnClick="Close">Xong</FluentButton>
+            </FluentStack>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public List<Guid> SelectedIds { get; set; } = [];
+    [Parameter] public EventCallback<List<Guid>> SelectedIdsChanged { get; set; }
+    [Parameter] public EventCallback<List<Guid>> SelectedChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "Chọn nhân viên";
+    [Parameter] public string Placeholder { get; set; } = "Bấm để chọn nhân viên";
+
+    private List<LookupItemDto> employees = [];
+    private bool open;
+    private string? keyword;
+
+    private IEnumerable<LookupItemDto> Filtered => string.IsNullOrWhiteSpace(keyword)
+        ? employees
+        : employees.Where(x => x.Label.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+
+    private string displayText => string.Join(", ", employees.Where(x => SelectedIds.Contains(x.Id)).Select(Code));
+
+    protected override async Task OnInitializedAsync()
+    {
+        employees = (await Lookup.GetEmployeesAsync()).Value ?? [];
+        if (SelectedIds.Count == 0 && !string.IsNullOrWhiteSpace(Value))
+            SelectedIds = Parse(Value).Select(x => x.Id).ToList();
+    }
+
+    private void Open() => open = true;
+    private void Toggle() => open = !open;
+    private void Close() => open = false;
+    private bool IsSelected(Guid id) => SelectedIds.Contains(id);
+
+    private async Task ToggleItem(LookupItemDto item, bool selected)
+    {
+        SelectedIds = SelectedIds.ToList();
+        if (selected && !SelectedIds.Contains(item.Id))
+            SelectedIds.Add(item.Id);
+        else
+            SelectedIds.Remove(item.Id);
+        await PublishAsync();
+    }
+
+    private async Task ClearAsync()
+    {
+        SelectedIds = [];
+        await PublishAsync();
+    }
+
+    private async Task PublishAsync()
+    {
+        Value = displayText;
+        await ValueChanged.InvokeAsync(Value);
+        await SelectedIdsChanged.InvokeAsync(SelectedIds);
+        await SelectedChanged.InvokeAsync(SelectedIds);
+    }
+
+    private List<LookupItemDto> Parse(string value)
+    {
+        var codes = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return employees.Where(x => codes.Contains(Code(x), StringComparer.OrdinalIgnoreCase)).ToList();
+    }
+
+    private static string Code(LookupItemDto item) => item.Label.Split(" - ").FirstOrDefault() ?? item.Label;
+}

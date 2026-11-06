@@ -1,18 +1,22 @@
 ﻿@rendermode InteractiveServer
 @inject NavigationManager navigationManager
 <div class="entity-actions">
-    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Style="width:100%; margin-top:16px;">
-        <FluentButton IconStart="@(new Icons.Filled.Size16.Edit())" Appearance="ButtonAppearance.Primary" OnClick="UpdateClick">
-            Cập nhật
-        </FluentButton>
-
-        <FluentButton IconStart="@(new Icons.Filled.Size20.Add())" Appearance="ButtonAppearance.Subtle" OnClick="CreateClick">
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10" HorizontalAlignment="HorizontalAlignment.Left" Style="margin-top:16px;">
+        <FluentButton IconStart="@(new Icons.Filled.Size20.Add())" Appearance="ButtonAppearance.Primary" OnClick="CreateClick">
             Tạo mới
         </FluentButton>
-
-        <FluentButton BackgroundColor="#dc3545" Color="#fff" Style="min-width: 100px;" IconStart="@(new Icons.Filled.Size20.Delete().WithColor("#fff"))" OnClick="OnDeleteClick">
-            Xóa
-        </FluentButton>
+        @if (CanUpdate)
+        {
+            <FluentButton IconStart="@(new Icons.Filled.Size16.Edit())" Appearance="ButtonAppearance.Primary" OnClick="UpdateClick">
+                Cập nhật
+            </FluentButton>
+        }
+        @if (CanDelete)
+        {
+            <FluentButton BackgroundColor="#dc3545" Color="#fff" Style="min-width: 100px;" IconStart="@(new Icons.Filled.Size20.Delete().WithColor("#fff"))" OnClick="OnDeleteClick">
+                Xóa
+            </FluentButton>
+        }
 
         <FluentButton IconStart="@(new Icons.Filled.Size20.ArrowDownload())" Appearance="ButtonAppearance.Outline" OnClick="ExportClick">
             Xuất file
@@ -31,6 +35,8 @@
     /// </summary>
     [Parameter] public required string Folder { get; set; }
 
+    [Parameter] public bool CanDelete { get; set; } = true;
+    [Parameter] public bool CanUpdate { get; set; } = true;
 
     [Parameter] public EventCallback OnDeleteClick { get; set; }
     // [Parameter] public EventCallback OnCreateClick { get; set; }

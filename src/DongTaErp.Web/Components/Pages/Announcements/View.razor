@@ -19,6 +19,7 @@ else
     <DetailItem Label="Ngày" Value="@dto.Created.LocalDateTime.ToDateString()" />
     <DetailItem Label="Nội dung" Value="@dto.Content" />
     <DetailItem Label="Người nhận" Value="@string.Join(", ", dto.RecipientNames)" />
+    <EntityActions EntityId="@Id" CanDelete="false" CanUpdate="false" Folder="/Announcements" />
 }
 
 @code {

@@ -21,7 +21,7 @@
         {
             <FluentSelect TOption="LookupItemDto" TValue="string" Items="departments" OptionText="@(x => x.Label)" OptionValue="@(x => x.Id.ToString())"
                           @bind-Value="departmentId" Label="Phòng ban" />
-            <FluentTextInput @bind-Value="employeeText" Label="Hoặc mã/tên nhân viên, cách nhau bởi dấu phẩy" />
+            <EmployeePicker @bind-Value="employeeText" @bind-SelectedIds="selectedEmployeeIds" Label="Chọn nhân viên" />
         }
         <FluentCheckbox @bind-Value="dto.SendEmail" Label="Gửi email cho người có email" />
         <FormActionButtons IsSaving="@sending" SaveText="Gửi" CancelUrl="/announcements/list" />
@@ -34,23 +34,22 @@
     private CreateAnnouncementDto dto = new();
     private List<AnnouncementType> types = Enum.GetValues<AnnouncementType>().ToList();
     private List<LookupItemDto> departments = [];
-    private List<LookupItemDto> employees = [];
     private string departmentId = "";
     private string? employeeText;
+    private List<Guid> selectedEmployeeIds = [];
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)
             return;
         departments = (await Lookup.GetDepartmentsAsync()).Value ?? [];
-        employees = (await Lookup.GetEmployeesAsync()).Value ?? [];
         await InvokeAsync(StateHasChanged);
     }
 
     private async Task SaveAsync()
     {
         dto.DepartmentId = Guid.TryParse(departmentId, out var department) ? department : null;
-        dto.EmployeeIds = ResolveEmployees();
+        dto.EmployeeIds = selectedEmployeeIds;
         if (!dto.SendToAll && dto.DepartmentId is null && dto.EmployeeIds.Count == 0)
         {
             alert?.AddAlertError("Chọn toàn bộ, một phòng ban, hoặc nhập nhân viên.");
@@ -65,13 +64,5 @@
             return;
         }
         Navigation.NavigateTo($"/announcements/view/{result.Value}");
-    }
-
-    private List<Guid> ResolveEmployees()
-    {
-        if (string.IsNullOrWhiteSpace(employeeText))
-            return [];
-        var terms = employeeText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        return employees.Where(x => terms.Any(t => x.Label.Contains(t, StringComparison.OrdinalIgnoreCase))).Select(x => x.Id).ToList();
     }
 }
