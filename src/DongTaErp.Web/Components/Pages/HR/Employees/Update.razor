@@ -70,17 +70,38 @@ else
         positions = ((await Lookup.GetJobPositionsAsync()).Value ?? [])
             .Select(x => new OptionItem(x.Id.ToString(), x.Label)).ToList();
 
-        var result = await Service.GetUpdateByIdAsync(Id.ToGuid());
+        var result = await Service.GetEmployeeByIdAsync(Id.ToGuid());
         if (!result.Succeeded || result.Value is null)
         {
             alert?.AddAlertError("Không tìm thấy nhân viên.");
             StateHasChanged();
             return;
         }
-        dto = result.Value;
+
+        // Map EmployeeDto to UpdateEmployeeDto for form binding
+        var employee = result.Value;
+        dto = new UpdateEmployeeDto
+        {
+            Id = employee.Id,
+            Code = employee.Code,
+            FullName = employee.FullName,
+            Email = employee.Email,
+            Phone = employee.Phone,
+            IdentityNumber = employee.IdentityNumber,
+            Address = employee.Address,
+            BirthDate = employee.BirthDate,
+            HireDate = employee.HireDate,
+            ResignDate = employee.ResignDate,
+            // Gender, Status, DepartmentId, PositionId will be extracted from form
+            UserId = null // UserId handling can be added if needed
+        };
+
         departmentId = dto.DepartmentId?.ToString() ?? "";
         positionId = dto.PositionId?.ToString() ?? "";
-        status = dto.Status ?? EmployeeStatus.Working;
+        status = employee.Status == "Thử việc" ? EmployeeStatus.Probation : 
+                 employee.Status == "Đang làm việc" ? EmployeeStatus.Working :
+                 employee.Status == "Đang nghỉ phép" ? EmployeeStatus.OnLeave :
+                 EmployeeStatus.Resigned;
         StateHasChanged();
     }
 

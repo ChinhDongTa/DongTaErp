@@ -44,9 +44,10 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        var result = await Service.GetByIdAsync(Id.ToGuid());
+        var result = await Service.GetEmployeeByIdAsync(Id.ToGuid());
         dto = result.Succeeded ? result.Value : null;
         if (dto is null)
             alert?.AddAlertError("Không tìm thấy nhân viên.");
     }
 }
+

@@ -89,16 +89,16 @@
         try
         {
             var result = await Service.CreateAsync(dto);
-            if (!result.Succeeded || string.IsNullOrEmpty(result.Value))
+            if (!result.Succeeded || result.Value is null)
             {
                 alert?.AddAlertError(result.Errors?.FirstOrDefault() ?? "Không thêm được nhân viên.");
                 return;
             }
-            Navigation.NavigateTo($"/hr/employees/view/{result.Value}");
+            Navigation.NavigateTo($"/hr/employees/view/{result.Value.Id}");
         }
         finally
         {
-            isSaving = false;
+
         }
     }
 

@@ -55,10 +55,10 @@
     {
         var version = ++requestVersion;
         isLoading = true;
-      
+
         try
         {
-            var result = await Service.SearchAsync(new SimpleSearch(searchTerm, pageNumber, pageSize));
+            var result = await Service.SearchAsync(searchTerm, pageNumber, pageSize);
             if (version == requestVersion && result.Succeeded)
                 page = result.Value;
         }

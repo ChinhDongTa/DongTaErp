@@ -1,137 +1,206 @@
-﻿namespace DongTaErp.Application.Services.Employees;
+namespace DongTaErp.Application.Services.Employees;
 
-public class EmployeeService
-    : Base.GenericCrudService<Employee, EmployeeDto, CreateEmployeeDto, UpdateEmployeeDto>,
-      IEmployeeService
+public class EmployeeService(IUnitOfWork unitOfWork, ILogger<EmployeeService> logger) : IEmployeeService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<EmployeeService> _logger;
-
-    public EmployeeService(
-        IUnitOfWork unitOfWork,
-        ILogger<EmployeeService> logger,
-        IValidator<CreateEmployeeDto> createValidator,
-        IValidator<UpdateEmployeeDto> updateValidator)
-        : base(unitOfWork.Employees, unitOfWork, logger, createValidator, updateValidator)
+    public async Task<Result<EmployeeDto?>> GetEmployeeByIdAsync(Guid id, CancellationToken ct = default)
     {
-        _unitOfWork = unitOfWork;
-        _logger = logger;
+        var result = await unitOfWork.Employees.Query()
+                                               .Where(e => e.Id == id)
+                                               .ToEmployeeDto()
+                                               .SingleOrNotFoundAsync("Employee", id, ct);
+        return result;
     }
 
-    public async Task<Result<PaginatedList<EmployeeDto>>> SearchAsync(SimpleSearch search, CancellationToken ct = default)
+    public async Task<Result<PaginatedList<EmployeeDto>>> GetAllEmployeesAsync(int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
     {
         try
         {
-            var query = _unitOfWork.Employees.Query();
+            var paginated = await unitOfWork.Employees.Query()
+                .ApplySorting() // Default sorting by Created descending
+                .ToEmployeeDto()
+                .PaginatedListAsync(pageNumber, pageSize, ct);
 
-            if (!string.IsNullOrWhiteSpace(search.SearchTerm))
-            {
-                var term = $"%{search.SearchTerm.ToLower()}%";
-                query = query.Where(e =>
-                    EF.Functions.Like(e.Code.ToLower(), term) ||
-                    EF.Functions.Like(e.FullName.ToLower(), term) ||
-                    (e.Email != null && EF.Functions.Like(e.Email.ToLower(), term)) ||
-                    (e.Phone != null && EF.Functions.Like(e.Phone.ToLower(), term)) ||
-                    EF.Functions.Like(e.IdentityNumber.ToLower(), term));
-            }
-
-            query = string.IsNullOrWhiteSpace(search.SortBy)
-                ? query.ApplySorting()
-                : query.ApplySorting(search.SortBy, search.IsDescending);
-
-            var page = await query.ToEmployeeDto()
-                .PaginatedListAsync(search.PageNumber, search.PageSize, ct);
-
-            return Result<PaginatedList<EmployeeDto>>.Success(page);
+            return Result<PaginatedList<EmployeeDto>>.Success(paginated);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching employees");
+            logger.LogError(ex, "An error occurred while fetching employees.");
+            return Result<PaginatedList<EmployeeDto>>.CriticalError("Internal server error occurred while fetching employees.");
+        }
+    }
+
+    public async Task<Result<PaginatedList<EmployeeDto>>> SearchAsync(string? searchTerm,
+                                                                        int pageNumber = 1,
+                                                                        int pageSize = 20,
+                                                                        string? sortBy = null,
+                                                                        bool isDescending = false,
+                                                                        CancellationToken ct = default)
+    {
+        try
+        {
+            var query = unitOfWork.Employees.Query();
+
+            // Build search query
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var lowerSearchTerm = $"%{searchTerm.ToLower()}%";
+                query = query.Where(e => EF.Functions.Like(e.Code.ToLower(), lowerSearchTerm) ||
+                                          EF.Functions.Like(e.FullName.ToLower(), lowerSearchTerm) ||
+                                          (e.Email != null && EF.Functions.Like(e.Email.ToLower(), lowerSearchTerm)) ||
+                                          (e.Phone != null && EF.Functions.Like(e.Phone.ToLower(), lowerSearchTerm)) ||
+                                          EF.Functions.Like(e.IdentityNumber.ToLower(), lowerSearchTerm));
+            }
+
+            // Apply sorting
+            query = sortBy != null ? query.ApplySorting(sortBy, isDescending) : query.ApplySorting();
+
+            // Execute query and return paginated result
+            var paginatedList = await query.ToEmployeeDto().PaginatedListAsync(pageNumber, pageSize, ct);
+            return Result<PaginatedList<EmployeeDto>>.Success(paginatedList);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while searching employees.");
             return Result<PaginatedList<EmployeeDto>>.CriticalError("Internal server error occurred while searching employees.");
         }
     }
 
-    protected override Expression<Func<Employee, EmployeeDto>> ToDto() => Extensions.ExpressionToDto();
-
-    protected override Employee CreateEntity(CreateEmployeeDto dto) => new()
+    public async Task<Result<EmployeeDto>> CreateAsync(CreateEmployeeDto dto, CancellationToken ct = default)
     {
-        Code = dto.Code.Trim(),
-        FullName = dto.FullName.Trim(),
-        Email = dto.Email,
-        Phone = dto.Phone,
-        IdentityNumber = dto.IdentityNumber.Trim(),
-        Address = dto.Address,
-        BirthDate = dto.BirthDate,
-        HireDate = dto.HireDate,
-        ResignDate = dto.ResignDate,
-        Gender = dto.Gender,
-        Status = dto.Status,
-        DepartmentId = dto.DepartmentId,
-        PositionId = dto.PositionId,
-        UserId = dto.UserId
-    };
+        try
+        {
+            var employee = new Employee
+            {
+                Code = dto.Code.Trim(),
+                FullName = dto.FullName.Trim(),
+                Email = dto.Email,
+                Phone = dto.Phone,
+                IdentityNumber = dto.IdentityNumber.Trim(),
+                Address = dto.Address,
+                BirthDate = dto.BirthDate,
+                HireDate = dto.HireDate,
+                ResignDate = dto.ResignDate,
+                Gender = dto.Gender,
+                Status = dto.Status,
+                DepartmentId = dto.DepartmentId,
+                PositionId = dto.PositionId,
+                UserId = dto.UserId
+            };
 
-    protected override Expression<Func<Employee, UpdateEmployeeDto>> ToUpdateDto() => e => new UpdateEmployeeDto
+            await unitOfWork.Employees.AddAsync(employee, ct);
+            await unitOfWork.SaveChangesAsync(ct);
+
+            return Result<EmployeeDto>.Created(MapToDto(employee));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while creating a new employee.");
+            return Result<EmployeeDto>.CriticalError("An error occurred while creating the employee.");
+        }
+    }
+
+    public async Task<Result<EmployeeDto>> UpdateAsync(Guid id, UpdateEmployeeDto dto, CancellationToken ct = default)
     {
-        Id = e.Id,
-        Code = e.Code,
-        FullName = e.FullName,
-        Email = e.Email,
-        Phone = e.Phone,
-        IdentityNumber = e.IdentityNumber,
-        Address = e.Address,
-        BirthDate = e.BirthDate,
-        HireDate = e.HireDate,
-        ResignDate = e.ResignDate,
-        Gender = e.Gender,
-        Status = e.Status,
-        DepartmentId = e.DepartmentId,
-        PositionId = e.PositionId,
-        UserId = e.UserId
-    };
+        try
+        {
+            var employee = await unitOfWork.Employees.GetByIdAsync(id, ct);
+            if (employee == null)
+                return Result<EmployeeDto>.NotFound(ErrorHelpers.NotFoundWithId("Employee", id));
 
-    protected override void UpdateEntity(Employee entity, UpdateEmployeeDto dto)
+            // Only update fields if they have changed
+            if (dto.Code.HasValueAndIsDifferentFrom(employee.Code))
+                employee.Code = dto.Code!.Trim();
+
+            if (dto.FullName.HasValueAndIsDifferentFrom(employee.FullName))
+                employee.FullName = dto.FullName!.Trim();
+
+            if (dto.Email.IsDifferentFrom(employee.Email))
+                employee.Email = dto.Email;
+
+            if (dto.Phone.IsDifferentFrom(employee.Phone))
+                employee.Phone = dto.Phone;
+
+            if (dto.IdentityNumber.HasValueAndIsDifferentFrom(employee.IdentityNumber))
+                employee.IdentityNumber = dto.IdentityNumber!.Trim();
+
+            if (dto.Address.IsDifferentFrom(employee.Address))
+                employee.Address = dto.Address;
+
+            if (dto.BirthDate.IsDifferentFrom(employee.BirthDate))
+                employee.BirthDate = dto.BirthDate;
+
+            if (dto.HireDate.HasValueAndIsDifferentFrom(employee.HireDate))
+                employee.HireDate = dto.HireDate!.Value;
+
+            if (dto.ResignDate.IsDifferentFrom(employee.ResignDate))
+                employee.ResignDate = dto.ResignDate;
+
+            if (dto.Gender.HasValueAndIsDifferentFrom(employee.Gender))
+                employee.Gender = dto.Gender!.Value;
+
+            if (dto.Status.HasValueAndIsDifferentFrom(employee.Status))
+                employee.Status = dto.Status!.Value;
+
+            if (dto.DepartmentId.HasValueAndIsDifferentFrom(employee.DepartmentId))
+                employee.DepartmentId = dto.DepartmentId!.Value;
+
+            if (dto.PositionId.HasValueAndIsDifferentFrom(employee.PositionId))
+                employee.PositionId = dto.PositionId!.Value;
+
+            if (dto.UserId.IsDifferentFrom(employee.UserId))
+                employee.UserId = dto.UserId;
+
+            await unitOfWork.SaveChangesAsync(ct);
+
+            return Result<EmployeeDto>.Success(MapToDto(employee));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while updating the employee.");
+            return Result<EmployeeDto>.CriticalError("An error occurred while updating the employee.");
+        }
+    }
+
+    public async Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        if (dto.Code.HasValueAndIsDifferentFrom(entity.Code))
-            entity.Code = dto.Code!.Trim();
+        try
+        {
+            var employee = await unitOfWork.Employees.GetByIdAsync(id, ct);
+            if (employee == null)
+                return Result.NotFound(ErrorHelpers.NotFoundWithId("Employee", id));
 
-        if (dto.FullName.HasValueAndIsDifferentFrom(entity.FullName))
-            entity.FullName = dto.FullName!.Trim();
+            unitOfWork.Employees.Delete(employee);
+            await unitOfWork.SaveChangesAsync(ct);
 
-        if (dto.Email.IsDifferentFrom(entity.Email))
-            entity.Email = dto.Email;
+            return Result.Success(ResultStatus.NoContent);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while deleting the employee.");
+            return Result.Error("An error occurred while deleting the employee.");
+        }
+    }
 
-        if (dto.Phone.IsDifferentFrom(entity.Phone))
-            entity.Phone = dto.Phone;
-
-        if (dto.IdentityNumber.HasValueAndIsDifferentFrom(entity.IdentityNumber))
-            entity.IdentityNumber = dto.IdentityNumber!.Trim();
-
-        if (dto.Address.IsDifferentFrom(entity.Address))
-            entity.Address = dto.Address;
-
-        if (dto.BirthDate.IsDifferentFrom(entity.BirthDate))
-            entity.BirthDate = dto.BirthDate;
-
-        if (dto.HireDate.HasValueAndIsDifferentFrom(entity.HireDate))
-            entity.HireDate = dto.HireDate!.Value;
-
-        if (dto.ResignDate.IsDifferentFrom(entity.ResignDate))
-            entity.ResignDate = dto.ResignDate;
-
-        if (dto.Gender.HasValueAndIsDifferentFrom(entity.Gender))
-            entity.Gender = dto.Gender!.Value;
-
-        if (dto.Status.HasValueAndIsDifferentFrom(entity.Status))
-            entity.Status = dto.Status!.Value;
-
-        if (dto.DepartmentId.HasValueAndIsDifferentFrom(entity.DepartmentId))
-            entity.DepartmentId = dto.DepartmentId!.Value;
-
-        if (dto.PositionId.HasValueAndIsDifferentFrom(entity.PositionId))
-            entity.PositionId = dto.PositionId!.Value;
-
-        if (dto.UserId.IsDifferentFrom(entity.UserId))
-            entity.UserId = dto.UserId;
+    private static EmployeeDto MapToDto(Employee employee)
+    {
+        return new EmployeeDto
+        {
+            Id = employee.Id,
+            Code = employee.Code,
+            FullName = employee.FullName,
+            Email = employee.Email,
+            Phone = employee.Phone,
+            IdentityNumber = employee.IdentityNumber,
+            Address = employee.Address,
+            BirthDate = employee.BirthDate,
+            HireDate = employee.HireDate,
+            ResignDate = employee.ResignDate,
+            Gender = employee.Gender.ToString(),
+            Status = employee.Status.ToString(),
+            DepartmentName = employee.Department.Name,
+            PositionName = employee.Position.Name,
+            UserName = employee.User != null ? employee.User.UserName : null,
+            CreatedAt = employee.Created
+        };
     }
 }
