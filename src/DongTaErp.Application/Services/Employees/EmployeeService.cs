@@ -1,6 +1,12 @@
 namespace DongTaErp.Application.Services.Employees;
 
-public class EmployeeService(IUnitOfWork unitOfWork, ILogger<EmployeeService> logger) : IEmployeeService
+using FluentValidation;
+
+public class EmployeeService(
+    IUnitOfWork unitOfWork,
+    ILogger<EmployeeService> logger,
+    IValidator<CreateEmployeeDto> createValidator,
+    IValidator<UpdateEmployeeDto> updateValidator) : IEmployeeService
 {
     public async Task<Result<EmployeeDto?>> GetEmployeeByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -69,6 +75,18 @@ public class EmployeeService(IUnitOfWork unitOfWork, ILogger<EmployeeService> lo
     {
         try
         {
+            // Validate DTO before processing
+            var validation = await createValidator.ValidateAsync(dto, ct);
+            if (!validation.IsValid)
+            {
+                var errors = validation.Errors
+                    .Select(e => string.IsNullOrWhiteSpace(e.PropertyName)
+                        ? e.ErrorMessage
+                        : $"{e.PropertyName}: {e.ErrorMessage}");
+                logger.LogWarning("Employee creation validation failed: {Errors}", string.Join("; ", errors));
+                return Result<EmployeeDto>.Error([..errors]);
+            }
+
             var employee = new Employee
             {
                 Code = dto.Code.Trim(),
@@ -90,6 +108,7 @@ public class EmployeeService(IUnitOfWork unitOfWork, ILogger<EmployeeService> lo
             await unitOfWork.Employees.AddAsync(employee, ct);
             await unitOfWork.SaveChangesAsync(ct);
 
+            logger.LogInformation("Employee {EmployeeCode} created successfully with ID {EmployeeId}", employee.Code, employee.Id);
             return Result<EmployeeDto>.Created(MapToDto(employee));
         }
         catch (Exception ex)
@@ -103,6 +122,18 @@ public class EmployeeService(IUnitOfWork unitOfWork, ILogger<EmployeeService> lo
     {
         try
         {
+            // Validate DTO before processing
+            var validation = await updateValidator.ValidateAsync(dto, ct);
+            if (!validation.IsValid)
+            {
+                var errors = validation.Errors
+                    .Select(e => string.IsNullOrWhiteSpace(e.PropertyName)
+                        ? e.ErrorMessage
+                        : $"{e.PropertyName}: {e.ErrorMessage}");
+                logger.LogWarning("Employee update validation failed for ID {EmployeeId}: {Errors}", id, string.Join("; ", errors));
+                return Result<EmployeeDto>.Error([..errors]);
+            }
+
             var employee = await unitOfWork.Employees.GetByIdAsync(id, ct);
             if (employee == null)
                 return Result<EmployeeDto>.NotFound(ErrorHelpers.NotFoundWithId("Employee", id));
@@ -152,11 +183,12 @@ public class EmployeeService(IUnitOfWork unitOfWork, ILogger<EmployeeService> lo
 
             await unitOfWork.SaveChangesAsync(ct);
 
+            logger.LogInformation("Employee {EmployeeCode} (ID {EmployeeId}) updated successfully", employee.Code, employee.Id);
             return Result<EmployeeDto>.Success(MapToDto(employee));
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "An error occurred while updating the employee.");
+            logger.LogError(ex, "An error occurred while updating the employee with ID {EmployeeId}.", id);
             return Result<EmployeeDto>.CriticalError("An error occurred while updating the employee.");
         }
     }
