@@ -2,29 +2,39 @@ using DongTaErp.Domain.Enums;
 
 namespace DongTaErp.Application.Services.Payments;
 
-public class PaymentService
-    : Base.GenericCrudService<Payment, PaymentDto, CreatePaymentDto, UpdatePaymentDto>,
-      IPaymentService
+public class PaymentService(
+    IUnitOfWork unitOfWork,
+    ILogger<PaymentService> logger,
+    IValidator<CreatePaymentDto> createValidator,
+    IValidator<UpdatePaymentDto> updateValidator) : IPaymentService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<PaymentService> _logger;
+    public Task<Result<PaymentDto?>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetByIdAsync(unitOfWork.Payments, ToDto(), id, logger, ct);
 
-    public PaymentService(
-        IUnitOfWork unitOfWork,
-        ILogger<PaymentService> logger,
-        IValidator<CreatePaymentDto> createValidator,
-        IValidator<UpdatePaymentDto> updateValidator)
-        : base(unitOfWork.Payments, unitOfWork, logger, createValidator, updateValidator)
-    {
-        _unitOfWork = unitOfWork;
-        _logger = logger;
-    }
+    public Task<Result<PaginatedList<PaymentDto>>> GetAllAsync(int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
+        => CrudOperations.GetAllAsync(unitOfWork.Payments, ToDto(), pageNumber, pageSize, logger, ct);
+
+    public Task<Result<string>> CreateAsync(CreatePaymentDto dto, CancellationToken ct = default)
+        => CrudOperations.CreateAsync(unitOfWork.Payments, unitOfWork, createValidator, CreateEntity, dto, logger, ct);
+
+    public Task<Result> UpdateAsync(Guid id, UpdatePaymentDto dto, CancellationToken ct = default)
+        => CrudOperations.UpdateAsync(unitOfWork.Payments, unitOfWork, updateValidator, UpdateEntity, id, dto, logger, ct);
+
+    public Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.DeleteAsync(unitOfWork.Payments, unitOfWork, id, logger, ct);
+
+    public Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.SoftDeleteAsync(unitOfWork.Payments, unitOfWork, id, logger, ct);
+
+    public Task<Result<UpdatePaymentDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetUpdateByIdAsync(unitOfWork.Payments, ToUpdateDto(), id, logger, ct);
+
 
     public async Task<Result<PaginatedList<PaymentDto>>> SearchAsync(SimpleSearch search, CancellationToken ct = default)
     {
         try
         {
-            var query = _unitOfWork.Payments.Query();
+            var query = unitOfWork.Payments.Query();
             if (!string.IsNullOrWhiteSpace(search.SearchTerm))
             {
                 var term = $"%{search.SearchTerm.ToLower()}%";
@@ -43,14 +53,14 @@ public class PaymentService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching payments");
+            logger.LogError(ex, "Error searching payments");
             return Result<PaginatedList<PaymentDto>>.CriticalError("Internal server error occurred while searching payments.");
         }
     }
 
     public async Task<Result> PostAsync(Guid id, CancellationToken ct = default)
     {
-        var payment = await _unitOfWork.Payments.Query()
+        var payment = await unitOfWork.Payments.Query()
             .Include(x => x.Allocations)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (payment is null)
@@ -63,7 +73,7 @@ public class PaymentService
             return Result.Error("Tổng phân bổ vượt số tiền thu.");
 
         var invoiceIds = payment.Allocations.Select(x => x.InvoiceId).ToList();
-        var invoices = await _unitOfWork.Invoices.Query().Where(x => invoiceIds.Contains(x.Id)).ToListAsync(ct);
+        var invoices = await unitOfWork.Invoices.Query().Where(x => invoiceIds.Contains(x.Id)).ToListAsync(ct);
 
         foreach (var allocation in payment.Allocations)
         {
@@ -95,13 +105,13 @@ public class PaymentService
 
         payment.Status = CustomerPaymentStatus.Posted;
         payment.PostedAt = DateTime.UtcNow;
-        await _unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Success(ResultStatus.NoContent);
     }
 
     public async Task<Result> CancelAsync(Guid id, CancellationToken ct = default)
     {
-        var payment = await _unitOfWork.Payments.Query()
+        var payment = await unitOfWork.Payments.Query()
             .Include(x => x.Allocations)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (payment is null)
@@ -112,7 +122,7 @@ public class PaymentService
         if (payment.Status == CustomerPaymentStatus.Posted)
         {
             var invoiceIds = payment.Allocations.Select(x => x.InvoiceId).ToList();
-            var invoices = await _unitOfWork.Invoices.Query().Where(x => invoiceIds.Contains(x.Id)).ToListAsync(ct);
+            var invoices = await unitOfWork.Invoices.Query().Where(x => invoiceIds.Contains(x.Id)).ToListAsync(ct);
             foreach (var allocation in payment.Allocations)
             {
                 var invoice = invoices.First(x => x.Id == allocation.InvoiceId);
@@ -126,13 +136,13 @@ public class PaymentService
 
         payment.Status = CustomerPaymentStatus.Cancelled;
         payment.CancelledAt = DateTime.UtcNow;
-        await _unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Success(ResultStatus.NoContent);
     }
     
-    protected override Expression<Func<Payment, PaymentDto>> ToDto() => Extensions.ExpressionToDto();
+    private static Expression<Func<Payment, PaymentDto>> ToDto() => Extensions.ExpressionToDto();
 
-    protected override Payment CreateEntity(CreatePaymentDto dto)
+    private Payment CreateEntity(CreatePaymentDto dto)
     {
         var entity = new Payment
         {
@@ -158,7 +168,7 @@ public class PaymentService
         return entity;
     }
 
-    protected override Expression<Func<Payment, UpdatePaymentDto>> ToUpdateDto() => x => new UpdatePaymentDto
+    private static Expression<Func<Payment, UpdatePaymentDto>> ToUpdateDto() => x => new UpdatePaymentDto
     {
         Id = x.Id,
         Number = x.Number,
@@ -169,7 +179,7 @@ public class PaymentService
         Notes = x.Notes
     };
 
-    protected override void UpdateEntity(Payment entity, UpdatePaymentDto dto)
+    private static void UpdateEntity(Payment entity, UpdatePaymentDto dto)
     {
         if (entity.Status != CustomerPaymentStatus.Draft)
             throw new InvalidOperationException("Chỉ sửa phiếu thu đang nháp.");

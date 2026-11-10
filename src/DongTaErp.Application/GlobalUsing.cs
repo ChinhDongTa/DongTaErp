@@ -8,3 +8,4 @@ global using DongTaErp.Application.Common.Interfaces;
 global using Microsoft.Extensions.Logging;
 global using System.Linq.Expressions;
 global using FluentValidation;
+global using DongTaErp.Application.Services.Base;

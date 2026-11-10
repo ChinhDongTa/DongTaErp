@@ -2,29 +2,39 @@ using DongTaErp.Domain.Enums;
 
 namespace DongTaErp.Application.Services.Disbursements;
 
-public class DisbursementService
-    : Base.GenericCrudService<Disbursement, DisbursementDto, CreateDisbursementDto, UpdateDisbursementDto>,
-      IDisbursementService
+public class DisbursementService(
+    IUnitOfWork unitOfWork,
+    ILogger<DisbursementService> logger,
+    IValidator<CreateDisbursementDto> createValidator,
+    IValidator<UpdateDisbursementDto> updateValidator) : IDisbursementService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<DisbursementService> _logger;
+    public Task<Result<DisbursementDto?>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetByIdAsync(unitOfWork.Disbursements, ToDto(), id, logger, ct);
 
-    public DisbursementService(
-        IUnitOfWork unitOfWork,
-        ILogger<DisbursementService> logger,
-        IValidator<CreateDisbursementDto> createValidator,
-        IValidator<UpdateDisbursementDto> updateValidator)
-        : base(unitOfWork.Disbursements, unitOfWork, logger, createValidator, updateValidator)
-    {
-        _unitOfWork = unitOfWork;
-        _logger = logger;
-    }
+    public Task<Result<PaginatedList<DisbursementDto>>> GetAllAsync(int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
+        => CrudOperations.GetAllAsync(unitOfWork.Disbursements, ToDto(), pageNumber, pageSize, logger, ct);
+
+    public Task<Result<string>> CreateAsync(CreateDisbursementDto dto, CancellationToken ct = default)
+        => CrudOperations.CreateAsync(unitOfWork.Disbursements, unitOfWork, createValidator, CreateEntity, dto, logger, ct);
+
+    public Task<Result> UpdateAsync(Guid id, UpdateDisbursementDto dto, CancellationToken ct = default)
+        => CrudOperations.UpdateAsync(unitOfWork.Disbursements, unitOfWork, updateValidator, UpdateEntity, id, dto, logger, ct);
+
+    public Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.DeleteAsync(unitOfWork.Disbursements, unitOfWork, id, logger, ct);
+
+    public Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.SoftDeleteAsync(unitOfWork.Disbursements, unitOfWork, id, logger, ct);
+
+    public Task<Result<UpdateDisbursementDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetUpdateByIdAsync(unitOfWork.Disbursements, ToUpdateDto(), id, logger, ct);
+
 
     public async Task<Result<PaginatedList<DisbursementDto>>> SearchAsync(SimpleSearch search, CancellationToken ct = default)
     {
         try
         {
-            var query = _unitOfWork.Disbursements.Query();
+            var query = unitOfWork.Disbursements.Query();
             if (!string.IsNullOrWhiteSpace(search.SearchTerm))
             {
                 var term = $"%{search.SearchTerm.ToLower()}%";
@@ -43,14 +53,14 @@ public class DisbursementService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching disbursements");
+            logger.LogError(ex, "Error searching disbursements");
             return Result<PaginatedList<DisbursementDto>>.CriticalError("Internal server error occurred while searching disbursements.");
         }
     }
 
     public async Task<Result> PostAsync(Guid id, CancellationToken ct = default)
     {
-        var payment = await _unitOfWork.Disbursements.Query()
+        var payment = await unitOfWork.Disbursements.Query()
             .Include(x => x.Allocations)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (payment is null)
@@ -63,7 +73,7 @@ public class DisbursementService
             return Result.Error("Tổng phân bổ vượt số tiền chi.");
 
         var billIds = payment.Allocations.Select(x => x.VendorBillId).ToList();
-        var bills = await _unitOfWork.VendorBills.Query().Where(x => billIds.Contains(x.Id)).ToListAsync(ct);
+        var bills = await unitOfWork.VendorBills.Query().Where(x => billIds.Contains(x.Id)).ToListAsync(ct);
 
         foreach (var allocation in payment.Allocations)
         {
@@ -95,13 +105,13 @@ public class DisbursementService
 
         payment.Status = DisbursementStatus.Posted;
         payment.PostedAt = DateTime.UtcNow;
-        await _unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Success(ResultStatus.NoContent);
     }
 
     public async Task<Result> CancelAsync(Guid id, CancellationToken ct = default)
     {
-        var payment = await _unitOfWork.Disbursements.Query()
+        var payment = await unitOfWork.Disbursements.Query()
             .Include(x => x.Allocations)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (payment is null)
@@ -112,7 +122,7 @@ public class DisbursementService
         if (payment.Status == DisbursementStatus.Posted)
         {
             var billIds = payment.Allocations.Select(x => x.VendorBillId).ToList();
-            var bills = await _unitOfWork.VendorBills.Query().Where(x => billIds.Contains(x.Id)).ToListAsync(ct);
+            var bills = await unitOfWork.VendorBills.Query().Where(x => billIds.Contains(x.Id)).ToListAsync(ct);
             foreach (var allocation in payment.Allocations)
             {
                 var bill = bills.First(x => x.Id == allocation.VendorBillId);
@@ -126,13 +136,13 @@ public class DisbursementService
 
         payment.Status = DisbursementStatus.Cancelled;
         payment.CancelledAt = DateTime.UtcNow;
-        await _unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Success(ResultStatus.NoContent);
     }
 
-    protected override Expression<Func<Disbursement, DisbursementDto>> ToDto() => Extensions.ExpressionToDto();
+    private static Expression<Func<Disbursement, DisbursementDto>> ToDto() => Extensions.ExpressionToDto();
 
-    protected override Disbursement CreateEntity(CreateDisbursementDto dto)
+    private Disbursement CreateEntity(CreateDisbursementDto dto)
     {
         var entity = new Disbursement
         {
@@ -158,7 +168,7 @@ public class DisbursementService
         return entity;
     }
 
-    protected override Expression<Func<Disbursement, UpdateDisbursementDto>> ToUpdateDto() => x => new UpdateDisbursementDto
+    private static Expression<Func<Disbursement, UpdateDisbursementDto>> ToUpdateDto() => x => new UpdateDisbursementDto
     {
         Id = x.Id,
         Number = x.Number,
@@ -169,7 +179,7 @@ public class DisbursementService
         Notes = x.Notes
     };
 
-    protected override void UpdateEntity(Disbursement entity, UpdateDisbursementDto dto)
+    private static void UpdateEntity(Disbursement entity, UpdateDisbursementDto dto)
     {
         if (entity.Status != DisbursementStatus.Draft)
             throw new InvalidOperationException("Chỉ sửa phiếu chi đang nháp.");

@@ -2,38 +2,45 @@ using DongTaErp.Domain.Enums;
 
 namespace DongTaErp.Application.Services.SalesOrders;
 
-public class SalesOrderService
-    : Base.GenericCrudService<SalesOrder, SalesOrderDto, CreateSalesOrderDto, UpdateSalesOrderDto>,
-      ISalesOrderService
+public class SalesOrderService(
+    IUnitOfWork unitOfWork,
+    ILogger<SalesOrderService> logger,
+    IValidator<CreateSalesOrderDto> createValidator,
+    IValidator<UpdateSalesOrderDto> updateValidator) : ISalesOrderService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<SalesOrderService> _logger;
+    public Task<Result<SalesOrderDto?>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetByIdAsync(unitOfWork.SalesOrders, ToDto(), id, logger, ct);
 
-    public SalesOrderService(
-        IUnitOfWork unitOfWork,
-        ILogger<SalesOrderService> logger,
-        IValidator<CreateSalesOrderDto> createValidator,
-        IValidator<UpdateSalesOrderDto> updateValidator)
-        : base(unitOfWork.SalesOrders, unitOfWork, logger, createValidator, updateValidator)
-    {
-        _unitOfWork = unitOfWork;
-        _logger = logger;
-    }
+    public Task<Result<PaginatedList<SalesOrderDto>>> GetAllAsync(int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
+        => CrudOperations.GetAllAsync(unitOfWork.SalesOrders, ToDto(), pageNumber, pageSize, logger, ct);
 
-    public override async Task<Result<string>> CreateAsync(CreateSalesOrderDto dto, CancellationToken ct = default)
+    public Task<Result> UpdateAsync(Guid id, UpdateSalesOrderDto dto, CancellationToken ct = default)
+        => CrudOperations.UpdateAsync(unitOfWork.SalesOrders, unitOfWork, updateValidator, UpdateEntity, id, dto, logger, ct);
+
+    public Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.DeleteAsync(unitOfWork.SalesOrders, unitOfWork, id, logger, ct);
+
+    public Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.SoftDeleteAsync(unitOfWork.SalesOrders, unitOfWork, id, logger, ct);
+
+    public Task<Result<UpdateSalesOrderDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetUpdateByIdAsync(unitOfWork.SalesOrders, ToUpdateDto(), id, logger, ct);
+
+
+    public async Task<Result<string>> CreateAsync(CreateSalesOrderDto dto, CancellationToken ct = default)
     {
         var number = dto.Number.Trim();
-        var exists = await _unitOfWork.SalesOrders.Query().AnyAsync(x => x.Number == number, ct);
+        var exists = await unitOfWork.SalesOrders.Query().AnyAsync(x => x.Number == number, ct);
         if (exists)
             return Result<string>.Error($"Số đơn {number} đã tồn tại.");
-        return await base.CreateAsync(dto, ct);
+        return await CrudOperations.CreateAsync(unitOfWork.SalesOrders, unitOfWork, createValidator, CreateEntity, dto, logger, ct);
     }
 
     public async Task<Result<PaginatedList<SalesOrderDto>>> SearchAsync(SimpleSearch search, CancellationToken ct = default)
     {
         try
         {
-            var query = _unitOfWork.SalesOrders.Query();
+            var query = unitOfWork.SalesOrders.Query();
             if (!string.IsNullOrWhiteSpace(search.SearchTerm))
             {
                 var term = $"%{search.SearchTerm.ToLower()}%";
@@ -52,14 +59,14 @@ public class SalesOrderService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching sales orders");
+            logger.LogError(ex, "Error searching sales orders");
             return Result<PaginatedList<SalesOrderDto>>.CriticalError("Internal server error occurred while searching sales orders.");
         }
     }
 
     public async Task<Result<List<NewOrderNoticeDto>>> GetNewOrdersAsync(CancellationToken ct = default)
     {
-        var items = await _unitOfWork.SalesOrders.Query()
+        var items = await unitOfWork.SalesOrders.Query()
             .Where(x => x.Status == SalesOrderStatus.Draft)
             .OrderByDescending(x => x.Created)
             .Take(20)
@@ -77,7 +84,7 @@ public class SalesOrderService
 
     public async Task<Result> ConfirmAsync(Guid id, CancellationToken ct = default)
     {
-        var order = await _unitOfWork.SalesOrders.Query().Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id, ct);
+        var order = await unitOfWork.SalesOrders.Query().Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id, ct);
         if (order is null)
             return Result.NotFound(ErrorHelpers.NotFoundWithId(nameof(SalesOrder), id));
         if (order.Status != SalesOrderStatus.Draft)
@@ -87,31 +94,31 @@ public class SalesOrderService
 
         order.Status = SalesOrderStatus.Confirmed;
         order.ConfirmedAt = DateTime.UtcNow;
-        await _unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Success(ResultStatus.NoContent);
     }
 
     public async Task<Result> CancelAsync(Guid id, CancellationToken ct = default)
     {
-        var order = await _unitOfWork.SalesOrders.GetByIdAsync(id, ct);
+        var order = await unitOfWork.SalesOrders.GetByIdAsync(id, ct);
         if (order is null)
             return Result.NotFound(ErrorHelpers.NotFoundWithId(nameof(SalesOrder), id));
         if (order.Status == SalesOrderStatus.Cancelled)
             return Result.Error("Đơn đã hủy.");
 
-        var hasPostedIssue = await _unitOfWork.GoodsIssues.Query()
+        var hasPostedIssue = await unitOfWork.GoodsIssues.Query()
             .AnyAsync(x => x.SalesOrderId == id && x.Status == GoodsIssueStatus.Posted, ct);
         if (hasPostedIssue)
             return Result.Error("Không hủy đơn đã có phiếu xuất đã ghi sổ. Hủy phiếu xuất trước.");
 
         order.Status = SalesOrderStatus.Cancelled;
-        await _unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Success(ResultStatus.NoContent);
     }
 
-    protected override Expression<Func<SalesOrder, SalesOrderDto>> ToDto() => Extensions.ExpressionToDto();
+    private static Expression<Func<SalesOrder, SalesOrderDto>> ToDto() => Extensions.ExpressionToDto();
 
-    protected override SalesOrder CreateEntity(CreateSalesOrderDto dto)
+    private static SalesOrder CreateEntity(CreateSalesOrderDto dto)
     {
         var order = new SalesOrder
         {
@@ -139,7 +146,7 @@ public class SalesOrderService
         return order;
     }
 
-    protected override Expression<Func<SalesOrder, UpdateSalesOrderDto>> ToUpdateDto() => x => new UpdateSalesOrderDto
+    private static Expression<Func<SalesOrder, UpdateSalesOrderDto>> ToUpdateDto() => x => new UpdateSalesOrderDto
     {
         Id = x.Id,
         Number = x.Number,
@@ -152,7 +159,7 @@ public class SalesOrderService
         ConfirmedAt = x.ConfirmedAt
     };
 
-    protected override void UpdateEntity(SalesOrder entity, UpdateSalesOrderDto dto)
+    private static void UpdateEntity(SalesOrder entity, UpdateSalesOrderDto dto)
     {
         if (entity.Status != SalesOrderStatus.Draft)
             return;

@@ -1,16 +1,32 @@
 namespace DongTaErp.Application.Services.Partners;
 
-public class PartnerService : Base.GenericCrudService<Partner, PartnerDto, CreatePartnerDto, UpdatePartnerDto>, IPartnerService
+public class PartnerService(
+    IUnitOfWork unitOfWork,
+    ILogger<PartnerService> logger,
+    IValidator<CreatePartnerDto> createValidator,
+    IValidator<UpdatePartnerDto> updateValidator) : IPartnerService
 {
-    private readonly IUnitOfWork unitOfWork;
-    private readonly ILogger<PartnerService> logger;
+    public Task<Result<PartnerDto?>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetByIdAsync(unitOfWork.Partners, ToDto(), id, logger, ct);
 
-    public PartnerService(IUnitOfWork unitOfWork, ILogger<PartnerService> logger, IValidator<CreatePartnerDto> createValidator, IValidator<UpdatePartnerDto> updateValidator) 
-        : base(unitOfWork.Partners, unitOfWork, logger, createValidator, updateValidator  )
-    {
-        this.unitOfWork = unitOfWork;
-        this.logger = logger;
-    }
+    public Task<Result<PaginatedList<PartnerDto>>> GetAllAsync(int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
+        => CrudOperations.GetAllAsync(unitOfWork.Partners, ToDto(), pageNumber, pageSize, logger, ct);
+
+    public Task<Result<string>> CreateAsync(CreatePartnerDto dto, CancellationToken ct = default)
+        => CrudOperations.CreateAsync(unitOfWork.Partners, unitOfWork, createValidator, CreateEntity, dto, logger, ct);
+
+    public Task<Result> UpdateAsync(Guid id, UpdatePartnerDto dto, CancellationToken ct = default)
+        => CrudOperations.UpdateAsync(unitOfWork.Partners, unitOfWork, updateValidator, UpdateEntity, id, dto, logger, ct);
+
+    public Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.DeleteAsync(unitOfWork.Partners, unitOfWork, id, logger, ct);
+
+    public Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.SoftDeleteAsync(unitOfWork.Partners, unitOfWork, id, logger, ct);
+
+    public Task<Result<UpdatePartnerDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetUpdateByIdAsync(unitOfWork.Partners, ToUpdateDto(), id, logger, ct);
+
 
     public async Task<Result<PaginatedList<PartnerDto>>> SearchAsync(string? searchTerm,
                                                                              int pageNumber = 1,
@@ -47,9 +63,9 @@ public class PartnerService : Base.GenericCrudService<Partner, PartnerDto, Creat
         }
     }
 
-    protected override Expression<Func<Partner, PartnerDto>> ToDto() => Extensions.ExpressionToDto();
+    private static Expression<Func<Partner, PartnerDto>> ToDto() => Extensions.ExpressionToDto();
 
-    protected override Partner CreateEntity(CreatePartnerDto dto) => new()
+    private static Partner CreateEntity(CreatePartnerDto dto) => new()
     {
         Code = dto.Code,
         Name = dto.Name,
@@ -60,7 +76,7 @@ public class PartnerService : Base.GenericCrudService<Partner, PartnerDto, Creat
         Address = dto.Address,
         IsActive = true
     };
-    protected override Expression<Func<Partner, UpdatePartnerDto>> ToUpdateDto() => p => new UpdatePartnerDto
+    private static Expression<Func<Partner, UpdatePartnerDto>> ToUpdateDto() => p => new UpdatePartnerDto
     {
         Id = p.Id,
         Code = p.Code,
@@ -72,7 +88,7 @@ public class PartnerService : Base.GenericCrudService<Partner, PartnerDto, Creat
         Address = p.Address,
         IsActive = p.IsActive
     };
-    protected override void UpdateEntity(Partner partner, UpdatePartnerDto dto)
+    private static void UpdateEntity(Partner partner, UpdatePartnerDto dto)
     {
         if (dto.Code.HasValueAndIsDifferentFrom(partner.Code))
         {

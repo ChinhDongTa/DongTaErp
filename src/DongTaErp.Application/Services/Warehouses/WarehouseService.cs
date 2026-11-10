@@ -1,15 +1,32 @@
 ﻿namespace DongTaErp.Application.Services.Warehouses;
 
-public class WarehouseService : Base.GenericCrudService<Warehouse, WarehouseDto, CreateWarehouseDto, UpdateWarehouseDto>, IWarehouseService
+public class WarehouseService(
+    IUnitOfWork unitOfWork,
+    ILogger<WarehouseService> logger,
+    IValidator<CreateWarehouseDto> createValidator,
+    IValidator<UpdateWarehouseDto> updateValidator) : IWarehouseService
 {
-    private readonly IUnitOfWork unitOfWork;
-    private readonly ILogger<WarehouseService> logger;
+    public Task<Result<WarehouseDto?>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetByIdAsync(unitOfWork.Warehouses, ToDto(), id, logger, ct);
 
-    public WarehouseService(IUnitOfWork unitOfWork, ILogger<WarehouseService> logger, IValidator<CreateWarehouseDto> createValidator, IValidator<UpdateWarehouseDto> updateValidator) : base(unitOfWork.Warehouses, unitOfWork, logger, createValidator, updateValidator)
-    {
-        this.unitOfWork = unitOfWork;
-        this.logger = logger;
-    }
+    public Task<Result<PaginatedList<WarehouseDto>>> GetAllAsync(int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
+        => CrudOperations.GetAllAsync(unitOfWork.Warehouses, ToDto(), pageNumber, pageSize, logger, ct);
+
+    public Task<Result<string>> CreateAsync(CreateWarehouseDto dto, CancellationToken ct = default)
+        => CrudOperations.CreateAsync(unitOfWork.Warehouses, unitOfWork, createValidator, CreateEntity, dto, logger, ct);
+
+    public Task<Result> UpdateAsync(Guid id, UpdateWarehouseDto dto, CancellationToken ct = default)
+        => CrudOperations.UpdateAsync(unitOfWork.Warehouses, unitOfWork, updateValidator, UpdateEntity, id, dto, logger, ct);
+
+    public Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.DeleteAsync(unitOfWork.Warehouses, unitOfWork, id, logger, ct);
+
+    public Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.SoftDeleteAsync(unitOfWork.Warehouses, unitOfWork, id, logger, ct);
+
+    public Task<Result<UpdateWarehouseDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetUpdateByIdAsync(unitOfWork.Warehouses, ToUpdateDto(), id, logger, ct);
+
 
     public async Task<Result<PaginatedList<WarehouseDto>>> SearchAsync(
         string? searchTerm,
@@ -74,9 +91,9 @@ public class WarehouseService : Base.GenericCrudService<Warehouse, WarehouseDto,
         return Result<List<StockBalanceDto>>.Success(rows);
     }
 
-    protected override Expression<Func<Warehouse, WarehouseDto>> ToDto() => Extensions.ExpressionToDto();
+    private static Expression<Func<Warehouse, WarehouseDto>> ToDto() => Extensions.ExpressionToDto();
 
-    protected override Warehouse CreateEntity(CreateWarehouseDto dto) => new()
+    private static Warehouse CreateEntity(CreateWarehouseDto dto) => new()
     {
         Code = dto.Code,
         Name = dto.Name,
@@ -89,7 +106,7 @@ public class WarehouseService : Base.GenericCrudService<Warehouse, WarehouseDto,
         IsActive = dto.IsActive
     };
 
-    protected override Expression<Func<Warehouse, UpdateWarehouseDto>> ToUpdateDto() => w => new UpdateWarehouseDto
+    private static Expression<Func<Warehouse, UpdateWarehouseDto>> ToUpdateDto() => w => new UpdateWarehouseDto
     {
         Id = w.Id,
         Code = w.Code,
@@ -103,7 +120,7 @@ public class WarehouseService : Base.GenericCrudService<Warehouse, WarehouseDto,
         IsActive = w.IsActive
     };
 
-    protected override void UpdateEntity(Warehouse warehouse, UpdateWarehouseDto dto)
+    private static void UpdateEntity(Warehouse warehouse, UpdateWarehouseDto dto)
     {
         // Required fields
         if (dto.Code.HasValueAndIsDifferentFrom(warehouse.Code))

@@ -2,17 +2,33 @@
 
 namespace DongTaErp.Application.Services.InventoryTxns;
 
-public class InventoryTxnService : GenericCrudService<InventoryTxn, InventoryTxnDto, CreateInventoryTxnDto, UpdateInventoryTxnDto>, IInventoryTxnService
+public class InventoryTxnService(
+    IUnitOfWork unitOfWork,
+    ILogger<InventoryTxnService> logger,
+    IValidator<CreateInventoryTxnDto> createValidator,
+    IValidator<UpdateInventoryTxnDto> updateValidator) : IInventoryTxnService
 {
-    private readonly IUnitOfWork unitOfWork;
-    private readonly ILogger<InventoryTxnService> logger;
+    public Task<Result<InventoryTxnDto?>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetByIdAsync(unitOfWork.InventoryTxns, ToDto(), id, logger, ct);
 
-    public InventoryTxnService(IUnitOfWork unitOfWork, ILogger<InventoryTxnService> logger, IValidator<CreateInventoryTxnDto> createValidator, IValidator<UpdateInventoryTxnDto> updateValidator) 
-        : base(unitOfWork.InventoryTxns, unitOfWork, logger, createValidator, updateValidator )
-    {
-        this.unitOfWork = unitOfWork;
-        this.logger = logger;
-    }
+    public Task<Result<PaginatedList<InventoryTxnDto>>> GetAllAsync(int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
+        => CrudOperations.GetAllAsync(unitOfWork.InventoryTxns, ToDto(), pageNumber, pageSize, logger, ct);
+
+    public Task<Result<string>> CreateAsync(CreateInventoryTxnDto dto, CancellationToken ct = default)
+        => CrudOperations.CreateAsync(unitOfWork.InventoryTxns, unitOfWork, createValidator, CreateEntity, dto, logger, ct);
+
+    public Task<Result> UpdateAsync(Guid id, UpdateInventoryTxnDto dto, CancellationToken ct = default)
+        => CrudOperations.UpdateAsync(unitOfWork.InventoryTxns, unitOfWork, updateValidator, UpdateEntity, id, dto, logger, ct);
+
+    public Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.DeleteAsync(unitOfWork.InventoryTxns, unitOfWork, id, logger, ct);
+
+    public Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.SoftDeleteAsync(unitOfWork.InventoryTxns, unitOfWork, id, logger, ct);
+
+    public Task<Result<UpdateInventoryTxnDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetUpdateByIdAsync(unitOfWork.InventoryTxns, ToUpdateDto(), id, logger, ct);
+
 
     public async Task<Result<PaginatedList<InventoryTxnDto>>> SearchAsync(
         string? searchTerm,
@@ -56,9 +72,9 @@ public class InventoryTxnService : GenericCrudService<InventoryTxn, InventoryTxn
         }
     }
 
-    protected override Expression<Func<InventoryTxn, InventoryTxnDto>> ToDto() => Extensions.ExpressionToInventoryTxnDto();
+    private static Expression<Func<InventoryTxn, InventoryTxnDto>> ToDto() => Extensions.ExpressionToInventoryTxnDto();
 
-    protected override InventoryTxn CreateEntity(CreateInventoryTxnDto dto) => new()
+    private static InventoryTxn CreateEntity(CreateInventoryTxnDto dto) => new()
     {
         ProductId = dto.ProductId,
         WarehouseId = dto.WarehouseId,
@@ -69,7 +85,7 @@ public class InventoryTxnService : GenericCrudService<InventoryTxn, InventoryTxn
         Note = dto.Note
     };
 
-    protected override Expression<Func<InventoryTxn, UpdateInventoryTxnDto>> ToUpdateDto() => x => new UpdateInventoryTxnDto
+    private static Expression<Func<InventoryTxn, UpdateInventoryTxnDto>> ToUpdateDto() => x => new UpdateInventoryTxnDto
     {
         Id = x.Id,
         ProductId = x.ProductId,
@@ -81,7 +97,7 @@ public class InventoryTxnService : GenericCrudService<InventoryTxn, InventoryTxn
         Note = x.Note
     };
 
-    protected override void UpdateEntity(InventoryTxn entity, UpdateInventoryTxnDto dto)
+    private static void UpdateEntity(InventoryTxn entity, UpdateInventoryTxnDto dto)
     {
         // Required fields
         if (dto.ProductId.HasValueAndIsDifferentFrom(entity.ProductId))

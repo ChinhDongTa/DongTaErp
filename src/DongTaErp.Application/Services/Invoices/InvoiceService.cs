@@ -2,38 +2,45 @@ using DongTaErp.Domain.Enums;
 
 namespace DongTaErp.Application.Services.Invoices;
 
-public class InvoiceService
-    : Base.GenericCrudService<Invoice, InvoiceDto, CreateInvoiceDto, UpdateInvoiceDto>,
-      IInvoiceService
+public class InvoiceService(
+    IUnitOfWork unitOfWork,
+    ILogger<InvoiceService> logger,
+    IValidator<CreateInvoiceDto> createValidator,
+    IValidator<UpdateInvoiceDto> updateValidator) : IInvoiceService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<InvoiceService> _logger;
+    public Task<Result<InvoiceDto?>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetByIdAsync(unitOfWork.Invoices, ToDto(), id, logger, ct);
 
-    public InvoiceService(
-        IUnitOfWork unitOfWork,
-        ILogger<InvoiceService> logger,
-        IValidator<CreateInvoiceDto> createValidator,
-        IValidator<UpdateInvoiceDto> updateValidator)
-        : base(unitOfWork.Invoices, unitOfWork, logger, createValidator, updateValidator)
-    {
-        _unitOfWork = unitOfWork;
-        _logger = logger;
-    }
+    public Task<Result<PaginatedList<InvoiceDto>>> GetAllAsync(int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
+        => CrudOperations.GetAllAsync(unitOfWork.Invoices, ToDto(), pageNumber, pageSize, logger, ct);
 
-    public override async Task<Result<string>> CreateAsync(CreateInvoiceDto dto, CancellationToken ct = default)
+    public Task<Result> UpdateAsync(Guid id, UpdateInvoiceDto dto, CancellationToken ct = default)
+        => CrudOperations.UpdateAsync(unitOfWork.Invoices, unitOfWork, updateValidator, UpdateEntity, id, dto, logger, ct);
+
+    public Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.DeleteAsync(unitOfWork.Invoices, unitOfWork, id, logger, ct);
+
+    public Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.SoftDeleteAsync(unitOfWork.Invoices, unitOfWork, id, logger, ct);
+
+    public Task<Result<UpdateInvoiceDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetUpdateByIdAsync(unitOfWork.Invoices, ToUpdateDto(), id, logger, ct);
+
+
+    public async Task<Result<string>> CreateAsync(CreateInvoiceDto dto, CancellationToken ct = default)
     {
         var number = dto.Number.Trim();
-        var exists = await _unitOfWork.Invoices.Query().AnyAsync(x => x.Number == number, ct);
+        var exists = await unitOfWork.Invoices.Query().AnyAsync(x => x.Number == number, ct);
         if (exists)
             return Result<string>.Error($"Số hóa đơn {number} đã tồn tại.");
-        return await base.CreateAsync(dto, ct);
+        return await CrudOperations.CreateAsync(unitOfWork.Invoices, unitOfWork, createValidator, CreateEntity, dto, logger, ct);
     }
 
     public async Task<Result<PaginatedList<InvoiceDto>>> SearchAsync(SimpleSearch search, string? range = null, bool dueOnly = false, CancellationToken ct = default)
     {
         try
         {
-            var query = _unitOfWork.Invoices.Query();
+            var query = unitOfWork.Invoices.Query();
             var today = DateTime.Today;
             if (range == "week")
             {
@@ -69,14 +76,14 @@ public class InvoiceService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching invoices");
+            logger.LogError(ex, "Error searching invoices");
             return Result<PaginatedList<InvoiceDto>>.CriticalError("Internal server error occurred while searching invoices.");
         }
     }
 
     public async Task<Result> IssueAsync(Guid id, CancellationToken ct = default)
     {
-        var invoice = await _unitOfWork.Invoices.Query().Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id, ct);
+        var invoice = await unitOfWork.Invoices.Query().Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id, ct);
         if (invoice is null)
             return Result.NotFound(ErrorHelpers.NotFoundWithId(nameof(Invoice), id));
         if (invoice.Status != InvoiceStatus.Draft)
@@ -84,19 +91,19 @@ public class InvoiceService
         if (invoice.Lines.Count == 0)
             return Result.Error("Hóa đơn chưa có dòng.");
 
-        var order = await _unitOfWork.SalesOrders.GetByIdAsync(invoice.SalesOrderId, ct);
+        var order = await unitOfWork.SalesOrders.GetByIdAsync(invoice.SalesOrderId, ct);
         if (order is null || order.Status != SalesOrderStatus.Confirmed)
             return Result.Error("Đơn bán phải đã xác nhận.");
         if (order.PartnerId != invoice.PartnerId)
             return Result.Error("Khách hàng hóa đơn không khớp đơn bán.");
 
         var lineIds = invoice.Lines.Select(x => x.SalesOrderLineId).ToList();
-        var shipped = await _unitOfWork.GoodsIssueLines.Query()
+        var shipped = await unitOfWork.GoodsIssueLines.Query()
             .Where(x => lineIds.Contains(x.SalesOrderLineId) && x.GoodsIssue.Status == GoodsIssueStatus.Posted)
             .GroupBy(x => x.SalesOrderLineId)
             .Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Quantity) })
             .ToListAsync(ct);
-        var invoiced = await _unitOfWork.InvoiceLines.Query()
+        var invoiced = await unitOfWork.InvoiceLines.Query()
             .Where(x => lineIds.Contains(x.SalesOrderLineId) && x.Invoice.Status != InvoiceStatus.Draft && x.Invoice.Status != InvoiceStatus.Cancelled)
             .GroupBy(x => x.SalesOrderLineId)
             .Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Qty) })
@@ -112,13 +119,13 @@ public class InvoiceService
 
         invoice.Status = InvoiceStatus.Issued;
         invoice.IssuedAt = DateTime.UtcNow;
-        await _unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Success(ResultStatus.NoContent);
     }
 
     public async Task<Result> CancelAsync(Guid id, CancellationToken ct = default)
     {
-        var invoice = await _unitOfWork.Invoices.GetByIdAsync(id, ct);
+        var invoice = await unitOfWork.Invoices.GetByIdAsync(id, ct);
         if (invoice is null)
             return Result.NotFound(ErrorHelpers.NotFoundWithId(nameof(Invoice), id));
         if (invoice.PaidAmount > 0)
@@ -128,19 +135,19 @@ public class InvoiceService
 
         invoice.Status = InvoiceStatus.Cancelled;
         invoice.CancelledAt = DateTime.UtcNow;
-        await _unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Success(ResultStatus.NoContent);
     }
 
     public async Task<Result<List<DocumentLineLookupDto>>> GetInvoiceLinesAsync(Guid salesOrderId, CancellationToken ct = default)
     {
-        var orderLines = await _unitOfWork.SalesOrderLines.Query().Where(x => x.SalesOrderId == salesOrderId)
+        var orderLines = await unitOfWork.SalesOrderLines.Query().Where(x => x.SalesOrderId == salesOrderId)
             .Select(x => new { x.Id, x.Product.Sku, x.Product.Name, x.Qty, x.UnitPrice }).ToListAsync(ct);
         var ids = orderLines.Select(x => x.Id).ToList();
-        var shipped = await _unitOfWork.GoodsIssueLines.Query()
+        var shipped = await unitOfWork.GoodsIssueLines.Query()
             .Where(x => ids.Contains(x.SalesOrderLineId) && x.GoodsIssue.Status == GoodsIssueStatus.Posted)
             .GroupBy(x => x.SalesOrderLineId).Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Quantity) }).ToListAsync(ct);
-        var invoiced = await _unitOfWork.InvoiceLines.Query()
+        var invoiced = await unitOfWork.InvoiceLines.Query()
             .Where(x => ids.Contains(x.SalesOrderLineId) && x.Invoice.Status != InvoiceStatus.Draft && x.Invoice.Status != InvoiceStatus.Cancelled)
             .GroupBy(x => x.SalesOrderLineId).Select(g => new { LineId = g.Key, Qty = g.Sum(x => x.Qty) }).ToListAsync(ct);
         var lines = orderLines.Select(x =>
@@ -162,20 +169,20 @@ public class InvoiceService
     }
 
     public async Task<Result<List<OpenDocumentDto>>> GetOpenInvoicesAsync(Guid partnerId, CancellationToken ct = default)
-       => Result<List<OpenDocumentDto>>.Success(await _unitOfWork.Invoices.Query()
+       => Result<List<OpenDocumentDto>>.Success(await unitOfWork.Invoices.Query()
            .Where(x => x.PartnerId == partnerId && (x.Status == InvoiceStatus.Issued || x.Status == InvoiceStatus.PartiallyPaid))
            .OrderBy(x => x.IssueDate)
            .Select(x => new OpenDocumentDto { Id = x.Id, PartnerId = x.PartnerId, Number = x.Number, Total = x.Total, Balance = x.Total - x.PaidAmount })
            .ToListAsync(ct));
     public async Task<Result<OpenDocumentDto?>> GetInvoiceAsync(Guid id, CancellationToken ct = default)
-      => Result<OpenDocumentDto?>.Success(await _unitOfWork.Invoices.Query().Where(x => x.Id == id)
+      => Result<OpenDocumentDto?>.Success(await unitOfWork.Invoices.Query().Where(x => x.Id == id)
           .Select(x => new OpenDocumentDto { Id = x.Id, PartnerId = x.PartnerId, Number = x.Number, Total = x.Total, Balance = x.Total - x.PaidAmount })
           .FirstOrDefaultAsync(ct));
-    protected override Expression<Func<Invoice, InvoiceDto>> ToDto() => Extensions.ExpressionToDto();
+    private static Expression<Func<Invoice, InvoiceDto>> ToDto() => Extensions.ExpressionToDto();
 
-    protected override Invoice CreateEntity(CreateInvoiceDto dto)
+    private Invoice CreateEntity(CreateInvoiceDto dto)
     {
-        var order = _unitOfWork.SalesOrders.Query().First(x => x.Id == dto.SalesOrderId);
+        var order = unitOfWork.SalesOrders.Query().First(x => x.Id == dto.SalesOrderId);
         var invoice = new Invoice
         {
             Number = dto.Number.Trim(),
@@ -190,7 +197,7 @@ public class InvoiceService
 
         foreach (var line in dto.Lines)
         {
-            var orderLine = _unitOfWork.SalesOrderLines.Query().First(x => x.Id == line.SalesOrderLineId);
+            var orderLine = unitOfWork.SalesOrderLines.Query().First(x => x.Id == line.SalesOrderLineId);
             invoice.Lines.Add(new InvoiceLine
             {
                 SalesOrderLineId = line.SalesOrderLineId,
@@ -205,7 +212,7 @@ public class InvoiceService
         return invoice;
     }
 
-    protected override Expression<Func<Invoice, UpdateInvoiceDto>> ToUpdateDto() => x => new UpdateInvoiceDto
+    private static Expression<Func<Invoice, UpdateInvoiceDto>> ToUpdateDto() => x => new UpdateInvoiceDto
     {
         Id = x.Id,
         Number = x.Number,
@@ -215,7 +222,7 @@ public class InvoiceService
         Notes = x.Notes
     };
 
-    protected override void UpdateEntity(Invoice entity, UpdateInvoiceDto dto)
+    private static void UpdateEntity(Invoice entity, UpdateInvoiceDto dto)
     {
         if (entity.Status != InvoiceStatus.Draft)
             throw new InvalidOperationException("Chỉ sửa hóa đơn đang nháp.");

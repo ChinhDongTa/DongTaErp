@@ -1,16 +1,32 @@
 ﻿namespace DongTaErp.Application.Services.Products;
 
-public class ProductService : Base.GenericCrudService<Product, ProductDto, CreateProductDto, UpdateProductDto>, IProductService
+public class ProductService(
+    IUnitOfWork unitOfWork,
+    ILogger<ProductService> logger,
+    IValidator<CreateProductDto> createValidator,
+    IValidator<UpdateProductDto> updateValidator) : IProductService
 {
-    private readonly IUnitOfWork unitOfWork;
-    private readonly ILogger<ProductService> logger;
+    public Task<Result<ProductDto?>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetByIdAsync(unitOfWork.Products, ToDto(), id, logger, ct);
 
-    public ProductService(IUnitOfWork unitOfWork, ILogger<ProductService> logger, IValidator<CreateProductDto> createValidator, IValidator<UpdateProductDto> updateValidator) 
-        : base(unitOfWork.Products, unitOfWork, logger, createValidator, updateValidator)
-    {
-        this.unitOfWork = unitOfWork;
-        this.logger = logger;
-    }
+    public Task<Result<PaginatedList<ProductDto>>> GetAllAsync(int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
+        => CrudOperations.GetAllAsync(unitOfWork.Products, ToDto(), pageNumber, pageSize, logger, ct);
+
+    public Task<Result<string>> CreateAsync(CreateProductDto dto, CancellationToken ct = default)
+        => CrudOperations.CreateAsync(unitOfWork.Products, unitOfWork, createValidator, CreateEntity, dto, logger, ct);
+
+    public Task<Result> UpdateAsync(Guid id, UpdateProductDto dto, CancellationToken ct = default)
+        => CrudOperations.UpdateAsync(unitOfWork.Products, unitOfWork, updateValidator, UpdateEntity, id, dto, logger, ct);
+
+    public Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.DeleteAsync(unitOfWork.Products, unitOfWork, id, logger, ct);
+
+    public Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.SoftDeleteAsync(unitOfWork.Products, unitOfWork, id, logger, ct);
+
+    public Task<Result<UpdateProductDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetUpdateByIdAsync(unitOfWork.Products, ToUpdateDto(), id, logger, ct);
+
 
     public async Task<Result<PaginatedList<ProductDto>>> SearchAsync(
         string? searchTerm,
@@ -50,9 +66,9 @@ public class ProductService : Base.GenericCrudService<Product, ProductDto, Creat
         }
     }
 
-    protected override Expression<Func<Product, ProductDto>> ToDto() => Extensions.ExpressionToDto();
+    private static Expression<Func<Product, ProductDto>> ToDto() => Extensions.ExpressionToDto();
 
-    protected override Product CreateEntity(CreateProductDto dto) => new ()
+    private static Product CreateEntity(CreateProductDto dto) => new ()
     {
         Sku = dto.Sku,
         Name = dto.Name,
@@ -64,7 +80,7 @@ public class ProductService : Base.GenericCrudService<Product, ProductDto, Creat
         IsActive = dto.IsActive
     };
 
-    protected override Expression<Func<Product, UpdateProductDto>> ToUpdateDto() => p => new UpdateProductDto
+    private static Expression<Func<Product, UpdateProductDto>> ToUpdateDto() => p => new UpdateProductDto
     {
         Id = p.Id,
         Sku = p.Sku,
@@ -77,7 +93,7 @@ public class ProductService : Base.GenericCrudService<Product, ProductDto, Creat
         IsActive = p.IsActive
     };
 
-    protected override void UpdateEntity(Product product, UpdateProductDto dto)
+    private static void UpdateEntity(Product product, UpdateProductDto dto)
     {
         // Required fields
         if (dto.Sku.HasValueAndIsDifferentFrom(product.Sku))

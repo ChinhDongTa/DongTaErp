@@ -1,0 +1,173 @@
+﻿namespace DongTaErp.Application.Services.Warehouses;
+
+public class WarehouseService(
+    IUnitOfWork unitOfWork,
+    ILogger<WarehouseService> logger,
+    IValidator<CreateWarehouseDto> createValidator,
+    IValidator<UpdateWarehouseDto> updateValidator) : IWarehouseService
+{
+    public Task<Result<WarehouseDto?>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetByIdAsync(unitOfWork.Warehouses, ToDto(), id, logger, ct);
+
+    public Task<Result<PaginatedList<WarehouseDto>>> GetAllAsync(int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
+        => CrudOperations.GetAllAsync(unitOfWork.Warehouses, ToDto(), pageNumber, pageSize, logger, ct);
+
+    public Task<Result<string>> CreateAsync(CreateWarehouseDto dto, CancellationToken ct = default)
+        => CrudOperations.CreateAsync(unitOfWork.Warehouses, unitOfWork, createValidator, CreateEntity, dto, logger, ct);
+
+    public Task<Result> UpdateAsync(Guid id, UpdateWarehouseDto dto, CancellationToken ct = default)
+        => CrudOperations.UpdateAsync(unitOfWork.Warehouses, unitOfWork, updateValidator, UpdateEntity, id, dto, logger, ct);
+
+    public Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.DeleteAsync(unitOfWork.Warehouses, unitOfWork, id, logger, ct);
+
+    public Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.SoftDeleteAsync(unitOfWork.Warehouses, unitOfWork, id, logger, ct);
+
+    public Task<Result<UpdateWarehouseDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetUpdateByIdAsync(unitOfWork.Warehouses, ToUpdateDto(), id, logger, ct);
+
+
+    public async Task<Result<PaginatedList<WarehouseDto>>> SearchAsync(
+        string? searchTerm,
+        int pageNumber = 1,
+        int pageSize = 20,
+        string? sortBy = null,
+        bool isDescending = false,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var query = unitOfWork.Warehouses.Query();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var lowerSearchTerm = $"%{searchTerm.ToLower()}%";
+
+                query = query.Where(w =>
+                    EF.Functions.Like(w.Code.ToLower(), lowerSearchTerm) ||
+                    EF.Functions.Like(w.Name.ToLower(), lowerSearchTerm) ||
+                    (w.City != null && EF.Functions.Like(w.City.ToLower(), lowerSearchTerm)));
+            }
+
+            query = sortBy != null
+                ? query.ApplySorting(sortBy, isDescending)
+                : query.ApplySorting();
+
+            var paginatedList = await query
+                .ToWarehouseDto()
+                .PaginatedListAsync(pageNumber, pageSize, ct);
+
+            return Result<PaginatedList<WarehouseDto>>.Success(paginatedList);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while searching warehouses.");
+
+            return Result<PaginatedList<WarehouseDto>>.CriticalError("Internal server error occurred while searching warehouses.");
+        }
+    }
+
+    public async Task<Result<List<StockBalanceDto>>> GetStockAsync(Guid? warehouseId = null, bool lowOnly = false, Guid? productId = null, CancellationToken ct = default)
+    {
+        var query = unitOfWork.StockBalances.Query();
+        if (warehouseId is not null)
+            query = query.Where(x => x.WarehouseId == warehouseId);
+        if (productId is not null)
+            query = query.Where(x => x.ProductId == productId);
+        if (lowOnly)
+            query = query.Where(x => x.Qty <= x.MinQty);
+        var rows = await query.OrderBy(x => x.Warehouse.Code).ThenBy(x => x.Product.Sku)
+            .Select(x => new StockBalanceDto
+            {
+                Id = x.Id,
+                ProductSku = x.Product.Sku,
+                ProductName = x.Product.Name,
+                WarehouseName = x.Warehouse.Name,
+                Qty = x.Qty,
+                MinQty = x.MinQty,
+                CreatedAt = x.Created
+            }).ToListAsync(ct);
+        return Result<List<StockBalanceDto>>.Success(rows);
+    }
+
+    private static Expression<Func<Warehouse, WarehouseDto>> ToDto() => Extensions.ExpressionToDto();
+
+    private static Warehouse CreateEntity(CreateWarehouseDto dto) => new()
+    {
+        Code = dto.Code,
+        Name = dto.Name,
+        Type = dto.Type,
+        CountryCode = dto.CountryCode,
+        City = dto.City,
+        Address = dto.Address,
+        TimeZone = dto.TimeZone,
+        IsDefault = dto.IsDefault,
+        IsActive = dto.IsActive
+    };
+
+    private static Expression<Func<Warehouse, UpdateWarehouseDto>> ToUpdateDto() => w => new UpdateWarehouseDto
+    {
+        Id = w.Id,
+        Code = w.Code,
+        Name = w.Name,
+        Type = w.Type,
+        CountryCode = w.CountryCode,
+        City = w.City,
+        Address = w.Address,
+        TimeZone = w.TimeZone,
+        IsDefault = w.IsDefault,
+        IsActive = w.IsActive
+    };
+
+    private static void UpdateEntity(Warehouse warehouse, UpdateWarehouseDto dto)
+    {
+        // Required fields
+        if (dto.Code.HasValueAndIsDifferentFrom(warehouse.Code))
+        {
+            warehouse.Code = dto.Code!;
+        }
+
+        if (dto.Name.HasValueAndIsDifferentFrom(warehouse.Name))
+        {
+            warehouse.Name = dto.Name!;
+        }
+
+        if (dto.CountryCode.HasValueAndIsDifferentFrom(warehouse.CountryCode))
+        {
+            warehouse.CountryCode = dto.CountryCode!;
+        }
+
+        // Optional string fields
+        if (dto.City.IsDifferentFrom(warehouse.City))
+        {
+            warehouse.City = dto.City;
+        }
+
+        if (dto.Address.IsDifferentFrom(warehouse.Address))
+        {
+            warehouse.Address = dto.Address;
+        }
+
+        if (dto.TimeZone.IsDifferentFrom(warehouse.TimeZone))
+        {
+            warehouse.TimeZone = dto.TimeZone;
+        }
+
+        // Optional value types
+        if (dto.Type.IsDifferentFrom(warehouse.Type))
+        {
+            warehouse.Type = dto.Type!.Value;
+        }
+
+        if (dto.IsDefault.IsDifferentFrom(warehouse.IsDefault))
+        {
+            warehouse.IsDefault = dto.IsDefault;
+        }
+
+        if (dto.IsActive.IsDifferentFrom(warehouse.IsActive))
+        {
+            warehouse.IsActive = dto.IsActive;
+        }
+    }
+}

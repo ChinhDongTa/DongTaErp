@@ -1,16 +1,32 @@
 namespace DongTaErp.Application.Services.Categories;
 
-public class CategoryService : Base.GenericCrudService<Category, CategoryDto, CreateCategoryDto, UpdateCategoryDto>, ICategoryService
+public class CategoryService(
+    IUnitOfWork unitOfWork,
+    ILogger<CategoryService> logger,
+    IValidator<CreateCategoryDto> createValidator,
+    IValidator<UpdateCategoryDto> updateValidator) : ICategoryService
 {
-    private readonly IUnitOfWork unitOfWork;
-    private readonly ILogger<CategoryService> logger;
+    public Task<Result<CategoryDto?>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetByIdAsync(unitOfWork.Categories, ToDto(), id, logger, ct);
 
-    public CategoryService(IUnitOfWork unitOfWork, ILogger<CategoryService> logger, IValidator<CreateCategoryDto> createValidator, IValidator<UpdateCategoryDto> updateValidator)
-        : base(unitOfWork.Categories, unitOfWork, logger, createValidator, updateValidator)
-    {
-        this.unitOfWork = unitOfWork;
-        this.logger = logger;
-    }
+    public Task<Result<PaginatedList<CategoryDto>>> GetAllAsync(int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
+        => CrudOperations.GetAllAsync(unitOfWork.Categories, ToDto(), pageNumber, pageSize, logger, ct);
+
+    public Task<Result<string>> CreateAsync(CreateCategoryDto dto, CancellationToken ct = default)
+        => CrudOperations.CreateAsync(unitOfWork.Categories, unitOfWork, createValidator, CreateEntity, dto, logger, ct);
+
+    public Task<Result> UpdateAsync(Guid id, UpdateCategoryDto dto, CancellationToken ct = default)
+        => CrudOperations.UpdateAsync(unitOfWork.Categories, unitOfWork, updateValidator, UpdateEntity, id, dto, logger, ct);
+
+    public Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.DeleteAsync(unitOfWork.Categories, unitOfWork, id, logger, ct);
+
+    public Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.SoftDeleteAsync(unitOfWork.Categories, unitOfWork, id, logger, ct);
+
+    public Task<Result<UpdateCategoryDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetUpdateByIdAsync(unitOfWork.Categories, ToUpdateDto(), id, logger, ct);
+
 
     public async Task<Result<PaginatedList<CategoryDto>>> SearchAsync(string? searchTerm,
                                                                                  int pageNumber = 1,
@@ -63,9 +79,9 @@ public class CategoryService : Base.GenericCrudService<Category, CategoryDto, Cr
         return Result<List<LookupItemDto>>.Success(items);
     }
 
-    protected override Expression<Func<Category, CategoryDto>> ToDto() => Extensions.ExpressionToDto();
+    private static Expression<Func<Category, CategoryDto>> ToDto() => Extensions.ExpressionToDto();
 
-    protected override Category CreateEntity(CreateCategoryDto dto) => new()
+    private static Category CreateEntity(CreateCategoryDto dto) => new()
     {
         Code = dto.Code,
         Name = dto.Name,
@@ -73,7 +89,7 @@ public class CategoryService : Base.GenericCrudService<Category, CategoryDto, Cr
         ParentId = dto.ParentId
     };
 
-    protected override Expression<Func<Category, UpdateCategoryDto>> ToUpdateDto() => c => new UpdateCategoryDto
+    private static Expression<Func<Category, UpdateCategoryDto>> ToUpdateDto() => c => new UpdateCategoryDto
     {
         Id = c.Id,
         Code = c.Code,
@@ -82,7 +98,7 @@ public class CategoryService : Base.GenericCrudService<Category, CategoryDto, Cr
         ParentId = c.ParentId
     };
 
-    protected override void UpdateEntity(Category category, UpdateCategoryDto dto)
+    private static void UpdateEntity(Category category, UpdateCategoryDto dto)
     {
         //Nếu trường của Entity là required thì dùng HasValueAndIsDifferentFrom.
         if (dto.Code.HasValueAndIsDifferentFrom(category.Code))

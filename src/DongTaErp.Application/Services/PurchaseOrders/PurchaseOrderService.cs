@@ -2,38 +2,45 @@ using DongTaErp.Domain.Enums;
 
 namespace DongTaErp.Application.Services.PurchaseOrders;
 
-public class PurchaseOrderService
-    : Base.GenericCrudService<PurchaseOrder, PurchaseOrderDto, CreatePurchaseOrderDto, UpdatePurchaseOrderDto>,
-      IPurchaseOrderService
+public class PurchaseOrderService(
+    IUnitOfWork unitOfWork,
+    ILogger<PurchaseOrderService> logger,
+    IValidator<CreatePurchaseOrderDto> createValidator,
+    IValidator<UpdatePurchaseOrderDto> updateValidator) : IPurchaseOrderService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<PurchaseOrderService> _logger;
+    public Task<Result<PurchaseOrderDto?>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetByIdAsync(unitOfWork.PurchaseOrders, ToDto(), id, logger, ct);
 
-    public PurchaseOrderService(
-        IUnitOfWork unitOfWork,
-        ILogger<PurchaseOrderService> logger,
-        IValidator<CreatePurchaseOrderDto> createValidator,
-        IValidator<UpdatePurchaseOrderDto> updateValidator)
-        : base(unitOfWork.PurchaseOrders, unitOfWork, logger, createValidator, updateValidator)
-    {
-        _unitOfWork = unitOfWork;
-        _logger = logger;
-    }
+    public Task<Result<PaginatedList<PurchaseOrderDto>>> GetAllAsync(int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
+        => CrudOperations.GetAllAsync(unitOfWork.PurchaseOrders, ToDto(), pageNumber, pageSize, logger, ct);
 
-    public override async Task<Result<string>> CreateAsync(CreatePurchaseOrderDto dto, CancellationToken ct = default)
+    public Task<Result> UpdateAsync(Guid id, UpdatePurchaseOrderDto dto, CancellationToken ct = default)
+        => CrudOperations.UpdateAsync(unitOfWork.PurchaseOrders, unitOfWork, updateValidator, UpdateEntity, id, dto, logger, ct);
+
+    public Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.DeleteAsync(unitOfWork.PurchaseOrders, unitOfWork, id, logger, ct);
+
+    public Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.SoftDeleteAsync(unitOfWork.PurchaseOrders, unitOfWork, id, logger, ct);
+
+    public Task<Result<UpdatePurchaseOrderDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetUpdateByIdAsync(unitOfWork.PurchaseOrders, ToUpdateDto(), id, logger, ct);
+
+
+    public async Task<Result<string>> CreateAsync(CreatePurchaseOrderDto dto, CancellationToken ct = default)
     {
         var number = dto.Number.Trim();
-        var exists = await _unitOfWork.PurchaseOrders.Query().AnyAsync(x => x.Number == number, ct);
+        var exists = await unitOfWork.PurchaseOrders.Query().AnyAsync(x => x.Number == number, ct);
         if (exists)
             return Result<string>.Error($"Số đơn {number} đã tồn tại.");
-        return await base.CreateAsync(dto, ct);
+        return await CrudOperations.CreateAsync(unitOfWork.PurchaseOrders, unitOfWork, createValidator, CreateEntity, dto, logger, ct);
     }
 
     public async Task<Result<PaginatedList<PurchaseOrderDto>>> SearchAsync(SimpleSearch search, CancellationToken ct = default)
     {
         try
         {
-            var query = _unitOfWork.PurchaseOrders.Query();
+            var query = unitOfWork.PurchaseOrders.Query();
             if (!string.IsNullOrWhiteSpace(search.SearchTerm))
             {
                 var term = $"%{search.SearchTerm.ToLower()}%";
@@ -52,14 +59,14 @@ public class PurchaseOrderService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching purchase orders");
+            logger.LogError(ex, "Error searching purchase orders");
             return Result<PaginatedList<PurchaseOrderDto>>.CriticalError("Internal server error occurred while searching purchase orders.");
         }
     }
 
     public async Task<Result> ConfirmAsync(Guid id, CancellationToken ct = default)
     {
-        var order = await _unitOfWork.PurchaseOrders.Query().Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id, ct);
+        var order = await unitOfWork.PurchaseOrders.Query().Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id, ct);
         if (order is null)
             return Result.NotFound(ErrorHelpers.NotFoundWithId(nameof(PurchaseOrder), id));
         if (order.Status != PurchaseOrderStatus.Draft)
@@ -69,31 +76,31 @@ public class PurchaseOrderService
 
         order.Status = PurchaseOrderStatus.Confirmed;
         order.ConfirmedAt = DateTime.UtcNow;
-        await _unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Success(ResultStatus.NoContent);
     }
 
     public async Task<Result> CancelAsync(Guid id, CancellationToken ct = default)
     {
-        var order = await _unitOfWork.PurchaseOrders.GetByIdAsync(id, ct);
+        var order = await unitOfWork.PurchaseOrders.GetByIdAsync(id, ct);
         if (order is null)
             return Result.NotFound(ErrorHelpers.NotFoundWithId(nameof(PurchaseOrder), id));
         if (order.Status == PurchaseOrderStatus.Cancelled)
             return Result.Error("Đơn đã hủy.");
 
-        var hasPostedReceipt = await _unitOfWork.GoodsReceipts.Query()
+        var hasPostedReceipt = await unitOfWork.GoodsReceipts.Query()
             .AnyAsync(x => x.PurchaseOrderId == id && x.Status == GoodsReceiptStatus.Posted, ct);
         if (hasPostedReceipt)
             return Result.Error("Không hủy đơn đã có phiếu nhập đã ghi sổ. Hủy phiếu nhập trước.");
 
         order.Status = PurchaseOrderStatus.Cancelled;
-        await _unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Success(ResultStatus.NoContent);
     }
 
-    protected override Expression<Func<PurchaseOrder, PurchaseOrderDto>> ToDto() => Extensions.ExpressionToDto();
+    private static Expression<Func<PurchaseOrder, PurchaseOrderDto>> ToDto() => Extensions.ExpressionToDto();
 
-    protected override PurchaseOrder CreateEntity(CreatePurchaseOrderDto dto)
+    private static PurchaseOrder CreateEntity(CreatePurchaseOrderDto dto)
     {
         var order = new PurchaseOrder
         {
@@ -121,7 +128,7 @@ public class PurchaseOrderService
         return order;
     }
 
-    protected override Expression<Func<PurchaseOrder, UpdatePurchaseOrderDto>> ToUpdateDto() => x => new UpdatePurchaseOrderDto
+    private static Expression<Func<PurchaseOrder, UpdatePurchaseOrderDto>> ToUpdateDto() => x => new UpdatePurchaseOrderDto
     {
         Id = x.Id,
         Number = x.Number,
@@ -132,7 +139,7 @@ public class PurchaseOrderService
         Notes = x.Notes
     };
 
-    protected override void UpdateEntity(PurchaseOrder entity, UpdatePurchaseOrderDto dto)
+    private static void UpdateEntity(PurchaseOrder entity, UpdatePurchaseOrderDto dto)
     {
         if (entity.Status != PurchaseOrderStatus.Draft)
             throw new InvalidOperationException("Chỉ sửa đơn đang nháp.");

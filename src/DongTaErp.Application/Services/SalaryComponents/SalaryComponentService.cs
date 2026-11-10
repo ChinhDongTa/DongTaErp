@@ -1,28 +1,35 @@
 namespace DongTaErp.Application.Services.SalaryComponents;
 
-public class SalaryComponentService
-    : Base.GenericCrudService<SalaryComponent, SalaryComponentDto, CreateSalaryComponentDto, UpdateSalaryComponentDto>,
-      ISalaryComponentService
+public class SalaryComponentService(
+    IUnitOfWork unitOfWork,
+    ILogger<SalaryComponentService> logger,
+    IValidator<CreateSalaryComponentDto> createValidator,
+    IValidator<UpdateSalaryComponentDto> updateValidator) : ISalaryComponentService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<SalaryComponentService> _logger;
+    public Task<Result<SalaryComponentDto?>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetByIdAsync(unitOfWork.SalaryComponents, ToDto(), id, logger, ct);
 
-    public SalaryComponentService(
-        IUnitOfWork unitOfWork,
-        ILogger<SalaryComponentService> logger,
-        IValidator<CreateSalaryComponentDto> createValidator,
-        IValidator<UpdateSalaryComponentDto> updateValidator)
-        : base(unitOfWork.SalaryComponents, unitOfWork, logger, createValidator, updateValidator)
-    {
-        _unitOfWork = unitOfWork;
-        _logger = logger;
-    }
+    public Task<Result<PaginatedList<SalaryComponentDto>>> GetAllAsync(int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
+        => CrudOperations.GetAllAsync(unitOfWork.SalaryComponents, ToDto(), pageNumber, pageSize, logger, ct);
+
+    public Task<Result> UpdateAsync(Guid id, UpdateSalaryComponentDto dto, CancellationToken ct = default)
+        => CrudOperations.UpdateAsync(unitOfWork.SalaryComponents, unitOfWork, updateValidator, UpdateEntity, id, dto, logger, ct);
+
+    public Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.DeleteAsync(unitOfWork.SalaryComponents, unitOfWork, id, logger, ct);
+
+    public Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.SoftDeleteAsync(unitOfWork.SalaryComponents, unitOfWork, id, logger, ct);
+
+    public Task<Result<UpdateSalaryComponentDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetUpdateByIdAsync(unitOfWork.SalaryComponents, ToUpdateDto(), id, logger, ct);
+
 
     public async Task<Result<PaginatedList<SalaryComponentDto>>> SearchAsync(SimpleSearch search, CancellationToken ct = default)
     {
         try
         {
-            var query = _unitOfWork.SalaryComponents.Query();
+            var query = unitOfWork.SalaryComponents.Query();
             if (!string.IsNullOrWhiteSpace(search.SearchTerm))
             {
                 var term = $"%{search.SearchTerm.ToLower()}%";
@@ -34,33 +41,33 @@ public class SalaryComponentService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching salary components");
+            logger.LogError(ex, "Error searching salary components");
             return Result<PaginatedList<SalaryComponentDto>>.CriticalError("Internal server error occurred while searching salary components.");
         }
     }
 
     public async Task<Result<List<SalaryComponentDto>>> GetActiveAsync(bool? isFixed = null, CancellationToken ct = default)
     {
-        var query = _unitOfWork.SalaryComponents.Query().Where(x => x.IsActive);
+        var query = unitOfWork.SalaryComponents.Query().Where(x => x.IsActive);
         if (isFixed is not null)
             query = query.Where(x => x.IsFixed == isFixed);
         var items = await query.OrderBy(x => x.Code).ToSalaryComponentDto().ToListAsync(ct);
         return Result<List<SalaryComponentDto>>.Success(items);
     }
 
-    public override async Task<Result<string>> CreateAsync(CreateSalaryComponentDto dto, CancellationToken ct = default)
+    public async Task<Result<string>> CreateAsync(CreateSalaryComponentDto dto, CancellationToken ct = default)
     {
         var code = dto.Code.Trim();
-        if (await _unitOfWork.SalaryComponents.Query().AnyAsync(x => x.Code == code, ct))
+        if (await unitOfWork.SalaryComponents.Query().AnyAsync(x => x.Code == code, ct))
             return Result<string>.Error($"Mã khoản lương {code} đã tồn tại.");
         dto.Code = code;
         dto.Name = dto.Name.Trim();
-        return await base.CreateAsync(dto, ct);
+        return await CrudOperations.CreateAsync(unitOfWork.SalaryComponents, unitOfWork, createValidator, CreateEntity, dto, logger, ct);
     }
 
-    protected override Expression<Func<SalaryComponent, SalaryComponentDto>> ToDto() => Extensions.ExpressionToDto();
+    private static Expression<Func<SalaryComponent, SalaryComponentDto>> ToDto() => Extensions.ExpressionToDto();
 
-    protected override SalaryComponent CreateEntity(CreateSalaryComponentDto dto) => new()
+    private static SalaryComponent CreateEntity(CreateSalaryComponentDto dto) => new()
     {
         Code = dto.Code.Trim(),
         Name = dto.Name.Trim(),
@@ -71,7 +78,7 @@ public class SalaryComponentService
         Note = dto.Note
     };
 
-    protected override Expression<Func<SalaryComponent, UpdateSalaryComponentDto>> ToUpdateDto() => x => new UpdateSalaryComponentDto
+    private static Expression<Func<SalaryComponent, UpdateSalaryComponentDto>> ToUpdateDto() => x => new UpdateSalaryComponentDto
     {
         Id = x.Id,
         Code = x.Code,
@@ -83,7 +90,7 @@ public class SalaryComponentService
         Note = x.Note
     };
 
-    protected override void UpdateEntity(SalaryComponent entity, UpdateSalaryComponentDto dto)
+    private static void UpdateEntity(SalaryComponent entity, UpdateSalaryComponentDto dto)
     {
         if (dto.Code.HasValueAndIsDifferentFrom(entity.Code))
             entity.Code = dto.Code!.Trim();

@@ -4,23 +4,33 @@ namespace DongTaErp.Application.Services.Payrolls;
 /// CRUD + search. Tính thực lãnh đơn giản. Workflow tính lương phức tạp (công thức, thuế, BHXH)
 /// nên tách command MediatR/Wolverine khi có quy tắc nghiệp vụ đầy đủ.
 /// </summary>
-public class PayrollService : Base.GenericCrudService<Payroll, PayrollDto, CreatePayrollDto, UpdatePayrollDto>, IPayrollService
+public class PayrollService(
+    IUnitOfWork unitOfWork,
+    ILogger<PayrollService> logger,
+    IValidator<CreatePayrollDto> createValidator,
+    IValidator<UpdatePayrollDto> updateValidator) : IPayrollService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<PayrollService> _logger;
+    public Task<Result<PayrollDto?>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetByIdAsync(unitOfWork.Payrolls, ToDto(), id, logger, ct);
 
-    public PayrollService(IUnitOfWork unitOfWork, ILogger<PayrollService> logger, IValidator<CreatePayrollDto> createValidator, IValidator<UpdatePayrollDto> updateValidator)
-        : base(unitOfWork.Payrolls, unitOfWork, logger, createValidator, updateValidator)
-    {
-        _unitOfWork = unitOfWork;
-        _logger = logger;
-    }
+    public Task<Result<PaginatedList<PayrollDto>>> GetAllAsync(int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
+        => CrudOperations.GetAllAsync(unitOfWork.Payrolls, ToDto(), pageNumber, pageSize, logger, ct);
+
+    public Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.DeleteAsync(unitOfWork.Payrolls, unitOfWork, id, logger, ct);
+
+    public Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.SoftDeleteAsync(unitOfWork.Payrolls, unitOfWork, id, logger, ct);
+
+    public Task<Result<UpdatePayrollDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetUpdateByIdAsync(unitOfWork.Payrolls, ToUpdateDto(), id, logger, ct);
+
 
     public async Task<Result<PaginatedList<PayrollDto>>> SearchAsync(SimpleSearch search, CancellationToken ct = default)
     {
         try
         {
-            var query = _unitOfWork.Payrolls.Query();
+            var query = unitOfWork.Payrolls.Query();
 
             if (!string.IsNullOrWhiteSpace(search.SearchTerm))
             {
@@ -42,32 +52,35 @@ public class PayrollService : Base.GenericCrudService<Payroll, PayrollDto, Creat
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching payrolls");
+            logger.LogError(ex, "Error searching payrolls");
             return Result<PaginatedList<PayrollDto>>.CriticalError("Internal server error occurred while searching payrolls.");
         }
     }
 
-    protected override Expression<Func<Payroll, PayrollDto>> ToDto() => Extensions.ExpressionToDto();
+    private static Expression<Func<Payroll, PayrollDto>> ToDto() => Extensions.ExpressionToDto();
 
-    public override async Task<Result<string>> CreateAsync(CreatePayrollDto dto, CancellationToken ct = default)
+    public async Task<Result<string>> CreateAsync(CreatePayrollDto dto, CancellationToken ct = default)
     {
+        var errors = await CrudOperations.ValidateAsync(createValidator, dto, ct);
+        if (errors.Count > 0)
+            return Result<string>.Error([.. errors]);
         var entity = CreateEntity(dto);
         await FillComponentTypesAsync(entity, ct);
         entity.Recalculate();
-        await _unitOfWork.Payrolls.AddAsync(entity, ct);
-        await _unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.Payrolls.AddAsync(entity, ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result<string>.Created(entity.Id.ToString());
     }
 
     private async Task FillComponentTypesAsync(Payroll entity, CancellationToken ct)
     {
         var ids = entity.Lines.Select(x => x.SalaryComponentId).ToList();
-        var components = await _unitOfWork.SalaryComponents.Query().Where(x => ids.Contains(x.Id)).ToListAsync(ct);
+        var components = await unitOfWork.SalaryComponents.Query().Where(x => ids.Contains(x.Id)).ToListAsync(ct);
         foreach (var line in entity.Lines)
             line.SalaryComponent = components.First(x => x.Id == line.SalaryComponentId);
     }
 
-    protected override Payroll CreateEntity(CreatePayrollDto dto)
+    private static Payroll CreateEntity(CreatePayrollDto dto)
     {
         var entity = new Payroll
         {
@@ -91,15 +104,15 @@ public class PayrollService : Base.GenericCrudService<Payroll, PayrollDto, Creat
         return entity;
     }
 
-    public override async Task<Result> UpdateAsync(Guid id, UpdatePayrollDto dto, CancellationToken ct = default)
+    public async Task<Result> UpdateAsync(Guid id, UpdatePayrollDto dto, CancellationToken ct = default)
     {
-        var result = await base.UpdateAsync(id, dto, ct);
+        var result = await CrudOperations.UpdateAsync(unitOfWork.Payrolls, unitOfWork, updateValidator, UpdateEntity, id, dto, logger, ct);
         if (!result.Succeeded || dto.Lines is null)
             return result;
 
-        var payroll = await _unitOfWork.Payrolls.Query().Include(x => x.Lines).FirstAsync(x => x.Id == id, ct);
+        var payroll = await unitOfWork.Payrolls.Query().Include(x => x.Lines).FirstAsync(x => x.Id == id, ct);
         foreach (var line in payroll.Lines.ToList())
-            _unitOfWork.PayrollLines.Delete(line);
+            unitOfWork.PayrollLines.Delete(line);
         foreach (var line in dto.Lines)
         {
             payroll.Lines.Add(new PayrollLine
@@ -113,11 +126,11 @@ public class PayrollService : Base.GenericCrudService<Payroll, PayrollDto, Creat
         }
         await FillComponentTypesAsync(payroll, ct);
         payroll.Recalculate();
-        await _unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Success(ResultStatus.NoContent);
     }
 
-    protected override Expression<Func<Payroll, UpdatePayrollDto>> ToUpdateDto() => p => new UpdatePayrollDto
+    private static Expression<Func<Payroll, UpdatePayrollDto>> ToUpdateDto() => p => new UpdatePayrollDto
     {
         Id = p.Id,
         EmployeeId = p.EmployeeId,
@@ -130,7 +143,7 @@ public class PayrollService : Base.GenericCrudService<Payroll, PayrollDto, Creat
         Notes = p.Notes
     };
 
-    protected override void UpdateEntity(Payroll entity, UpdatePayrollDto dto)
+    private static void UpdateEntity(Payroll entity, UpdatePayrollDto dto)
     {
         if (dto.EmployeeId.HasValueAndIsDifferentFrom(entity.EmployeeId))
             entity.EmployeeId = dto.EmployeeId!.Value;

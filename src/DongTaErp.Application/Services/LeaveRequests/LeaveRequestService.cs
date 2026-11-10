@@ -6,29 +6,39 @@ namespace DongTaErp.Application.Services.LeaveRequests;
 /// CRUD + search + duyệt/từ chối. Workflow nhiều cấp (nhân viên → quản lý → HR)
 /// nên tách command MediatR/Wolverine khi cần audit trail và thông báo.
 /// </summary>
-public class LeaveRequestService
-    : Base.GenericCrudService<LeaveRequest, LeaveRequestDto, CreateLeaveRequestDto, UpdateLeaveRequestDto>,
-      ILeaveRequestService
+public class LeaveRequestService(
+    IUnitOfWork unitOfWork,
+    ILogger<LeaveRequestService> logger,
+    IValidator<CreateLeaveRequestDto> createValidator,
+    IValidator<UpdateLeaveRequestDto> updateValidator) : ILeaveRequestService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<LeaveRequestService> _logger;
+    public Task<Result<LeaveRequestDto?>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetByIdAsync(unitOfWork.LeaveRequests, ToDto(), id, logger, ct);
 
-    public LeaveRequestService(
-        IUnitOfWork unitOfWork,
-        ILogger<LeaveRequestService> logger,
-        IValidator<CreateLeaveRequestDto> createValidator,
-        IValidator<UpdateLeaveRequestDto> updateValidator)
-        : base(unitOfWork.LeaveRequests, unitOfWork, logger, createValidator, updateValidator)
-    {
-        _unitOfWork = unitOfWork;
-        _logger = logger;
-    }
+    public Task<Result<PaginatedList<LeaveRequestDto>>> GetAllAsync(int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
+        => CrudOperations.GetAllAsync(unitOfWork.LeaveRequests, ToDto(), pageNumber, pageSize, logger, ct);
+
+    public Task<Result<string>> CreateAsync(CreateLeaveRequestDto dto, CancellationToken ct = default)
+        => CrudOperations.CreateAsync(unitOfWork.LeaveRequests, unitOfWork, createValidator, CreateEntity, dto, logger, ct);
+
+    public Task<Result> UpdateAsync(Guid id, UpdateLeaveRequestDto dto, CancellationToken ct = default)
+        => CrudOperations.UpdateAsync(unitOfWork.LeaveRequests, unitOfWork, updateValidator, UpdateEntity, id, dto, logger, ct);
+
+    public Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.DeleteAsync(unitOfWork.LeaveRequests, unitOfWork, id, logger, ct);
+
+    public Task<Result> SoftDeleteAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.SoftDeleteAsync(unitOfWork.LeaveRequests, unitOfWork, id, logger, ct);
+
+    public Task<Result<UpdateLeaveRequestDto?>> GetUpdateByIdAsync(Guid id, CancellationToken ct = default)
+        => CrudOperations.GetUpdateByIdAsync(unitOfWork.LeaveRequests, ToUpdateDto(), id, logger, ct);
+
 
     public async Task<Result<PaginatedList<LeaveRequestDto>>> SearchAsync(SimpleSearch search, CancellationToken ct = default)
     {
         try
         {
-            var query = _unitOfWork.LeaveRequests.Query();
+            var query = unitOfWork.LeaveRequests.Query();
 
             if (!string.IsNullOrWhiteSpace(search.SearchTerm))
             {
@@ -50,7 +60,7 @@ public class LeaveRequestService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching leave requests");
+            logger.LogError(ex, "Error searching leave requests");
             return Result<PaginatedList<LeaveRequestDto>>.CriticalError("Internal server error occurred while searching leave requests.");
         }
     }
@@ -65,7 +75,7 @@ public class LeaveRequestService
     {
         try
         {
-            var entity = await _unitOfWork.LeaveRequests.GetByIdAsync(id, ct);
+            var entity = await unitOfWork.LeaveRequests.GetByIdAsync(id, ct);
             if (entity is null)
                 return Result.NotFound(ErrorHelpers.NotFoundWithId(nameof(LeaveRequest), id));
 
@@ -75,19 +85,19 @@ public class LeaveRequestService
             entity.Status = status;
             entity.ReviewNote = reviewNote;
             entity.ReviewedAt = DateTime.UtcNow;
-            await _unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
             return Result.Success(ResultStatus.NoContent);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error reviewing leave request {Id}", id);
+            logger.LogError(ex, "Error reviewing leave request {Id}", id);
             return Result.Error("System error");
         }
     }
 
-    protected override Expression<Func<LeaveRequest, LeaveRequestDto>> ToDto() => Extensions.ExpressionToDto();
+    private static Expression<Func<LeaveRequest, LeaveRequestDto>> ToDto() => Extensions.ExpressionToDto();
 
-    protected override LeaveRequest CreateEntity(CreateLeaveRequestDto dto) => new()
+    private static LeaveRequest CreateEntity(CreateLeaveRequestDto dto) => new()
     {
         EmployeeId = dto.EmployeeId,
         Type = dto.Type,
@@ -100,7 +110,7 @@ public class LeaveRequestService
         ReviewedAt = dto.ReviewedAt
     };
 
-    protected override Expression<Func<LeaveRequest, UpdateLeaveRequestDto>> ToUpdateDto() => x => new UpdateLeaveRequestDto
+    private static Expression<Func<LeaveRequest, UpdateLeaveRequestDto>> ToUpdateDto() => x => new UpdateLeaveRequestDto
     {
         Id = x.Id,
         EmployeeId = x.EmployeeId,
@@ -114,7 +124,7 @@ public class LeaveRequestService
         ReviewedAt = x.ReviewedAt
     };
 
-    protected override void UpdateEntity(LeaveRequest entity, UpdateLeaveRequestDto dto)
+    private static void UpdateEntity(LeaveRequest entity, UpdateLeaveRequestDto dto)
     {
         if (dto.EmployeeId.HasValueAndIsDifferentFrom(entity.EmployeeId))
             entity.EmployeeId = dto.EmployeeId!.Value;
